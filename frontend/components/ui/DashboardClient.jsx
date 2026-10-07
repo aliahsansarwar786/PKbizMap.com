@@ -116,7 +116,7 @@ export default function DashboardClient() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <StatCard label="Total Businesses" value={businesses.length} icon={LayoutGrid} color="#2563eb" />
+          <StatCard label="My Listed Businesses" value={businesses.length} icon={LayoutGrid} color="#2563eb" />
           <StatCard label="Approved" value={approved} icon={CheckCircle2} color="#059669" />
           <StatCard label="Pending Review" value={pending} icon={Clock} color="#d97706" />
           <StatCard label="Account Type" value={user?.role === 'admin' ? 'Admin' : 'Member'} icon={Shield} color="#7c3aed" />
