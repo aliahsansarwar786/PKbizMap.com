@@ -330,7 +330,7 @@ export default function AdminDashboardClient() {
                             <CheckCircle2 size={15} />
                           </Link>
                           <Link
-                            href={`/dashboard/businesses/${biz._id}/edit`}
+                            href={`/dashboard/businesses/${biz._id}`}
                             className="p-2 rounded-lg hover:bg-gray-200 transition-colors"
                             aria-label={`Edit ${biz.title}`}
                             style={{ color: '#2563eb' }}

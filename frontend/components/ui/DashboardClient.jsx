@@ -222,7 +222,7 @@ export default function DashboardClient() {
                       </Link>
                     )}
                     <Link
-                      href={`/dashboard/businesses/${business._id}/edit`}
+                      href={`/dashboard/businesses/${business._id}`}
                       className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
                       aria-label={`Edit ${business.title}`}
                       style={{ color: '#6b7280' }}
