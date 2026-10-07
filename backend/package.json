@@ -34,7 +34,7 @@
     "morgan": "^1.10.0",
     "multer": "^2.4.0",
     "multer-storage-cloudinary": "^4.0.0",
-    "sanitize-html": "^2.18.0"
+    "sanitize-html": "2.11.0"
   },
   "devDependencies": {
     "nodemon": "^1.14.10"
