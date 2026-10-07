@@ -5,6 +5,7 @@ const {
   getUsers,
   getAllBusinesses,
   getPendingBusinesses,
+  getAdminBusinessById,
   approveBusiness,
   rejectBusiness,
   adminDeleteBusiness,
@@ -32,6 +33,7 @@ router.delete('/users/:id', deleteUser);
 // Businesses - specific before parameterized
 router.get('/businesses/pending', getPendingBusinesses);
 router.get('/businesses', getAllBusinesses);
+router.get('/businesses/:id', getAdminBusinessById);
 router.patch('/businesses/:id/approve', approveBusiness);
 router.patch('/businesses/:id/reject', rejectBusiness);
 router.delete('/businesses/:id', adminDeleteBusiness);

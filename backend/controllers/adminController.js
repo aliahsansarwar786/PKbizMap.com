@@ -408,11 +408,33 @@ const getAllReviews = asyncHandler(async (req, res) => {
   });
 });
 
+// ─── GET /api/admin/businesses/:id ──────────────────────────────────────────
+// Admin: Get single business by ID (even if unapproved)
+const getAdminBusinessById = [
+  ...objectIdValidator('id'),
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    const business = await Business.findById(req.params.id).populate('owner', 'name email');
+
+    if (!business) {
+      return res.status(404).json({ success: false, message: 'Business not found.' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Business retrieved successfully.',
+      data: { business },
+    });
+  }),
+];
+
 module.exports = {
   getDashboard,
   getUsers,
   getAllBusinesses,
   getPendingBusinesses,
+  getAdminBusinessById,
   approveBusiness,
   rejectBusiness,
   adminDeleteBusiness,
