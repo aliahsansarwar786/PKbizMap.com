@@ -1,0 +1,1 @@
+@layer components{.Renderer-ojZscX{--theme-accent-text:var(--app-color-text-accent,var(--color-token-text-link-foreground))}@layer theme{.Renderer-ojZscX,.Renderer-ojZscX :where([data-theme]){--color-surface:var(--app-color-background-elevated-secondary-opaque)}}}
