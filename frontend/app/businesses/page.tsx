@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import BusinessDirectory from '@/components/business/BusinessDirectory';
@@ -22,7 +23,9 @@ export default function BusinessesPage() {
             </p>
           </div>
         </div>
-        <BusinessDirectory />
+        <Suspense fallback={<div className="container-max py-8 text-center text-gray-500">Loading directory...</div>}>
+          <BusinessDirectory />
+        </Suspense>
       </main>
       <Footer />
     </>
