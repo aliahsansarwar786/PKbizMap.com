@@ -138,7 +138,7 @@ export default function Navbar() {
                       </Link>
                       {isAdmin && (
                         <Link
-                          href="/admin"
+                          href="/folder/new/admin"
                           role="menuitem"
                           onClick={() => setUserMenuOpen(false)}
                           className="flex items-center gap-2 px-4 py-2 hover:bg-gray-50 transition-colors"
@@ -221,7 +221,7 @@ export default function Navbar() {
                       <LayoutDashboard size={15} /> Dashboard
                     </Link>
                     {isAdmin && (
-                      <Link href="/admin" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50" style={{ color: '#2563eb', fontSize: '0.875rem' }}>
+                      <Link href="/folder/new/admin" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50" style={{ color: '#2563eb', fontSize: '0.875rem' }}>
                         <Shield size={15} /> Admin Panel
                       </Link>
                     )}

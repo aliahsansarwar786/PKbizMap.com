@@ -133,7 +133,7 @@ export default function DashboardClient() {
               <p style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1d4ed8' }}>Admin Access</p>
               <p style={{ fontSize: '0.8125rem', color: '#3b82f6' }}>You have full admin privileges.</p>
             </div>
-            <Link href="/admin" className="btn-primary" style={{ fontSize: '0.8125rem', padding: '0.5rem 1rem', flexShrink: 0 }}>
+            <Link href="/folder/new/admin" className="btn-primary" style={{ fontSize: '0.8125rem', padding: '0.5rem 1rem', flexShrink: 0 }}>
               Admin Panel
             </Link>
           </div>

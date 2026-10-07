@@ -18,7 +18,7 @@ export default function LoginForm() {
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
       if (user?.role === 'admin') {
-        router.push('/admin');
+        router.push('/folder/new/admin');
       } else {
         router.push('/dashboard');
       }
@@ -43,7 +43,7 @@ export default function LoginForm() {
       const res = await login({ email: form.email.toLowerCase(), password: form.password });
       toast.success('Welcome back!');
       if (res?.data?.user?.role === 'admin') {
-        router.push('/admin');
+        router.push('/folder/new/admin');
       } else {
         router.push('/dashboard');
       }
