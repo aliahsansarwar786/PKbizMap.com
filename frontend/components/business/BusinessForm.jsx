@@ -35,6 +35,7 @@ export default function BusinessForm({ existingBusiness = null }) {
 
   const [newImages, setNewImages] = useState([]);
   const [previews, setPreviews] = useState([]);
+  const [existingImages, setExistingImages] = useState(existingBusiness?.images || []);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -49,7 +50,7 @@ export default function BusinessForm({ existingBusiness = null }) {
 
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files || []);
-    const currentTotal = (existingBusiness?.images?.length || 0) + newImages.length;
+    const currentTotal = existingImages.length + newImages.length;
     const remaining = MAX_IMAGES - currentTotal;
 
     if (files.length > remaining) {
@@ -79,6 +80,17 @@ export default function BusinessForm({ existingBusiness = null }) {
     URL.revokeObjectURL(previews[index]);
     setNewImages((prev) => prev.filter((_, i) => i !== index));
     setPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingImage = async (publicId) => {
+    if (!confirm('Are you sure you want to delete this image permanently? This cannot be undone.')) return;
+    try {
+      await businessAPI.deleteImage(existingBusiness._id, publicId);
+      setExistingImages((prev) => prev.filter((img) => img.publicId !== publicId));
+      toast.success('Image deleted successfully');
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete image');
+    }
   };
 
   const validate = () => {
@@ -308,14 +320,23 @@ export default function BusinessForm({ existingBusiness = null }) {
         </p>
 
         {/* Existing images in edit mode */}
-        {isEdit && existingBusiness?.images?.length > 0 && (
+        {isEdit && existingImages.length > 0 && (
           <div className="flex flex-wrap gap-2 mb-3">
-            {existingBusiness.images.map((img, i) => (
+            {existingImages.map((img, i) => (
               <div key={img.publicId} className="relative rounded-lg overflow-hidden" style={{ width: 72, height: 72, border: '2px solid #e5e7eb' }}>
                 <Image src={img.url} alt={`Business image ${i + 1}`} fill className="object-cover" />
-                <div className="absolute inset-0 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.3)' }}>
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ background: 'rgba(0,0,0,0.3)' }}>
                   <span style={{ fontSize: '0.6rem', color: '#fff' }}>Existing</span>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => removeExistingImage(img.publicId)}
+                  className="absolute top-0.5 right-0.5 w-5 h-5 rounded-full flex items-center justify-center hover:scale-110 transition-transform"
+                  style={{ background: '#dc2626', border: 'none', cursor: 'pointer', zIndex: 10 }}
+                  aria-label="Delete existing image"
+                >
+                  <X size={10} color="#fff" />
+                </button>
               </div>
             ))}
           </div>
@@ -342,7 +363,7 @@ export default function BusinessForm({ existingBusiness = null }) {
         )}
 
         {/* Upload button */}
-        {(existingBusiness?.images?.length || 0) + newImages.length < MAX_IMAGES && (
+        {existingImages.length + newImages.length < MAX_IMAGES && (
           <label
             htmlFor="biz-images"
             className="flex flex-col items-center gap-2 p-6 rounded-xl cursor-pointer transition-colors"
