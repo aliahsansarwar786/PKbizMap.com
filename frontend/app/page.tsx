@@ -77,7 +77,7 @@ export const metadata = {
 export default async function HomePage() {
   let businessCount = 0;
   try {
-    const res = await fetch('http://localhost:5001/api/businesses?limit=1', { next: { revalidate: 60 } });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://pkbizmap-backend.vercel.app/api'}/businesses?limit=1`, { next: { revalidate: 60 } });
     if (res.ok) {
       const resData = await res.json();
       businessCount = resData.data?.pagination?.totalResults || 0;
