@@ -30,7 +30,7 @@ export default function AboutPage() {
               
               <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937', marginTop: '2rem' }}>What We Do</h2>
               <p style={{ color: '#4b5563', lineHeight: 1.7 }}>
-                We manually review and verify all businesses listed on our platform to ensure a high standard of quality. Customers can read genuine reviews, find contact information, and connect with local professionals instantly.
+                We connect local businesses with customers across the community. Customers can find contact information, discover local services, and connect with professionals instantly.
               </p>
 
               <div style={{ background: '#eff6ff', padding: '1.5rem', borderRadius: '0.75rem', marginTop: '2rem' }}>

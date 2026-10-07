@@ -15,7 +15,7 @@ export default function Footer() {
             
             <div className="text-center md:text-left max-w-xl relative z-10">
               <h3 className="text-2xl font-bold !text-white mb-2 tracking-tight">Ready to grow your business?</h3>
-              <p className="text-slate-300 font-medium">Join Pakistan's fastest-growing directory. List your business for free and start reaching thousands of potential customers today.</p>
+              <p className="text-slate-300 font-medium">Join Pakistan's local directory. List your business for free and start reaching potential customers today.</p>
             </div>
             
             <div className="shrink-0 relative z-10">
@@ -128,14 +128,14 @@ export default function Footer() {
           </div>
           
           <div className="flex items-center gap-1.5 bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-800 text-slate-300">
-            <span>Made with</span>
+            <span>Made with care</span>
             <Heart size={13} className="text-red-500 fill-red-500" />
             <span>by <strong className="!text-white font-semibold">Ahsan Ali</strong></span>
           </div>
           
           <div className="flex items-center gap-6">
-            <Link href="#" className="!text-slate-400 hover:!text-slate-200 transition-colors">Privacy Policy</Link>
-            <Link href="#" className="!text-slate-400 hover:!text-slate-200 transition-colors">Terms of Service</Link>
+            <Link href="/privacy-policy" className="!text-slate-400 hover:!text-slate-200 transition-colors">Privacy Policy</Link>
+            <Link href="/terms" className="!text-slate-400 hover:!text-slate-200 transition-colors">Terms of Service</Link>
           </div>
         </div>
       </div>

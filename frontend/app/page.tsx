@@ -44,13 +44,13 @@ const HOW_IT_WORKS = [
   {
     step: '01',
     title: 'Search & Discover',
-    description: 'Browse thousands of verified local businesses by category, location, or keyword.',
+    description: 'Browse local businesses by category, location, or keyword.',
     color: '#2563eb',
   },
   {
     step: '02',
-    title: 'Read Reviews',
-    description: 'Make informed decisions with authentic ratings and reviews from real customers.',
+    title: 'Get Details',
+    description: 'Find essential details, contact information, and operating hours for local businesses.',
     color: '#059669',
   },
   {
@@ -71,7 +71,7 @@ const STATS = [
 export const metadata = {
   title: 'PKbizMap - Find Trusted Local Businesses Near You',
   description:
-    'Discover and connect with verified local businesses. Browse by category, read real reviews, and find the best services in your area.',
+    'Discover and connect with local businesses. Browse by category and find services in your area.',
 };
 
 export default async function HomePage() {
@@ -88,9 +88,9 @@ export default async function HomePage() {
 
   const DYNAMIC_STATS = [
     { label: 'Businesses Listed', value: businessCount, icon: LayoutGrid },
-    { label: 'Happy Customers', value: 'Growing', icon: Users },
-    { label: 'Reviews Posted', value: 'Recent', icon: Star },
     { label: 'Categories', value: CATEGORIES.length, icon: TrendingUp },
+    { label: 'Platform Access', value: 'Free', icon: Users },
+    { label: 'Community', value: 'Growing', icon: Star },
   ];
 
   return (
@@ -138,8 +138,8 @@ export default async function HomePage() {
                 lineHeight: 1.7,
               }}
             >
-              Discover, compare, and connect with verified local businesses. Read real reviews and find
-              the best services for every need in Pakistan.
+              Discover, compare, and connect with local businesses across Pakistan. Find
+              the best services for every need.
             </p>
           </div>
         </section>
@@ -340,16 +340,16 @@ export default async function HomePage() {
             <div className="grid md:grid-cols-2 gap-12 items-center">
               <div>
                 <h2 id="why-heading" style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1f2937', marginBottom: '1rem' }}>
-                  Why Businesses & Customers Trust Us
+                  Why Businesses & Customers Choose Us
                 </h2>
                 <p style={{ color: '#6b7280', marginBottom: '2rem', lineHeight: 1.7 }}>
-                  Our platform connects millions of people with the best local businesses. We ensure quality, transparency, and a seamless experience for everyone.
+                  Our platform connects people with local businesses across the community. We aim to ensure a seamless experience for everyone.
                 </p>
                 
                 <div className="space-y-6">
                   {[
-                    { title: 'Verified Listings', desc: 'Every business is manually reviewed and approved by our team to ensure quality and authenticity.' },
-                    { title: 'Real Customer Reviews', desc: 'Read genuine feedback from verified customers before making any purchasing decisions.' },
+                    { title: 'Business Listings', desc: 'Find local businesses across Pakistan.' },
+                    { title: 'Community Feedback', desc: 'A growing platform to help you make informed decisions before any purchasing decisions.' },
                     { title: 'Advanced Search', desc: 'Find exactly what you need with our powerful location and category-based search engine.' }
                   ].map((item, idx) => (
                     <div key={idx} className="flex gap-4">
@@ -418,7 +418,7 @@ export default async function HomePage() {
               Own a Business? List It for Free!
             </h2>
             <p style={{ color: '#bfdbfe', maxWidth: 480, margin: '0 auto 2rem', lineHeight: 1.7 }}>
-              Reach thousands of potential customers. Create your business listing today — it's completely free to get started.
+              Reach potential customers in your community. Create your business listing today — it's completely free to get started.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
