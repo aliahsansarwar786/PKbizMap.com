@@ -8,7 +8,7 @@ import { adminAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 import {
   Users, Building2, Clock, CheckCircle2, Star,
-  Check, X, Trash2, ChevronLeft, ChevronRight, Shield
+  Check, X, Trash2, ChevronLeft, ChevronRight, Shield, Edit3
 } from 'lucide-react';
 
 function StatCard({ label, value, icon: Icon, color = '#2563eb' }) {
@@ -328,6 +328,14 @@ export default function AdminDashboardClient() {
                             onClick={(e) => !biz.isApproved && e.preventDefault()}
                           >
                             <CheckCircle2 size={15} />
+                          </Link>
+                          <Link
+                            href={`/dashboard/businesses/${biz._id}/edit`}
+                            className="p-2 rounded-lg hover:bg-gray-200 transition-colors"
+                            aria-label={`Edit ${biz.title}`}
+                            style={{ color: '#2563eb' }}
+                          >
+                            <Edit3 size={15} />
                           </Link>
                           <button
                             onClick={() => handleDeleteBusiness(biz._id, biz.title)}

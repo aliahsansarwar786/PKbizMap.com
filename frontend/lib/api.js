@@ -156,6 +156,7 @@ export const adminAPI = {
     const qs = new URLSearchParams(params).toString();
     return api.get(`/admin/reviews${qs ? `?${qs}` : ''}`);
   },
+  getBusinessById: (id) => api.get(`/admin/businesses/${id}`),
 };
 
 export { ApiError };

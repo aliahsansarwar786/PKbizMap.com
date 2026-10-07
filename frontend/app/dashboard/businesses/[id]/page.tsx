@@ -24,22 +24,27 @@ export default function EditBusinessPage() {
     }
     if (!isAuthenticated) return;
 
-    // Fetch business - the form will get the existing data
-    // We need to fetch from my businesses to verify ownership
-    businessAPI.getMyBusinesses()
-      .then((res: any) => {
-        const found = res.data.businesses.find((b: any) => b._id === id);
-        if (!found && (user as any)?.role !== 'admin') {
-          setError('Business not found or you do not have permission to edit it.');
-        } else if (!found) {
-          // Admin fetch differently
-          setError('Business not found.');
-        } else {
-          setBusiness(found);
-        }
-      })
-      .catch(() => setError('Failed to load business.'))
-      .finally(() => setLoading(false));
+    // Fetch business
+    if (user?.role === 'admin') {
+      import('@/lib/api').then(({ adminAPI }) => {
+        adminAPI.getBusinessById(id)
+          .then((res: any) => setBusiness(res.data.business))
+          .catch(() => setError('Failed to load business.'))
+          .finally(() => setLoading(false));
+      });
+    } else {
+      businessAPI.getMyBusinesses()
+        .then((res: any) => {
+          const found = res.data.businesses.find((b: any) => b._id === id);
+          if (!found) {
+            setError('Business not found or you do not have permission to edit it.');
+          } else {
+            setBusiness(found);
+          }
+        })
+        .catch(() => setError('Failed to load business.'))
+        .finally(() => setLoading(false));
+    }
   }, [id, isAuthenticated, authLoading, user, router]);
 
   return (
