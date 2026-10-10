@@ -34,7 +34,7 @@ export default function Footer() {
           <div className="lg:col-span-4">
             <Link href="/" className="flex items-center gap-3 mb-6 inline-flex !text-white">
               <div className="w-16 h-16 bg-white rounded-xl p-1.5 shadow-md flex items-center justify-center ring-2 ring-white/5 shrink-0">
-                <img src="/logo-transparent.svg" alt="BizPrimeHub" className="w-full h-full object-contain scale-110 contrast-125 saturate-[1.3] drop-shadow-sm" />
+                <img src="/logo-transparent.png" alt="BizPrimeHub" className="w-full h-full object-contain scale-110 contrast-125 saturate-[1.3] drop-shadow-sm" />
               </div>
               <span className="text-2xl font-bold tracking-tight !text-white">BizPrimeHub</span>
             </Link>

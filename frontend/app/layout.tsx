@@ -29,7 +29,7 @@ export const metadata = {
     type: 'website',
   },
   icons: {
-    icon: '/logo-transparent.svg',
+    icon: '/logo-transparent.png',
   },
 };
 
