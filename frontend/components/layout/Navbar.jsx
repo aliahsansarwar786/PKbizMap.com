@@ -60,15 +60,18 @@ export default function Navbar() {
           {/* Logo */}
           <Link
             href="/"
-            className="flex flex-col justify-center items-center group ml-2 mt-2"
+            className="flex items-center gap-2 group ml-1"
           >
             <div
-              className="w-40 h-14 flex items-center justify-center shrink-0"
+              className="w-14 h-14 flex items-center justify-center shrink-0 overflow-hidden"
               style={{ mixBlendMode: 'multiply' }}
             >
-              <Image src="/logo-transparent.png" alt="BizPrimeHub Logo" width={200} height={200} className="object-contain w-full h-full drop-shadow-sm" priority unoptimized={true} />
+              <Image src="/logo-transparent.png" alt="BizPrimeHub Logo" width={56} height={56} className="object-cover w-full h-full drop-shadow-sm scale-110" priority unoptimized={true} />
             </div>
-            <span className="text-[9px] text-slate-500 font-normal -mt-2">Connecting Businesses, Building Success</span>
+            <div className="flex flex-col justify-center">
+              <span className="text-[1.15rem] leading-tight text-slate-800 font-bold tracking-tight">BizPrime<span className="text-blue-600">Hub</span></span>
+              <span className="text-[10px] text-slate-500 font-normal leading-tight">Connecting Businesses, Building Success</span>
+            </div>
           </Link>
 
           {/* Desktop nav links */}
