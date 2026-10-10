@@ -2,8 +2,8 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
 export const metadata = {
-  title: 'Terms of Service - PKbizMap',
-  description: 'Terms of Service for PKbizMap.',
+  title: 'Terms of Service - BizPrimeHub',
+  description: 'Terms of Service for BizPrimeHub.',
 };
 
 export default function TermsPage() {
@@ -25,7 +25,7 @@ export default function TermsPage() {
             <div className="card p-8 space-y-6" suppressHydrationWarning>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937' }}>Acceptance of Terms</h2>
               <p style={{ color: '#4b5563', lineHeight: 1.7 }}>
-                By accessing and using PKbizMap, you accept and agree to be bound by the terms and provisions of this agreement.
+                By accessing and using BizPrimeHub, you accept and agree to be bound by the terms and provisions of this agreement.
               </p>
               
               <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937', marginTop: '2rem' }}>User Responsibilities</h2>

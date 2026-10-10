@@ -61,9 +61,9 @@ export default function Navbar() {
             <div
               className="w-20 h-20 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 shrink-0"
             >
-              <Image src="/logo-transparent.png" alt="PKbizMap Logo" width={200} height={200} className="object-contain w-full h-full scale-110 contrast-125 saturate-[1.3] drop-shadow-sm" priority unoptimized={true} />
+              <Image src="/logo-transparent.png" alt="BizPrimeHub Logo" width={200} height={200} className="object-contain w-full h-full scale-110 contrast-125 saturate-[1.3] drop-shadow-sm" priority unoptimized={true} />
             </div>
-            <span className="ml-1">PKbizMap</span>
+            <span className="ml-1">BizPrimeHub</span>
           </Link>
 
           {/* Desktop nav links */}

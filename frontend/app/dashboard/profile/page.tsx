@@ -3,7 +3,7 @@ import Footer from '@/components/layout/Footer';
 import ProfileClient from '@/components/ui/ProfileClient';
 
 export const metadata = {
-  title: 'My Profile - PKbizMap',
+  title: 'My Profile - BizPrimeHub',
 };
 
 export default function ProfilePage() {

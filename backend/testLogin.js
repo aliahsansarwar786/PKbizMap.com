@@ -1,6 +1,6 @@
 // Using native fetch
 const login = async () => {
-  const url = 'https://pkbizmap-backend.vercel.app/api/auth/login';
+  const url = 'https://bizprimehub-backend.vercel.app/api/auth/login';
   const data = {
     email: 'aliahsan47ali@gmail.com',
     password: 'A1h2s3a4n5@ali47'

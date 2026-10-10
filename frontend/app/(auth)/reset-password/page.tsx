@@ -4,7 +4,7 @@ import ResetPasswordForm from '@/components/ui/ResetPasswordForm';
 import { Suspense } from 'react';
 
 export const metadata = {
-  title: 'Reset Password - PKbizMap',
+  title: 'Reset Password - BizPrimeHub',
 };
 
 export default function ResetPasswordPage() {

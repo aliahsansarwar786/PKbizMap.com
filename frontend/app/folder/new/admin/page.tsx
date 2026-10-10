@@ -3,7 +3,7 @@ import Footer from '@/components/layout/Footer';
 import AdminDashboardClient from '@/components/admin/AdminDashboardClient';
 
 export const metadata = {
-  title: 'Admin Dashboard - PKbizMap',
+  title: 'Admin Dashboard - BizPrimeHub',
   description: 'Manage businesses, users, and reviews.',
 };
 

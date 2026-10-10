@@ -69,7 +69,7 @@ const STATS = [
 ];
 
 export const metadata = {
-  title: 'PKbizMap - Find Trusted Local Businesses Near You',
+  title: 'BizPrimeHub - Find Trusted Local Businesses Near You',
   description:
     'Discover and connect with local businesses. Browse by category and find services in your area.',
 };
@@ -77,7 +77,7 @@ export const metadata = {
 export default async function HomePage() {
   let businessCount = 0;
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://pkbizmap-backend.vercel.app/api'}/businesses?limit=1`, { next: { revalidate: 60 } });
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://bizprimehub-backend.vercel.app/api'}/businesses?limit=1`, { next: { revalidate: 60 } });
     if (res.ok) {
       const resData = await res.json();
       businessCount = resData.data?.pagination?.totalResults || 0;

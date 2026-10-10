@@ -3,8 +3,8 @@ import Footer from '@/components/layout/Footer';
 import ForgotPasswordForm from '@/components/ui/ForgotPasswordForm';
 
 export const metadata = {
-  title: 'Forgot Password - PKbizMap',
-  description: 'Reset your PKbizMap account password.',
+  title: 'Forgot Password - BizPrimeHub',
+  description: 'Reset your BizPrimeHub account password.',
 };
 
 export default function ForgotPasswordPage() {

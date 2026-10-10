@@ -63,7 +63,7 @@ export default function LoginForm() {
         </div>
         <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#1f2937' }}>Welcome back</h1>
         <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.375rem' }}>
-          Sign in to your PKbizMap account
+          Sign in to your BizPrimeHub account
         </p>
       </div>
 

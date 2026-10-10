@@ -29,7 +29,7 @@ export default function SplashScreen() {
       }}
     >
       <div className="relative w-56 h-56 mb-8" style={{ animation: 'splashBounce 1s infinite alternate' }}>
-        <img src="/logo-transparent.png" alt="Loading PKbizMap..." className="w-full h-full object-contain" />
+        <img src="/logo-transparent.png" alt="Loading BizPrimeHub..." className="w-full h-full object-contain" />
       </div>
       <div className="w-64 h-1.5 bg-gray-100 rounded-full overflow-hidden">
         <div 

@@ -156,7 +156,7 @@ app.get('/api/health', (req, res) => {
 
 // ─── Root and Favicon routes ──────────────────────────────────────────────────
 app.get('/', (req, res) => {
-  res.status(200).send('PKbizMap Backend API is running.');
+  res.status(200).send('BizPrimeHub Backend API is running.');
 });
 app.get('/favicon.ico', (req, res) => res.status(204).end());
 

@@ -3,8 +3,8 @@ import Footer from '@/components/layout/Footer';
 import BusinessForm from '@/components/business/BusinessForm';
 
 export const metadata = {
-  title: 'Add Business - PKbizMap',
-  description: 'List your business on PKbizMap for free. Reach thousands of customers.',
+  title: 'Add Business - BizPrimeHub',
+  description: 'List your business on BizPrimeHub for free. Reach thousands of customers.',
 };
 
 export default function AddBusinessPage() {

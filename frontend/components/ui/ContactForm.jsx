@@ -9,7 +9,7 @@ export default function ContactForm() {
     e.preventDefault();
     
     // Format the message for WhatsApp
-    const text = `*New Contact Request from PKbizMap*%0A%0A*Name:* ${formData.name}%0A*Email:* ${formData.email}%0A*Message:* ${formData.message}`;
+    const text = `*New Contact Request from BizPrimeHub*%0A%0A*Name:* ${formData.name}%0A*Email:* ${formData.email}%0A*Message:* ${formData.message}`;
     
     // Target WhatsApp Number (without + or leading zeros)
     const whatsappNumber = '923106131361';

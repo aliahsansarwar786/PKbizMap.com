@@ -1,7 +1,7 @@
 const testRateLimit = async () => {
   console.log("Testing Login Rate Limiter (Limit is 20 requests)...");
   for (let i = 1; i <= 25; i++) {
-    const res = await fetch('https://pkbizmap-backend.vercel.app/api/auth/login', {
+    const res = await fetch('https://bizprimehub-backend.vercel.app/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: 'fake@example.com', password: 'wrongpassword' })

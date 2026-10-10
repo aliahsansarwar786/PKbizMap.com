@@ -16,15 +16,15 @@ export const viewport = {
 
 export const metadata = {
   title: {
-    default: 'PKbizMap - Find Local Businesses',
-    template: '%s | PKbizMap',
+    default: 'BizPrimeHub - Find Local Businesses',
+    template: '%s | BizPrimeHub',
   },
   description:
     'Discover and connect with trusted local businesses. Browse by category, location, and ratings.',
   keywords: ['business directory', 'local businesses', 'find businesses', 'business listings'],
-  authors: [{ name: 'PKbizMap' }],
+  authors: [{ name: 'BizPrimeHub' }],
   openGraph: {
-    title: 'PKbizMap - Find Local Businesses',
+    title: 'BizPrimeHub - Find Local Businesses',
     description: 'Discover and connect with trusted local businesses.',
     type: 'website',
   },

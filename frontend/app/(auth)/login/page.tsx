@@ -3,8 +3,8 @@ import Footer from '@/components/layout/Footer';
 import LoginForm from '@/components/ui/LoginForm';
 
 export const metadata = {
-  title: 'Login - PKbizMap',
-  description: 'Sign in to your PKbizMap account.',
+  title: 'Login - BizPrimeHub',
+  description: 'Sign in to your BizPrimeHub account.',
 };
 
 export default function LoginPage() {

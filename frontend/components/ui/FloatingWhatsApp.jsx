@@ -23,7 +23,7 @@ export default function FloatingWhatsApp() {
       
       {/* Main button */}
       <a
-        href="https://wa.me/923106131361?text=Hi%20PKbizMap%21%20I%20have%20a%20question."
+        href="https://wa.me/923106131361?text=Hi%20BizPrimeHub%21%20I%20have%20a%20question."
         target="_blank"
         rel="noopener noreferrer"
         className="relative flex items-center justify-center w-14 h-14 rounded-full shadow-[0_4px_14px_0_rgba(37,211,102,0.39)] transition-transform duration-300 hover:scale-110"

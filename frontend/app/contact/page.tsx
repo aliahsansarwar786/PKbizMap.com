@@ -4,8 +4,8 @@ import { Mail, Phone, MapPin } from 'lucide-react';
 import ContactForm from '@/components/ui/ContactForm';
 
 export const metadata = {
-  title: 'Contact Us - PKbizMap',
-  description: 'Get in touch with the PKbizMap support team.',
+  title: 'Contact Us - BizPrimeHub',
+  description: 'Get in touch with the BizPrimeHub support team.',
 };
 
 export default function ContactPage() {

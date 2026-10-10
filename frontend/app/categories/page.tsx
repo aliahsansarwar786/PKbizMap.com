@@ -19,8 +19,8 @@ const CATEGORIES = [
 ];
 
 export const metadata = {
-  title: 'Browse Categories - PKbizMap',
-  description: 'Explore all business categories on PKbizMap and find the services you need.',
+  title: 'Browse Categories - BizPrimeHub',
+  description: 'Explore all business categories on BizPrimeHub and find the services you need.',
 };
 
 export default function CategoriesPage() {

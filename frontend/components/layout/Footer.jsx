@@ -34,9 +34,9 @@ export default function Footer() {
           <div className="lg:col-span-4">
             <Link href="/" className="flex items-center gap-3 mb-6 inline-flex !text-white">
               <div className="w-16 h-16 bg-white rounded-xl p-1.5 shadow-md flex items-center justify-center ring-2 ring-white/5 shrink-0">
-                <img src="/logo-transparent.png" alt="PKbizMap" className="w-full h-full object-contain scale-110 contrast-125 saturate-[1.3] drop-shadow-sm" />
+                <img src="/logo-transparent.png" alt="BizPrimeHub" className="w-full h-full object-contain scale-110 contrast-125 saturate-[1.3] drop-shadow-sm" />
               </div>
-              <span className="text-2xl font-bold tracking-tight !text-white">PKbizMap</span>
+              <span className="text-2xl font-bold tracking-tight !text-white">BizPrimeHub</span>
             </Link>
             
             <p className="text-slate-300 font-medium text-sm leading-relaxed mb-6 max-w-sm">
@@ -124,7 +124,7 @@ export default function Footer() {
       <div className="border-t border-slate-800 bg-[#070a14]">
         <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-400 font-medium">
           <div className="text-center md:text-left">
-            <p>&copy; {currentYear} PKbizMap. All rights reserved.</p>
+            <p>&copy; {currentYear} BizPrimeHub. All rights reserved.</p>
           </div>
           
           <div className="flex items-center gap-1.5 bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-800 text-slate-300">

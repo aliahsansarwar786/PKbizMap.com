@@ -2,8 +2,8 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
 export const metadata = {
-  title: 'Privacy Policy - PKbizMap',
-  description: 'Privacy Policy for PKbizMap.',
+  title: 'Privacy Policy - BizPrimeHub',
+  description: 'Privacy Policy for BizPrimeHub.',
 };
 
 export default function PrivacyPolicyPage() {

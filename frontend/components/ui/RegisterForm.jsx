@@ -71,7 +71,7 @@ export default function RegisterForm() {
     setLoading(true);
     try {
       await register({ name: form.name.trim(), email: form.email.toLowerCase(), password: form.password });
-      toast.success('Account created! Welcome to PKbizMap.');
+      toast.success('Account created! Welcome to BizPrimeHub.');
       router.push('/dashboard');
     } catch (err) {
       if (err.status === 409) {
@@ -97,7 +97,7 @@ export default function RegisterForm() {
         </div>
         <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#1f2937' }}>Create your account</h1>
         <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.375rem' }}>
-          Join PKbizMap — it&apos;s completely free
+          Join BizPrimeHub — it&apos;s completely free
         </p>
       </div>
 
