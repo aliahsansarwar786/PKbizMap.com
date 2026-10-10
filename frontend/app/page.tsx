@@ -101,41 +101,42 @@ export default async function HomePage() {
         <section
           className="relative w-full overflow-hidden flex flex-col justify-center pb-20 pt-24 sm:pt-32 sm:pb-28"
           style={{
-            backgroundImage: 'url("https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop")',
+            backgroundImage: 'url("/hero-bg.jpg")',
             backgroundSize: 'cover',
             backgroundPosition: 'center',
             backgroundAttachment: 'fixed'
           }}
           aria-labelledby="hero-heading"
         >
-          <div className="absolute inset-0 bg-black/65 z-0"></div>
+          <div className="absolute inset-0 bg-white/30 z-0"></div>
           
-          <div className="container-max text-center relative z-10">
+          <div className="container-max text-left relative z-10 md:w-1/2 md:mr-auto">
             <div
-              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6"
-              style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.2)', backdropFilter: 'blur(8px)' }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 shadow-sm"
+              style={{ background: 'rgba(255,255,255,0.7)', border: '1px solid rgba(37,99,235,0.2)', backdropFilter: 'blur(8px)' }}
             >
-              <CheckCircle2 size={14} style={{ color: '#60a5fa' }} />
-              <span style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#f8fafc' }}>
+              <CheckCircle2 size={14} style={{ color: '#2563eb' }} />
+              <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#1e3a8a' }}>
                 Join our growing local business community
               </span>
             </div>
 
             <h1
               id="hero-heading"
-              style={{ fontSize: 'clamp(2.2rem, 5vw, 4rem)', fontWeight: 800, color: '#ffffff', marginBottom: '1.25rem', lineHeight: 1.1, letterSpacing: '-0.02em' }}
+              style={{ fontSize: 'clamp(2.2rem, 5vw, 4rem)', fontWeight: 800, color: '#0f172a', marginBottom: '1.25rem', lineHeight: 1.1, letterSpacing: '-0.02em' }}
             >
               Find Your Best<br />
-              <span style={{ color: '#60a5fa' }}>Business</span> Today
+              <span style={{ color: '#2563eb' }}>Business</span> Today
             </h1>
 
             <p
               style={{
                 fontSize: 'clamp(1rem, 2.5vw, 1.125rem)',
-                color: '#e2e8f0',
+                color: '#334155',
                 maxWidth: 600,
-                margin: '0 auto 2.5rem',
+                margin: '0 0 2.5rem',
                 lineHeight: 1.7,
+                fontWeight: 500
               }}
             >
               Discover, compare, and connect with local businesses across Pakistan. Find
