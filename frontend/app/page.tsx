@@ -99,12 +99,12 @@ export default async function HomePage() {
       <main>
         {/* ── Hero Section ──────────────────────────────────────────────── */}
         <section
-          className="relative w-full overflow-hidden flex flex-col justify-center pb-20 pt-24 sm:pt-32 sm:pb-28 bg-[#e0f2fe]"
+          className="relative w-full overflow-hidden flex flex-col lg:block bg-gradient-to-br from-[#e0f2fe] to-[#bae6fd]"
           aria-labelledby="hero-heading"
         >
-          {/* Background Image that scrolls naturally */}
+          {/* Desktop Background Image (Hidden on mobile/tablet) */}
           <div 
-            className="absolute inset-0 w-full h-full"
+            className="hidden lg:block absolute inset-0 w-full h-full"
             style={{
               backgroundImage: 'url("/hero-bg.jpg")',
               backgroundSize: 'cover',
@@ -113,43 +113,36 @@ export default async function HomePage() {
             }}
           ></div>
           
-          {/* Subtle overlay for text readability on mobile */}
-          <div className="absolute inset-0 bg-gradient-to-r from-white/80 via-white/40 to-transparent z-0"></div>
-          <div className="absolute inset-0 bg-white/30 z-0 sm:hidden"></div>
-          
-          <div className="container-max relative z-10 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-2xl">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 pt-16 sm:pt-24 lg:pt-32 pb-6 lg:pb-32">
+            <div className="w-full lg:w-[60%] lg:pr-8">
               <div
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 shadow-sm"
-                style={{ background: 'rgba(255,255,255,0.85)', border: '1px solid rgba(37,99,235,0.2)', backdropFilter: 'blur(8px)' }}
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-6 shadow-sm bg-white/70 backdrop-blur-sm border border-blue-200"
               >
-                <CheckCircle2 size={14} style={{ color: '#2563eb' }} />
-                <span style={{ fontSize: '0.8125rem', fontWeight: 600, color: '#1e3a8a' }}>
+                <CheckCircle2 size={14} className="text-blue-600" />
+                <span className="text-[0.8125rem] font-semibold text-blue-900">
                   Join our growing local business community
                 </span>
               </div>
 
               <h1
                 id="hero-heading"
-                style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: 800, color: '#0f172a', marginBottom: '1.25rem', lineHeight: 1.1, letterSpacing: '-0.02em' }}
+                className="text-4xl sm:text-5xl lg:text-[4rem] font-extrabold text-slate-900 mb-5 leading-[1.1] tracking-tight"
               >
                 Find Your Best<br />
-                <span style={{ color: '#2563eb' }}>Business</span> Today
+                <span className="text-blue-600">Business</span> Today
               </h1>
 
-              <p
-                style={{
-                  fontSize: 'clamp(1.125rem, 2.5vw, 1.25rem)',
-                  color: '#334155',
-                  margin: '0 0 2.5rem',
-                  lineHeight: 1.7,
-                  fontWeight: 500
-                }}
-              >
+              <p className="text-lg sm:text-xl text-slate-700 mb-8 leading-relaxed font-medium max-w-xl">
                 Discover, compare, and connect with local businesses across Pakistan. Find
                 the best services for every need.
               </p>
             </div>
+          </div>
+          
+          {/* Mobile Image (Visible only on mobile/tablet, shown below text) */}
+          <div className="w-full lg:hidden relative -mt-4">
+             <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-[#e0f2fe] to-transparent z-10"></div>
+             <img src="/hero-bg.jpg" alt="Pakistan Business Map" className="w-full h-auto object-cover object-right" />
           </div>
         </section>
 
