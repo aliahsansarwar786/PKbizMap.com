@@ -9,13 +9,17 @@ import toast from 'react-hot-toast';
 import {
   Menu,
   X,
-  Building2,
   User,
   LogOut,
   LayoutDashboard,
   Shield,
   ChevronDown,
   PlusCircle,
+  Home,
+  BookOpen,
+  LayoutGrid,
+  Info,
+  Mail
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -37,11 +41,11 @@ export default function Navbar() {
   };
 
   const navLinks = [
-    { href: '/', label: 'Home' },
-    { href: '/businesses', label: 'Directory' },
-    { href: '/categories', label: 'Categories' },
-    { href: '/about', label: 'About Us' },
-    { href: '/contact', label: 'Contact' },
+    { href: '/', label: 'Home', icon: Home },
+    { href: '/businesses', label: 'Directory', icon: BookOpen },
+    { href: '/categories', label: 'Categories', icon: LayoutGrid },
+    { href: '/about', label: 'About Us', icon: Info },
+    { href: '/contact', label: 'Contact', icon: Mail },
   ];
 
   const avatarUrl = user?.avatar?.url
@@ -49,36 +53,41 @@ export default function Navbar() {
     : `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'U')}&background=2563eb&color=fff&size=64`;
 
   return (
-    <header style={{ borderBottom: '1px solid rgba(229, 231, 235, 0.5)', background: 'rgba(255, 255, 255, 0.85)' }} className="sticky top-0 z-50 backdrop-blur-md transition-all duration-300">
+    <header style={{ borderTop: '4px solid #2563eb', borderBottom: '1px solid rgba(229, 231, 235, 0.5)', background: 'rgba(255, 255, 255, 0.98)' }} className="sticky top-0 z-50 backdrop-blur-md transition-all duration-300 shadow-sm">
       <nav className="container-max" aria-label="Main navigation">
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <Link
             href="/"
-            className="flex items-center gap-0 font-bold text-lg group"
-            style={{ color: '#1f2937' }}
+            className="flex items-center gap-2 font-bold text-lg group"
           >
             <div
-              className="w-20 h-20 flex items-center justify-center transition-transform duration-300 group-hover:scale-105 shrink-0"
+              className="w-12 h-12 flex items-center justify-center shrink-0"
             >
-              <Image src="/logo-transparent.png" alt="BizPrimeHub Logo" width={200} height={200} className="object-contain w-full h-full scale-110 contrast-125 saturate-[1.3] drop-shadow-sm" priority unoptimized={true} />
+              <Image src="/logo-transparent.png" alt="BizPrimeHub Logo" width={48} height={48} className="object-contain w-full h-full drop-shadow-sm" priority unoptimized={true} />
             </div>
-            <span className="ml-1">BizPrimeHub</span>
+            <div className="flex flex-col">
+              <span className="text-[1.15rem] leading-tight text-slate-800 tracking-tight">BizPrime<span className="text-blue-600">Hub</span></span>
+              <span className="text-[10px] text-slate-500 font-normal">Connecting Businesses, Building Success</span>
+            </div>
           </Link>
 
           {/* Desktop nav links */}
-          <div className="hidden md:flex items-center gap-6" suppressHydrationWarning>
-            {navLinks.map((link) => (
+          <div className="hidden md:flex items-center gap-2 lg:gap-4" suppressHydrationWarning>
+            {navLinks.map((link) => {
+              const Icon = link.icon;
+              const isHome = link.href === '/';
+              return (
               <Link
                 key={link.href}
                 href={link.href}
-                style={{ color: '#4b5563', fontSize: '0.875rem', fontWeight: 500 }}
-                className="relative group hover:text-blue-600 transition-colors py-1"
+                style={{ color: isHome ? '#ffffff' : '#4b5563', fontSize: '0.875rem', fontWeight: 600 }}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${isHome ? 'bg-blue-600 hover:bg-blue-700 shadow-sm' : 'hover:bg-gray-100 hover:text-blue-600'}`}
               >
-                {link.label}
-                <span className="absolute left-0 bottom-0 w-0 h-0.5 bg-blue-600 transition-all duration-300 group-hover:w-full rounded-full"></span>
+                <Icon size={16} strokeWidth={isHome ? 2.5 : 2} />
+                <span>{link.label}</span>
               </Link>
-            ))}
+            )})}
           </div>
 
           {/* Desktop right side */}
