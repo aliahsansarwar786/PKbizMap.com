@@ -64,7 +64,7 @@ export default function Navbar() {
             <div
               className="w-12 h-12 flex items-center justify-center shrink-0"
             >
-              <Image src="/logo-transparent.png" alt="BizPrimeHub Logo" width={48} height={48} className="object-contain w-full h-full drop-shadow-sm" priority unoptimized={true} />
+              <Image src="/logo-transparent.svg" alt="BizPrimeHub Logo" width={48} height={48} className="object-contain w-full h-full drop-shadow-sm" priority unoptimized={true} />
             </div>
             <div className="flex flex-col">
               <span className="text-[1.15rem] leading-tight text-slate-800 tracking-tight">BizPrime<span className="text-blue-600">Hub</span></span>
