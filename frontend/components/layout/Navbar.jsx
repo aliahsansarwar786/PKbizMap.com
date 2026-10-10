@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import toast from 'react-hot-toast';
 import {
   Menu,
@@ -27,6 +27,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
 
   const handleLogout = async () => {
     try {
@@ -76,15 +77,15 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-2 lg:gap-4" suppressHydrationWarning>
             {navLinks.map((link) => {
               const Icon = link.icon;
-              const isHome = link.href === '/';
+              const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
               return (
               <Link
                 key={link.href}
                 href={link.href}
-                style={{ color: isHome ? '#ffffff' : '#4b5563', fontSize: '0.875rem', fontWeight: 600 }}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${isHome ? 'bg-blue-600 hover:bg-blue-700 shadow-sm' : 'hover:bg-gray-100 hover:text-blue-600'}`}
+                style={{ color: isActive ? '#ffffff' : '#4b5563', fontSize: '0.875rem', fontWeight: 600 }}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${isActive ? 'bg-blue-600 hover:bg-blue-700 shadow-sm' : 'hover:bg-gray-100 hover:text-blue-600'}`}
               >
-                <Icon size={16} strokeWidth={isHome ? 2.5 : 2} />
+                <Icon size={16} strokeWidth={isActive ? 2.5 : 2} />
                 <span>{link.label}</span>
               </Link>
             )})}
@@ -200,17 +201,19 @@ export default function Navbar() {
             style={{ borderTop: '1px solid #f3f4f6' }}
           >
             <div className="pt-3 space-y-1">
-              {navLinks.map((link) => (
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
+                return (
                 <Link
                   key={link.href}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
-                  className="flex items-center px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
-                  style={{ fontSize: '0.875rem', color: '#4b5563' }}
+                  className={`flex items-center px-3 py-2 rounded-lg transition-colors ${isActive ? 'bg-blue-50 text-blue-600 font-semibold' : 'hover:bg-gray-50'}`}
+                  style={{ fontSize: '0.875rem', color: isActive ? '#2563eb' : '#4b5563' }}
                 >
                   {link.label}
                 </Link>
-              ))}
+              )})}
               {isAuthenticated ? (
                 <>
                   <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '0.75rem', marginTop: '0.5rem' }}>
