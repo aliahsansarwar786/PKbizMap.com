@@ -6,7 +6,7 @@
  * - Handles auth failures globally
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://bizprimehub-backend.vercel.app/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://pkbizmap-backend.vercel.app/api';
 
 class ApiError extends Error {
   constructor(message, status, errors = []) {
