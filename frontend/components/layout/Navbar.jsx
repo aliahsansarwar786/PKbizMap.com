@@ -76,8 +76,8 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop nav links (visible on lg and up) */}
-          <div className="hidden lg:flex items-center gap-1.5 xl:gap-3" suppressHydrationWarning>
+          {/* Desktop nav links (visible on xl and up, or compact on lg) */}
+          <div className="hidden xl:flex items-center gap-2" suppressHydrationWarning>
             {navLinks.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
@@ -86,10 +86,28 @@ export default function Navbar() {
                 key={link.href}
                 href={link.href}
                 style={{ color: isActive ? '#ffffff' : '#4b5563', fontSize: '0.84rem', fontWeight: 600 }}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all ${isActive ? 'bg-blue-600 hover:bg-blue-700 shadow-sm' : 'hover:bg-gray-100 hover:text-blue-600'}`}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${isActive ? 'bg-blue-600 hover:bg-blue-700 shadow-sm' : 'hover:bg-gray-100 hover:text-blue-600'}`}
               >
-                <Icon size={15} strokeWidth={isActive ? 2.5 : 2} />
-                <span>{link.label}</span>
+                <Icon size={15} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
+                <span className="whitespace-nowrap">{link.label}</span>
+              </Link>
+            )})}
+          </div>
+
+          {/* Medium Desktop nav links (between 1024px and 1280px) */}
+          <div className="hidden lg:flex xl:hidden items-center gap-1" suppressHydrationWarning>
+            {navLinks.map((link) => {
+              const Icon = link.icon;
+              const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
+              return (
+              <Link
+                key={link.href}
+                href={link.href}
+                style={{ color: isActive ? '#ffffff' : '#4b5563', fontSize: '0.8rem', fontWeight: 600 }}
+                className={`flex items-center gap-1 px-2 py-1.5 rounded-lg whitespace-nowrap transition-all ${isActive ? 'bg-blue-600 hover:bg-blue-700 shadow-sm' : 'hover:bg-gray-100 hover:text-blue-600'}`}
+              >
+                <Icon size={14} strokeWidth={isActive ? 2.5 : 2} className="shrink-0" />
+                <span className="whitespace-nowrap">{link.label === 'About Us' ? 'About' : link.label}</span>
               </Link>
             )})}
           </div>
