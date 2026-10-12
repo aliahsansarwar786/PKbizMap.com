@@ -91,6 +91,7 @@ export default function Footer() {
               {[
                 { href: '/', label: 'Home' },
                 { href: '/about', label: 'About Us' },
+                { href: '/blog', label: 'Blog & Guides' },
                 { href: '/contact', label: 'Contact Support' },
                 { href: '/add-business', label: 'Add Business' },
                 { href: '/dashboard', label: 'Dashboard' }

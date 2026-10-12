@@ -19,7 +19,8 @@ import {
   BookOpen,
   LayoutGrid,
   Info,
-  Mail
+  Mail,
+  Newspaper
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -45,6 +46,7 @@ export default function Navbar() {
     { href: '/', label: 'Home', icon: Home },
     { href: '/businesses', label: 'Directory', icon: BookOpen },
     { href: '/categories', label: 'Categories', icon: LayoutGrid },
+    { href: '/blog', label: 'Blog', icon: Newspaper },
     { href: '/about', label: 'About Us', icon: Info },
     { href: '/contact', label: 'Contact', icon: Mail },
   ];
