@@ -32,22 +32,33 @@ app.use(
 );
 
 // ─── CORS Configuration ───────────────────────────────────────────────────────
-// Only allow requests from the configured frontend URL
-// NEVER use origin: '*' with credentials/cookies
+// Only allow requests from configured and production frontend URLs
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'https://bizprimehub.vercel.app',
+  'https://pkbizmap.vercel.app',
+  'https://pkbizmap-com.vercel.app',
+  'https://pkbizmap-frontend.vercel.app',
+  'http://localhost:3000',
+  'http://localhost:3001',
+];
+
 const corsOptions = {
   origin: (origin, callback) => {
-    const allowedOrigins = [
-      process.env.FRONTEND_URL,
-      'http://localhost:3001',
-      // Allow requests with no origin (mobile apps, Postman in dev)
-      ...(process.env.NODE_ENV === 'development' ? [undefined, null] : []),
-    ];
+    // Allow requests with no origin (mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
 
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error(`CORS: Origin "${origin}" is not allowed.`));
+    // Allow exact matches
+    if (allowedOrigins.filter(Boolean).includes(origin)) {
+      return callback(null, true);
     }
+
+    // Allow all vercel preview deployments for bizprimehub and pkbizmap
+    if (/^https:\/\/(bizprimehub|pkbizmap)[a-zA-Z0-9-]*\.vercel\.app$/.test(origin)) {
+      return callback(null, true);
+    }
+
+    callback(new Error(`CORS: Origin "${origin}" is not allowed.`));
   },
   credentials: true, // Required for cookies
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],

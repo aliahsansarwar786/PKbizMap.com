@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 
 export default function EditBusinessPage() {
   const { id } = useParams();
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAdmin, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
   const [business, setBusiness] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -25,7 +25,7 @@ export default function EditBusinessPage() {
     if (!isAuthenticated) return;
 
     // Fetch business
-    if (user?.role === 'admin') {
+    if (isAdmin) {
       import('@/lib/api').then(({ adminAPI }) => {
         adminAPI.getBusinessById(id)
           .then((res: any) => setBusiness(res.data.business))
