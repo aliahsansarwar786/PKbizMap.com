@@ -169,11 +169,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
               src={post.coverImage}
               alt={post.coverImageAlt}
               className="w-full h-auto max-h-[460px] object-cover"
-              onError={(e) => {
-                const target = e.currentTarget;
-                target.onerror = null;
-                target.src = 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=1200&q=80';
-              }}
+              loading="eager"
             />
           </div>
 
