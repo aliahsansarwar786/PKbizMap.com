@@ -76,8 +76,8 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop nav links */}
-          <div className="hidden md:flex items-center gap-2 lg:gap-4" suppressHydrationWarning>
+          {/* Desktop nav links (visible on lg and up) */}
+          <div className="hidden lg:flex items-center gap-1.5 xl:gap-3" suppressHydrationWarning>
             {navLinks.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href || (link.href !== '/' && pathname.startsWith(link.href));
@@ -85,17 +85,17 @@ export default function Navbar() {
               <Link
                 key={link.href}
                 href={link.href}
-                style={{ color: isActive ? '#ffffff' : '#4b5563', fontSize: '0.875rem', fontWeight: 600 }}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all ${isActive ? 'bg-blue-600 hover:bg-blue-700 shadow-sm' : 'hover:bg-gray-100 hover:text-blue-600'}`}
+                style={{ color: isActive ? '#ffffff' : '#4b5563', fontSize: '0.84rem', fontWeight: 600 }}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all ${isActive ? 'bg-blue-600 hover:bg-blue-700 shadow-sm' : 'hover:bg-gray-100 hover:text-blue-600'}`}
               >
-                <Icon size={16} strokeWidth={isActive ? 2.5 : 2} />
+                <Icon size={15} strokeWidth={isActive ? 2.5 : 2} />
                 <span>{link.label}</span>
               </Link>
             )})}
           </div>
 
-          {/* Desktop right side */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* Desktop right side (visible on lg and up) */}
+          <div className="hidden lg:flex items-center gap-2.5">
             {isAuthenticated ? (
               <>
                 <Link href="/add-business" className="btn-primary" style={{ padding: '0.5rem 1rem', fontSize: '0.8125rem' }}>
@@ -186,21 +186,21 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile menu toggle */}
+          {/* Mobile menu toggle (visible below lg) */}
           <button
-            className="md:hidden p-2 rounded-lg hover:bg-gray-50 transition-colors"
+            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors text-slate-700"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileOpen}
           >
-            {mobileOpen ? <X size={22} /> : <Menu size={22} />}
+            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
 
         {/* Mobile menu */}
         {mobileOpen && (
           <div
-            className="md:hidden pb-4"
+            className="lg:hidden pb-4 pt-1 bg-white"
             style={{ borderTop: '1px solid #f3f4f6' }}
           >
             <div className="pt-3 space-y-1">

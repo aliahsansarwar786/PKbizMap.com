@@ -134,6 +134,11 @@ export default function BlogClient({ initialPosts }: BlogClientProps) {
                       alt={post.coverImageAlt}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       loading="lazy"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        target.onerror = null;
+                        target.src = 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80';
+                      }}
                     />
                     <div className="absolute top-3 left-3">
                       <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-white/95 text-blue-700 shadow-sm backdrop-blur-sm">
