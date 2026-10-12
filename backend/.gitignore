@@ -1,5 +1,7 @@
 node_modules/
 .env
+.env.local
+.env.*.local
 logs/*.log
 *.log
 .DS_Store
@@ -8,3 +10,8 @@ dist/
 build/
 .nyc_output/
 coverage/
+test*.js
+fix*.js
+drop*.js
+seedAdmin.js
+

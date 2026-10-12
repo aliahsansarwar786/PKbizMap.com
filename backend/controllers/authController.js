@@ -10,6 +10,7 @@ const {
   forgotPasswordValidator,
   resetPasswordValidator,
   changePasswordValidator,
+  updateProfileValidator,
 } = require('../utils/validators');
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
@@ -198,16 +199,20 @@ const changePassword = [
 ];
 
 // ─── PATCH /api/auth/update-profile ──────────────────────────────────────────
-const updateProfile = asyncHandler(async (req, res) => {
-  // Only allow safe fields - NEVER allow role or isApproved from body
-  const allowedFields = ['name', 'email'];
-  const updates = {};
+const updateProfile = [
+  ...updateProfileValidator,
+  asyncHandler(async (req, res) => {
+    validate(req);
 
-  allowedFields.forEach((field) => {
-    if (req.body[field] !== undefined) {
-      updates[field] = req.body[field];
-    }
-  });
+    // Only allow safe fields - NEVER allow role or isApproved from body
+    const allowedFields = ['name', 'email'];
+    const updates = {};
+
+    allowedFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    });
 
   if (req.file) {
     // Delete old avatar from Cloudinary if it exists
@@ -230,7 +235,8 @@ const updateProfile = asyncHandler(async (req, res) => {
     message: 'Profile updated successfully.',
     data: { user },
   });
-});
+}),
+];
 
 module.exports = {
   register,

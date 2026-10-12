@@ -3,7 +3,7 @@ const Business = require('../models/Business');
 const Review = require('../models/Review');
 const asyncHandler = require('../utils/asyncHandler');
 const cloudinary = require('../config/cloudinary');
-const { validate, businessValidator, objectIdValidator } = require('../utils/validators');
+const { validate, businessValidator, updateBusinessValidator, objectIdValidator } = require('../utils/validators');
 
 // ─── GET /api/businesses ──────────────────────────────────────────────────────
 // Public: Returns only approved businesses with search, filter, pagination
@@ -165,6 +165,7 @@ const createBusiness = [
 // Protected: Owner can edit, Admin can edit any
 const updateBusiness = [
   ...objectIdValidator('id'),
+  ...updateBusinessValidator,
   asyncHandler(async (req, res) => {
     validate(req);
 

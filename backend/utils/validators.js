@@ -71,6 +71,19 @@ const changePasswordValidator = [
     .withMessage('Password must contain uppercase, lowercase, and a number'),
 ];
 
+const updateProfileValidator = [
+  body('name')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Name cannot be empty')
+    .isLength({ min: 2, max: 50 }).withMessage('Name must be 2-50 characters'),
+  body('email')
+    .optional()
+    .trim()
+    .isEmail().withMessage('Please provide a valid email')
+    .normalizeEmail({ gmail_remove_dots: false }),
+];
+
 // ─── Business Validators ──────────────────────────────────────────────────────
 const { CATEGORIES } = require('../models/Business');
 
@@ -107,6 +120,42 @@ const businessValidator = [
     .isLength({ max: 20 }).withMessage('ZIP code cannot exceed 20 characters'),
 ];
 
+const updateBusinessValidator = [
+  body('title')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Business title cannot be empty')
+    .isLength({ min: 2, max: 100 }).withMessage('Title must be 2-100 characters'),
+  body('description')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('Description cannot be empty')
+    .isLength({ min: 20, max: 2000 }).withMessage('Description must be 20-2000 characters'),
+  body('category')
+    .optional()
+    .isIn(CATEGORIES).withMessage(`Category must be one of: ${CATEGORIES.join(', ')}`),
+  body('email')
+    .optional({ checkFalsy: true })
+    .isEmail().withMessage('Please provide a valid email'),
+  body('phone')
+    .optional({ checkFalsy: true })
+    .matches(/^[+\d\s\-().]{7,20}$/).withMessage('Please provide a valid phone number'),
+  body('website')
+    .optional({ checkFalsy: true })
+    .isURL({ require_protocol: false }).withMessage('Please provide a valid website URL'),
+  body('address.city')
+    .optional()
+    .trim()
+    .notEmpty().withMessage('City cannot be empty')
+    .isLength({ max: 100 }).withMessage('City cannot exceed 100 characters'),
+  body('address.street')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 200 }).withMessage('Street cannot exceed 200 characters'),
+  body('address.zipCode')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 20 }).withMessage('ZIP code cannot exceed 20 characters'),
+];
+
 // ─── Review Validators ────────────────────────────────────────────────────────
 const reviewValidator = [
   body('rating')
@@ -131,7 +180,9 @@ module.exports = {
   forgotPasswordValidator,
   resetPasswordValidator,
   changePasswordValidator,
+  updateProfileValidator,
   businessValidator,
+  updateBusinessValidator,
   reviewValidator,
   objectIdValidator,
 };
