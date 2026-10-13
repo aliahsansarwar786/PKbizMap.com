@@ -39,9 +39,23 @@ export default function BusinessForm({ existingBusiness = null }) {
   const [paymentSettings, setPaymentSettings] = useState(null);
   const [paymentReceiptFile, setPaymentReceiptFile] = useState(null);
   const [paymentReceiptPreview, setPaymentReceiptPreview] = useState(null);
-  const [copiedNumber, setCopiedNumber] = useState(false);
+  const [copiedIban, setCopiedIban] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
+
+  const formatIban = (iban) => {
+    if (!iban) return '';
+    return iban.replace(/\s+/g, '').replace(/(.{4})/g, '$1 ').trim();
+  };
+
+  const handleCopyIban = (ibanText) => {
+    if (!ibanText) return;
+    const clean = ibanText.replace(/\s+/g, '');
+    navigator.clipboard.writeText(clean);
+    setCopiedIban(true);
+    toast.success('JazzCash IBAN copied to clipboard!');
+    setTimeout(() => setCopiedIban(false), 2500);
+  };
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push('/login');
@@ -477,46 +491,73 @@ export default function BusinessForm({ existingBusiness = null }) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Secure JazzCash IBAN Details */}
+          <div className="space-y-3">
+            {/* Primary IBAN Card */}
             <div
-              className="p-3.5 rounded-xl flex flex-col justify-between"
-              style={{ background: '#ffffff', border: '1px solid #fed7aa' }}
+              className="p-4 rounded-xl space-y-2.5"
+              style={{ background: '#ffffff', border: '1.5px solid #fed7aa', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}
             >
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9a3412', textTransform: 'uppercase' }}>
-                JazzCash Mobile Account Number
-              </span>
-              <div className="flex items-center justify-between mt-1">
-                <span style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1f2937', letterSpacing: '0.5px' }}>
-                  {paymentSettings.jazzCashNumber || '03001234567'}
+              <div className="flex items-center justify-between flex-wrap gap-1">
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9a3412', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  JazzCash IBAN Number (Raast / 1Link IBFT)
+                </span>
+                <span className="badge badge-green" style={{ fontSize: '0.68rem', padding: '1px 6px' }}>
+                  Official Bank Transfer
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between flex-wrap gap-2 p-2.5 rounded-xl" style={{ background: '#fff7ed', border: '1px solid #ffedd5' }}>
+                <span style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937', letterSpacing: '1px', fontFamily: 'monospace' }}>
+                  {formatIban(paymentSettings.ibanNumber) || 'PK36 MOBK 0000 0000 0000 0000'}
                 </span>
                 <button
                   type="button"
-                  onClick={handleCopyNumber}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all hover:scale-105"
+                  onClick={() => handleCopyIban(paymentSettings.ibanNumber || 'PK36MOBK0000000000000000')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:scale-105"
                   style={{
-                    background: copiedNumber ? '#dcfce7' : '#ffedd5',
-                    color: copiedNumber ? '#15803d' : '#c2410c',
+                    background: copiedIban ? '#dcfce7' : '#ea580c',
+                    color: copiedIban ? '#15803d' : '#ffffff',
                     border: 'none',
                     cursor: 'pointer',
                   }}
-                  aria-label="Copy JazzCash Account Number"
+                  aria-label="Copy JazzCash IBAN Number"
                 >
-                  {copiedNumber ? <Check size={13} /> : <Copy size={13} />}
-                  {copiedNumber ? 'Copied' : 'Copy'}
+                  {copiedIban ? <Check size={14} /> : <Copy size={14} />}
+                  {copiedIban ? 'IBAN Copied!' : 'Copy IBAN'}
                 </button>
               </div>
+
+              <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0 }}>
+                💡 <strong>How to Pay:</strong> Open JazzCash, Easypaisa, Nayapay, Sadapay, or Any Bank App &rarr; Select <strong>Send Money / Bank Transfer</strong> &rarr; Select <strong>Mobilink Microfinance Bank (JazzCash)</strong> &rarr; Paste this IBAN.
+              </p>
             </div>
 
-            <div
-              className="p-3.5 rounded-xl flex flex-col justify-between"
-              style={{ background: '#ffffff', border: '1px solid #fed7aa' }}
-            >
-              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9a3412', textTransform: 'uppercase' }}>
-                Account Title
-              </span>
-              <span style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937', marginTop: '0.25rem' }}>
-                {paymentSettings.accountTitle || 'BizPrimeHub'}
-              </span>
+            {/* Bank Name & Title Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div
+                className="p-3.5 rounded-xl flex flex-col justify-between"
+                style={{ background: '#ffffff', border: '1px solid #fed7aa' }}
+              >
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9a3412', textTransform: 'uppercase' }}>
+                  Bank Name
+                </span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1f2937', marginTop: '0.25rem' }}>
+                  {paymentSettings.bankName || 'Mobilink Microfinance Bank (JazzCash)'}
+                </span>
+              </div>
+
+              <div
+                className="p-3.5 rounded-xl flex flex-col justify-between"
+                style={{ background: '#ffffff', border: '1px solid #fed7aa' }}
+              >
+                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9a3412', textTransform: 'uppercase' }}>
+                  Account Title
+                </span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1f2937', marginTop: '0.25rem' }}>
+                  {paymentSettings.accountTitle || 'BizPrimeHub'}
+                </span>
+              </div>
             </div>
           </div>
 

@@ -45,9 +45,11 @@ export default function AdminDashboardClient() {
   const [paymentConfig, setPaymentConfig] = useState({
     isEnabled: false,
     feeAmount: 500,
-    jazzCashNumber: '03001234567',
-    accountTitle: 'PKbizMap Official',
-    instructions: 'Send fee via JazzCash to the account number above and attach the payment receipt screenshot.',
+    bankName: 'Mobilink Microfinance Bank (JazzCash)',
+    ibanNumber: '',
+    accountTitle: 'BizPrimeHub',
+    jazzCashNumber: '',
+    instructions: 'Send fee via Raast / 1Link IBFT to the JazzCash IBAN above and attach the transaction screenshot below.',
     allowFreeSubmissionIfDisabled: true,
   });
   const [loadingPaymentConfig, setLoadingPaymentConfig] = useState(false);
@@ -73,7 +75,8 @@ export default function AdminDashboardClient() {
 
     adminAPI.getPaymentSettings()
       .then((res) => {
-        if (res.data?.paymentSetting) setPaymentConfig(res.data.paymentSetting);
+        const s = res.data?.settings || res.data?.paymentSetting;
+        if (s) setPaymentConfig(s);
       })
       .catch(() => {});
   }, [isAdmin]);
@@ -99,8 +102,9 @@ export default function AdminDashboardClient() {
         setLoadingPaymentConfig(true);
         try {
           const res = await adminAPI.getPaymentSettings();
-          if (res.data?.paymentSetting) {
-            setPaymentConfig(res.data.paymentSetting);
+          const s = res.data?.settings || res.data?.paymentSetting;
+          if (s) {
+            setPaymentConfig(s);
           }
         } catch {
           toast.error('Failed to load payment settings.');
@@ -188,8 +192,9 @@ export default function AdminDashboardClient() {
     setSavingPaymentConfig(true);
     try {
       const res = await adminAPI.updatePaymentSettings(paymentConfig);
-      if (res.data?.paymentSetting) {
-        setPaymentConfig(res.data.paymentSetting);
+      const s = res.data?.settings || res.data?.paymentSetting;
+      if (s) {
+        setPaymentConfig(s);
       }
       toast.success('Payment settings updated successfully!');
     } catch (err) {
@@ -688,40 +693,72 @@ export default function AdminDashboardClient() {
                     </div>
                   </div>
 
-                  {/* JazzCash Account Details */}
+                  {/* JazzCash IBAN & Bank Information */}
                   <div className="card p-5 space-y-4">
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
-                      JazzCash Account Information
-                    </h3>
-                    <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                      These account details will be shown to users on the &ldquo;Add Business&rdquo; page so they can send the fee.
-                    </p>
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+                          JazzCash IBAN &amp; Bank Transfer Details
+                        </h3>
+                        <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                          Using IBAN keeps your personal mobile number 100% private and protected.
+                        </p>
+                      </div>
+                      <span className="badge badge-green" style={{ fontSize: '0.75rem', padding: '3px 8px' }}>
+                        🔒 Safe &amp; Recommended
+                      </span>
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <label className="form-label">
-                          JazzCash Mobile Account Number <span style={{ color: '#dc2626' }}>*</span>
+                      {/* JazzCash IBAN Number */}
+                      <div className="md:col-span-2">
+                        <label className="form-label flex items-center justify-between flex-wrap gap-1">
+                          <span>
+                            JazzCash IBAN Number (24 characters) <span style={{ color: '#dc2626' }}>*</span>
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600 }}>
+                            (Personal number hide rehta hai)
+                          </span>
                         </label>
                         <input
                           type="text"
-                          value={paymentConfig.jazzCashNumber}
-                          onChange={(e) => setPaymentConfig({ ...paymentConfig, jazzCashNumber: e.target.value })}
+                          value={paymentConfig.ibanNumber || ''}
+                          onChange={(e) => setPaymentConfig({ ...paymentConfig, ibanNumber: e.target.value.toUpperCase() })}
+                          className="form-input font-mono tracking-wider text-base"
+                          placeholder="e.g. PK36MOBK0000000000000000"
+                          required
+                        />
+                        <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.35rem' }}>
+                          💡 JazzCash app me <strong>&ldquo;My Account&rdquo; &rarr; &ldquo;Raast ID / IBAN&rdquo;</strong> se apna 24-digit IBAN copy kar ke yahan paste karein. Users kisi bhi bank ya JazzCash app se is par payment bhej sakein gay.
+                        </p>
+                      </div>
+
+                      {/* Bank Name */}
+                      <div>
+                        <label className="form-label">
+                          Bank Name <span style={{ color: '#dc2626' }}>*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={paymentConfig.bankName || 'Mobilink Microfinance Bank (JazzCash)'}
+                          onChange={(e) => setPaymentConfig({ ...paymentConfig, bankName: e.target.value })}
                           className="form-input"
-                          placeholder="e.g. 03001234567"
+                          placeholder="Mobilink Microfinance Bank (JazzCash)"
                           required
                         />
                       </div>
 
+                      {/* Account Title */}
                       <div>
                         <label className="form-label">
                           Account Title (Holder Name) <span style={{ color: '#dc2626' }}>*</span>
                         </label>
                         <input
                           type="text"
-                          value={paymentConfig.accountTitle}
+                          value={paymentConfig.accountTitle || ''}
                           onChange={(e) => setPaymentConfig({ ...paymentConfig, accountTitle: e.target.value })}
                           className="form-input"
-                          placeholder="e.g. Ali Ahsan / PKbizMap"
+                          placeholder="e.g. BizPrimeHub"
                           required
                         />
                       </div>
@@ -733,10 +770,10 @@ export default function AdminDashboardClient() {
                       </label>
                       <textarea
                         rows={3}
-                        value={paymentConfig.instructions}
+                        value={paymentConfig.instructions || ''}
                         onChange={(e) => setPaymentConfig({ ...paymentConfig, instructions: e.target.value })}
                         className="form-input"
-                        placeholder="e.g. Please transfer the fee to the JazzCash account above and upload the transaction screenshot."
+                        placeholder="e.g. Please transfer the fee to the JazzCash IBAN above and upload the transaction screenshot."
                       />
                     </div>
                   </div>

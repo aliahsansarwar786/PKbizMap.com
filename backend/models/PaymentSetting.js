@@ -11,9 +11,14 @@ const paymentSettingSchema = new mongoose.Schema(
       default: 500, // PKR
       min: [0, 'Fee amount cannot be negative'],
     },
-    jazzCashNumber: {
+    bankName: {
       type: String,
-      default: '03001234567',
+      default: 'Mobilink Microfinance Bank (JazzCash)',
+      trim: true,
+    },
+    ibanNumber: {
+      type: String,
+      default: '',
       trim: true,
     },
     accountTitle: {
@@ -21,9 +26,15 @@ const paymentSettingSchema = new mongoose.Schema(
       default: 'BizPrimeHub',
       trim: true,
     },
+    // Optional mobile number kept for legacy compatibility if admin wants to show it
+    jazzCashNumber: {
+      type: String,
+      default: '',
+      trim: true,
+    },
     instructions: {
       type: String,
-      default: 'Please send the listing fee to the JazzCash account above and upload the transaction screenshot below.',
+      default: 'Send payment via Raast / 1Link IBFT to the JazzCash IBAN above, then upload transaction screenshot below.',
       trim: true,
       maxlength: 500,
     },

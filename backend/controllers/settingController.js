@@ -13,8 +13,10 @@ const getPaymentSettings = asyncHandler(async (req, res) => {
       settings: {
         isEnabled: settings.isEnabled,
         feeAmount: settings.feeAmount,
-        jazzCashNumber: settings.jazzCashNumber,
+        bankName: settings.bankName || 'Mobilink Microfinance Bank (JazzCash)',
+        ibanNumber: settings.ibanNumber || '',
         accountTitle: settings.accountTitle,
+        jazzCashNumber: settings.jazzCashNumber || '',
         instructions: settings.instructions,
       },
     },
@@ -22,9 +24,17 @@ const getPaymentSettings = asyncHandler(async (req, res) => {
 });
 
 // ─── PATCH /api/admin/settings/payment ────────────────────────────────────────
-// Protected (Admin): Update payment configuration (toggle on/off, change amount, account details)
+// Protected (Admin): Update payment configuration (toggle on/off, change amount, IBAN, account details)
 const updatePaymentSettings = asyncHandler(async (req, res) => {
-  const { isEnabled, feeAmount, jazzCashNumber, accountTitle, instructions } = req.body;
+  const {
+    isEnabled,
+    feeAmount,
+    bankName,
+    ibanNumber,
+    accountTitle,
+    jazzCashNumber,
+    instructions,
+  } = req.body;
 
   const settings = await PaymentSetting.getSettings();
 
@@ -39,12 +49,21 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
     }
   }
 
-  if (typeof jazzCashNumber === 'string') {
-    settings.jazzCashNumber = jazzCashNumber.trim();
+  if (typeof bankName === 'string') {
+    settings.bankName = bankName.trim();
+  }
+
+  if (typeof ibanNumber === 'string') {
+    // Standardize IBAN: uppercase and remove internal spaces
+    settings.ibanNumber = ibanNumber.replace(/\s+/g, '').toUpperCase().trim();
   }
 
   if (typeof accountTitle === 'string') {
     settings.accountTitle = accountTitle.trim();
+  }
+
+  if (typeof jazzCashNumber === 'string') {
+    settings.jazzCashNumber = jazzCashNumber.trim();
   }
 
   if (typeof instructions === 'string') {
@@ -60,8 +79,10 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
       settings: {
         isEnabled: settings.isEnabled,
         feeAmount: settings.feeAmount,
-        jazzCashNumber: settings.jazzCashNumber,
+        bankName: settings.bankName,
+        ibanNumber: settings.ibanNumber,
         accountTitle: settings.accountTitle,
+        jazzCashNumber: settings.jazzCashNumber,
         instructions: settings.instructions,
       },
     },
