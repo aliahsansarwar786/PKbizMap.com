@@ -21,6 +21,9 @@ const adminRoutes = require('./routes/adminRoutes');
 // ─── Initialize Express app ───────────────────────────────────────────────────
 const app = express();
 
+// ─── Trust Proxy (Required for Vercel / reverse proxy IP rate-limiting) ──────
+app.set('trust proxy', 1);
+
 // ─── Connect to MongoDB ───────────────────────────────────────────────────────
 connectDB();
 

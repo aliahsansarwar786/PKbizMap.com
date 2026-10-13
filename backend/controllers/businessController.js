@@ -3,6 +3,7 @@ const Business = require('../models/Business');
 const Review = require('../models/Review');
 const asyncHandler = require('../utils/asyncHandler');
 const cloudinary = require('../config/cloudinary');
+const escapeRegex = require('../utils/escapeRegex');
 const { validate, businessValidator, updateBusinessValidator, objectIdValidator } = require('../utils/validators');
 
 // ─── GET /api/businesses ──────────────────────────────────────────────────────
@@ -29,9 +30,9 @@ const getBusinesses = asyncHandler(async (req, res) => {
     queryObj.category = category.trim();
   }
 
-  // ─── City filter (case-insensitive partial match) ─────────────────────────
+  // ─── City filter (case-insensitive partial match with safe regex escaping) ─
   if (city && city.trim()) {
-    queryObj['address.city'] = { $regex: city.trim(), $options: 'i' };
+    queryObj['address.city'] = { $regex: escapeRegex(city.trim()), $options: 'i' };
   }
 
   // ─── Pagination ───────────────────────────────────────────────────────────

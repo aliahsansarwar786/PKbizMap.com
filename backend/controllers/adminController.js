@@ -3,6 +3,7 @@ const Business = require('../models/Business');
 const Review = require('../models/Review');
 const asyncHandler = require('../utils/asyncHandler');
 const cloudinary = require('../config/cloudinary');
+const escapeRegex = require('../utils/escapeRegex');
 const { validate, objectIdValidator } = require('../utils/validators');
 
 // ─── GET /api/admin/dashboard ─────────────────────────────────────────────────
@@ -97,9 +98,10 @@ const getUsers = asyncHandler(async (req, res) => {
     queryObj.role = role;
   }
   if (search && search.trim()) {
+    const safeSearch = escapeRegex(search.trim());
     queryObj.$or = [
-      { name: { $regex: search.trim(), $options: 'i' } },
-      { email: { $regex: search.trim(), $options: 'i' } },
+      { name: { $regex: safeSearch, $options: 'i' } },
+      { email: { $regex: safeSearch, $options: 'i' } },
     ];
   }
 
@@ -139,9 +141,10 @@ const getAllBusinesses = asyncHandler(async (req, res) => {
     queryObj.category = category.trim();
   }
   if (search && search.trim()) {
+    const safeSearch = escapeRegex(search.trim());
     queryObj.$or = [
-      { title: { $regex: search.trim(), $options: 'i' } },
-      { 'address.city': { $regex: search.trim(), $options: 'i' } },
+      { title: { $regex: safeSearch, $options: 'i' } },
+      { 'address.city': { $regex: safeSearch, $options: 'i' } },
     ];
   }
 
