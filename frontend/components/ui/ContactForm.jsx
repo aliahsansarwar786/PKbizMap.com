@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
-  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
+  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '923106131361';
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -56,13 +56,7 @@ export default function ContactForm() {
           required 
         ></textarea>
       </div>
-      {whatsappNumber ? (
-        <button type="submit" className="btn-primary w-full">Send via WhatsApp</button>
-      ) : (
-        <p style={{ fontSize: '0.875rem', color: '#6b7280', textAlign: 'center' }}>
-          WhatsApp messaging is currently unavailable.
-        </p>
-      )}
+      <button type="submit" className="btn-primary w-full">Send via WhatsApp</button>
     </form>
   );
 }

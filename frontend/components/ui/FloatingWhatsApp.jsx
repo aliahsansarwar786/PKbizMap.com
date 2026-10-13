@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 
 export default function FloatingWhatsApp() {
   const [isVisible, setIsVisible] = useState(false);
-  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
+  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '923106131361';
 
   useEffect(() => {
     // Show button after a small delay
@@ -12,7 +12,7 @@ export default function FloatingWhatsApp() {
     return () => clearTimeout(timer);
   }, []);
 
-  if (!whatsappNumber || !isVisible) return null;
+  if (!isVisible) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-[90] flex items-center justify-center">
