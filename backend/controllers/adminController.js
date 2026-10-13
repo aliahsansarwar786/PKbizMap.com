@@ -268,12 +268,19 @@ const adminDeleteBusiness = [
       return res.status(404).json({ success: false, message: 'Business not found.' });
     }
 
-    // Delete all Cloudinary images
+    // Delete all Cloudinary images and receipt
     const deletePromises = business.images.map((img) =>
       cloudinary.uploader.destroy(img.publicId).catch((err) => {
         console.error(`Failed to delete image ${img.publicId}:`, err.message);
       })
     );
+    if (business.paymentReceipt?.publicId) {
+      deletePromises.push(
+        cloudinary.uploader.destroy(business.paymentReceipt.publicId).catch((err) => {
+          console.error(`Failed to delete receipt ${business.paymentReceipt.publicId}:`, err.message);
+        })
+      );
+    }
     await Promise.all(deletePromises);
 
     // Delete all reviews
@@ -432,6 +439,36 @@ const getAdminBusinessById = [
   }),
 ];
 
+// ─── DELETE /api/admin/businesses/:id/receipt ────────────────────────────────
+// Admin: Delete a business's uploaded payment receipt
+const deleteBusinessReceipt = [
+  ...objectIdValidator('id'),
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    const business = await Business.findById(req.params.id);
+    if (!business) {
+      return res.status(404).json({ success: false, message: 'Business not found.' });
+    }
+
+    if (business.paymentReceipt?.publicId) {
+      await cloudinary.uploader.destroy(business.paymentReceipt.publicId).catch((err) => {
+        console.error('Failed to delete receipt from Cloudinary:', err.message);
+      });
+    }
+
+    business.paymentReceipt = { url: '', publicId: '' };
+    business.paymentStatus = 'none';
+    await business.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Payment receipt deleted successfully.',
+      data: { business },
+    });
+  }),
+];
+
 module.exports = {
   getDashboard,
   getUsers,
@@ -444,4 +481,5 @@ module.exports = {
   updateUserRole,
   deleteUser,
   getAllReviews,
+  deleteBusinessReceipt,
 };

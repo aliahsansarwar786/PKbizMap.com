@@ -78,6 +78,19 @@ const businessSchema = new mongoose.Schema(
         publicId: { type: String, required: true },
       },
     ],
+    paymentReceipt: {
+      url: { type: String, default: '' },
+      publicId: { type: String, default: '' },
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['none', 'pending', 'verified', 'rejected'],
+      default: 'none',
+    },
+    paymentAmount: {
+      type: Number,
+      default: 0,
+    },
     owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',

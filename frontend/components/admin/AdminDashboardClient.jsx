@@ -3,12 +3,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useAuth } from '@/contexts/AuthContext';
 import { adminAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 import {
   Users, Building2, Clock, CheckCircle2, Star,
-  Check, X, Trash2, ChevronLeft, ChevronRight, Shield, Edit3
+  Check, X, Trash2, ChevronLeft, ChevronRight, Shield, Edit3,
+  CreditCard, Eye, Image as ImageIcon, Save, ExternalLink,
+  DollarSign, CheckCircle, AlertCircle, Phone, ArrowUpRight
 } from 'lucide-react';
 
 function StatCard({ label, value, icon: Icon, color = '#2563eb' }) {
@@ -38,6 +41,20 @@ export default function AdminDashboardClient() {
   const [loading, setLoading] = useState(false);
   const [statsLoading, setStatsLoading] = useState(true);
 
+  // Payment Gateway Settings
+  const [paymentConfig, setPaymentConfig] = useState({
+    isEnabled: false,
+    feeAmount: 500,
+    jazzCashNumber: '03001234567',
+    accountTitle: 'PKbizMap Official',
+    instructions: 'Send fee via JazzCash to the account number above and attach the payment receipt screenshot.',
+    allowFreeSubmissionIfDisabled: true,
+  });
+  const [loadingPaymentConfig, setLoadingPaymentConfig] = useState(false);
+  const [savingPaymentConfig, setSavingPaymentConfig] = useState(false);
+  const [selectedReceiptBiz, setSelectedReceiptBiz] = useState(null);
+  const [deletingReceipt, setDeletingReceipt] = useState(false);
+
   // Auth guard
   useEffect(() => {
     if (!authLoading) {
@@ -46,13 +63,19 @@ export default function AdminDashboardClient() {
     }
   }, [authLoading, isAuthenticated, isAdmin, router]);
 
-  // Load stats
+  // Load stats & initial payment settings
   useEffect(() => {
     if (!isAdmin) return;
     adminAPI.getDashboard()
       .then((res) => setDashStats(res.data.stats))
       .catch(() => toast.error('Failed to load stats.'))
       .finally(() => setStatsLoading(false));
+
+    adminAPI.getPaymentSettings()
+      .then((res) => {
+        if (res.data?.paymentSetting) setPaymentConfig(res.data.paymentSetting);
+      })
+      .catch(() => {});
   }, [isAdmin]);
 
   // Load tab data
@@ -72,6 +95,19 @@ export default function AdminDashboardClient() {
         const res = await adminAPI.getUsers({ page, limit: 10 });
         setUsers(res.data.users);
         setPagination(res.data.pagination);
+      } else if (tab === 'payment-settings') {
+        setLoadingPaymentConfig(true);
+        try {
+          const res = await adminAPI.getPaymentSettings();
+          if (res.data?.paymentSetting) {
+            setPaymentConfig(res.data.paymentSetting);
+          }
+        } catch {
+          toast.error('Failed to load payment settings.');
+        } finally {
+          setLoadingPaymentConfig(false);
+        }
+        setPagination(null);
       }
     } catch {
       toast.error('Failed to load data.');
@@ -89,6 +125,9 @@ export default function AdminDashboardClient() {
       await adminAPI.approveBusiness(id);
       setBusinesses((prev) => prev.filter((b) => b._id !== id));
       setDashStats((s) => s ? { ...s, pendingBusinesses: s.pendingBusinesses - 1, approvedBusinesses: s.approvedBusinesses + 1 } : s);
+      if (selectedReceiptBiz && selectedReceiptBiz._id === id) {
+        setSelectedReceiptBiz((prev) => prev ? { ...prev, isApproved: true } : null);
+      }
       toast.success('Business approved and published!');
     } catch (err) {
       toast.error(err.message || 'Failed to approve.');
@@ -139,6 +178,67 @@ export default function AdminDashboardClient() {
     }
   };
 
+  // Payment Settings Handlers
+  const handleSavePaymentSettings = async (e) => {
+    e?.preventDefault();
+    if (Number(paymentConfig.feeAmount) < 0) {
+      toast.error('Listing fee amount cannot be negative.');
+      return;
+    }
+    setSavingPaymentConfig(true);
+    try {
+      const res = await adminAPI.updatePaymentSettings(paymentConfig);
+      if (res.data?.paymentSetting) {
+        setPaymentConfig(res.data.paymentSetting);
+      }
+      toast.success('Payment settings updated successfully!');
+    } catch (err) {
+      toast.error(err.message || 'Failed to update payment settings.');
+    } finally {
+      setSavingPaymentConfig(false);
+    }
+  };
+
+  const handleTogglePaymentEnabled = async () => {
+    const nextState = !paymentConfig.isEnabled;
+    const updated = { ...paymentConfig, isEnabled: nextState };
+    setPaymentConfig(updated);
+    try {
+      await adminAPI.updatePaymentSettings(updated);
+      toast.success(
+        nextState
+          ? 'JazzCash payment requirement ENABLED for all new listings!'
+          : 'Payment requirement DISABLED — Business listings are now FREE!'
+      );
+    } catch (err) {
+      setPaymentConfig(paymentConfig);
+      toast.error(err.message || 'Failed to update status.');
+    }
+  };
+
+  const handleDeleteReceipt = async (bizId) => {
+    if (!confirm('Are you sure you want to permanently delete this payment screenshot? This will remove the image from Cloudinary and mark receipt as removed.')) return;
+    setDeletingReceipt(true);
+    try {
+      await adminAPI.deleteReceipt(bizId);
+      setBusinesses((prev) =>
+        prev.map((b) =>
+          b._id === bizId
+            ? { ...b, paymentReceipt: null, paymentStatus: 'none' }
+            : b
+        )
+      );
+      if (selectedReceiptBiz?._id === bizId) {
+        setSelectedReceiptBiz(null);
+      }
+      toast.success('Payment screenshot deleted from Cloudinary & Database.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete receipt.');
+    } finally {
+      setDeletingReceipt(false);
+    }
+  };
+
   if (authLoading || (!isAdmin && !authLoading)) {
     return <div className="section container-max text-center"><p style={{ color: '#6b7280' }}>Loading...</p></div>;
   }
@@ -147,6 +247,12 @@ export default function AdminDashboardClient() {
     { id: 'pending', label: 'Pending', badge: dashStats?.pendingBusinesses },
     { id: 'all-businesses', label: 'All Businesses' },
     { id: 'users', label: 'Users' },
+    {
+      id: 'payment-settings',
+      label: 'JazzCash Settings',
+      badge: paymentConfig.isEnabled ? 'ON' : 'OFF',
+      badgeClass: paymentConfig.isEnabled ? 'badge-green' : 'badge-gray',
+    },
   ];
 
   return (
@@ -159,7 +265,7 @@ export default function AdminDashboardClient() {
           </div>
           <div>
             <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#1f2937' }}>Admin Dashboard</h1>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Manage your entire platform from here</p>
+            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Manage businesses, users, and JazzCash payment gateway</p>
           </div>
         </div>
 
@@ -178,7 +284,7 @@ export default function AdminDashboardClient() {
           )}
         </div>
 
-        {/* Tabs */}
+        {/* Quota Limits */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           {dashStats?.limits && (
             <>
@@ -223,13 +329,14 @@ export default function AdminDashboardClient() {
           )}
         </div>
 
+        {/* Tabs Bar */}
         <div className="card overflow-hidden">
-          <div className="flex border-b" style={{ borderColor: '#e5e7eb' }}>
-            {tabs.map(({ id, label, badge }) => (
+          <div className="flex border-b overflow-x-auto" style={{ borderColor: '#e5e7eb' }}>
+            {tabs.map(({ id, label, badge, badgeClass }) => (
               <button
                 key={id}
                 onClick={() => { setTab(id); setPage(1); }}
-                className="flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors relative"
+                className="flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors relative whitespace-nowrap"
                 style={{
                   color: tab === id ? '#2563eb' : '#6b7280',
                   background: 'none',
@@ -241,9 +348,9 @@ export default function AdminDashboardClient() {
                 aria-selected={tab === id}
               >
                 {label}
-                {badge != null && badge > 0 && (
+                {badge != null && (
                   <span
-                    className="badge badge-yellow"
+                    className={`badge ${badgeClass || 'badge-yellow'}`}
                     style={{ fontSize: '0.7rem', padding: '2px 6px' }}
                   >
                     {badge}
@@ -272,14 +379,22 @@ export default function AdminDashboardClient() {
                     {businesses.map((biz) => (
                       <div
                         key={biz._id}
-                        className="flex items-center gap-4 p-4 rounded-xl"
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl"
                         style={{ background: '#f9fafb', border: '1px solid #f3f4f6' }}
                       >
                         <div className="flex-1 min-w-0">
-                          <p style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1f2937' }} className="truncate">
-                            {biz.title}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p style={{ fontWeight: 600, fontSize: '0.925rem', color: '#1f2937' }} className="truncate">
+                              {biz.title}
+                            </p>
+                            {biz.isApproved ? (
+                              <span className="badge badge-green" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>Approved</span>
+                            ) : (
+                              <span className="badge badge-yellow" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>Pending</span>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
                             <span className="badge badge-gray" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
                               {biz.category}
                             </span>
@@ -288,18 +403,45 @@ export default function AdminDashboardClient() {
                             </span>
                             {biz.owner && (
                               <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                                by {biz.owner.name}
+                                by {biz.owner.name} ({biz.owner.email})
                               </span>
                             )}
-                            {biz.isApproved ? (
-                              <span className="badge badge-green" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>Approved</span>
-                            ) : (
-                              <span className="badge badge-yellow" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>Pending</span>
-                            )}
+
+                            {/* Payment Receipt Badge */}
+                            {biz.paymentReceipt?.url ? (
+                              <button
+                                type="button"
+                                onClick={() => setSelectedReceiptBiz(biz)}
+                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold cursor-pointer hover:opacity-90 transition-opacity"
+                                style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}
+                                title="Click to view payment screenshot"
+                              >
+                                <ImageIcon size={12} />
+                                Rs. {biz.paymentAmount || 'Paid'} (View Receipt)
+                              </button>
+                            ) : biz.paymentAmount > 0 ? (
+                              <span className="badge badge-gray" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
+                                Fee: Rs. {biz.paymentAmount} (No Receipt)
+                              </span>
+                            ) : null}
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                          {biz.paymentReceipt?.url && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedReceiptBiz(biz)}
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                              style={{ background: '#ecfdf5', color: '#065f46', border: '1px solid #6ee7b7', cursor: 'pointer' }}
+                              aria-label={`View payment receipt for ${biz.title}`}
+                              title="View JazzCash Payment Screenshot"
+                            >
+                              <Eye size={13} /> View Screenshot
+                            </button>
+                          )}
+
                           {!biz.isApproved && (
                             <button
                               onClick={() => handleApprove(biz._id)}
@@ -410,10 +552,212 @@ export default function AdminDashboardClient() {
                   </div>
                 )}
               </>
+            ) : tab === 'payment-settings' ? (
+              /* Payment Settings Panel */
+              <div className="max-w-3xl mx-auto py-2 space-y-6">
+                {/* Status Banner & Main Switch */}
+                <div
+                  className="p-6 rounded-2xl transition-all"
+                  style={{
+                    background: paymentConfig.isEnabled
+                      ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
+                      : 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
+                    border: paymentConfig.isEnabled ? '2px solid #86efac' : '2px solid #e5e7eb',
+                  }}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <CreditCard size={20} style={{ color: paymentConfig.isEnabled ? '#15803d' : '#6b7280' }} />
+                        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>
+                          JazzCash Business Listing Payment
+                        </h2>
+                        <span
+                          className={`badge ${paymentConfig.isEnabled ? 'badge-green' : 'badge-gray'}`}
+                          style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px' }}
+                        >
+                          {paymentConfig.isEnabled ? 'ACTIVE / ON' : 'DISABLED / OFF'}
+                        </span>
+                      </div>
+                      <p style={{ fontSize: '0.875rem', color: paymentConfig.isEnabled ? '#166534' : '#4b5563' }}>
+                        {paymentConfig.isEnabled
+                          ? `Currently ON: Users must pay Rs. ${paymentConfig.feeAmount} via JazzCash & submit screenshot to list their business.`
+                          : 'Currently OFF: Business submissions are 100% FREE. No payment or screenshot is required from users.'}
+                      </p>
+                    </div>
+
+                    {/* Big ON / OFF Toggle Button */}
+                    <button
+                      type="button"
+                      onClick={handleTogglePaymentEnabled}
+                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow transition-all hover:scale-102 flex-shrink-0"
+                      style={{
+                        background: paymentConfig.isEnabled ? '#16a34a' : '#4b5563',
+                        color: '#ffffff',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
+                      title="Click to toggle Payment requirement ON or OFF"
+                    >
+                      <span
+                        className={`w-3 h-3 rounded-full ${paymentConfig.isEnabled ? 'bg-white animate-pulse' : 'bg-gray-300'}`}
+                      />
+                      {paymentConfig.isEnabled ? 'Turn Payment OFF' : 'Turn Payment ON'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Detailed Settings Form */}
+                <form onSubmit={handleSavePaymentSettings} className="space-y-6">
+                  {/* Fee Amount Section */}
+                  <div className="card p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+                          Listing Fee Amount (PKR)
+                        </h3>
+                        <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                          Set how much money (kam ya zyada) users need to pay per business listing
+                        </p>
+                      </div>
+                      <div
+                        className="px-3.5 py-1.5 rounded-xl font-bold text-base shadow-sm"
+                        style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}
+                      >
+                        Rs. {paymentConfig.feeAmount || 0}
+                      </div>
+                    </div>
+
+                    {/* Numeric Input & Step Controls */}
+                    <div className="flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setPaymentConfig((p) => ({ ...p, feeAmount: Math.max(0, Number(p.feeAmount) - 100) }))}
+                        className="btn-secondary px-3 py-2 text-sm font-bold"
+                        title="Decrease fee by Rs. 100"
+                      >
+                        - 100
+                      </button>
+                      <div className="relative flex-1">
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">
+                          Rs.
+                        </span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="10"
+                          value={paymentConfig.feeAmount}
+                          onChange={(e) => setPaymentConfig({ ...paymentConfig, feeAmount: Number(e.target.value) })}
+                          className="form-input pl-12 text-base font-bold"
+                          placeholder="e.g. 500"
+                          required
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setPaymentConfig((p) => ({ ...p, feeAmount: Number(p.feeAmount) + 100 }))}
+                        className="btn-secondary px-3 py-2 text-sm font-bold"
+                        title="Increase fee by Rs. 100"
+                      >
+                        + 100
+                      </button>
+                    </div>
+
+                    {/* Quick Amount Presets */}
+                    <div>
+                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
+                        Quick Select Amount:
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {[200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000].map((amt) => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setPaymentConfig((p) => ({ ...p, feeAmount: amt }))}
+                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                              paymentConfig.feeAmount === amt
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                            style={{ cursor: 'pointer', border: 'none' }}
+                          >
+                            Rs. {amt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* JazzCash Account Details */}
+                  <div className="card p-5 space-y-4">
+                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+                      JazzCash Account Information
+                    </h3>
+                    <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                      These account details will be shown to users on the &ldquo;Add Business&rdquo; page so they can send the fee.
+                    </p>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="form-label">
+                          JazzCash Mobile Account Number <span style={{ color: '#dc2626' }}>*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={paymentConfig.jazzCashNumber}
+                          onChange={(e) => setPaymentConfig({ ...paymentConfig, jazzCashNumber: e.target.value })}
+                          className="form-input"
+                          placeholder="e.g. 03001234567"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="form-label">
+                          Account Title (Holder Name) <span style={{ color: '#dc2626' }}>*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={paymentConfig.accountTitle}
+                          onChange={(e) => setPaymentConfig({ ...paymentConfig, accountTitle: e.target.value })}
+                          className="form-input"
+                          placeholder="e.g. Ali Ahsan / PKbizMap"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="form-label">
+                        Payment Instructions for Users (Optional)
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={paymentConfig.instructions}
+                        onChange={(e) => setPaymentConfig({ ...paymentConfig, instructions: e.target.value })}
+                        className="form-input"
+                        placeholder="e.g. Please transfer the fee to the JazzCash account above and upload the transaction screenshot."
+                      />
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="submit"
+                      disabled={savingPaymentConfig}
+                      className="btn-primary flex items-center gap-2 px-6 py-2.5 text-sm font-semibold shadow"
+                    >
+                      <Save size={16} />
+                      {savingPaymentConfig ? 'Saving Settings...' : 'Save Payment Settings'}
+                    </button>
+                  </div>
+                </form>
+              </div>
             ) : null}
 
-            {/* Pagination */}
-            {pagination && pagination.totalPages > 1 && (
+            {/* Pagination for businesses & users */}
+            {tab !== 'payment-settings' && pagination && pagination.totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 mt-6">
                 <button
                   onClick={() => setPage(page - 1)}
@@ -441,6 +785,118 @@ export default function AdminDashboardClient() {
           </div>
         </div>
       </div>
+
+      {/* Modal Dialog: View & Delete Payment Screenshot */}
+      {selectedReceiptBiz && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs"
+          onClick={() => setSelectedReceiptBiz(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Payment Screenshot Modal"
+        >
+          <div
+            className="bg-white rounded-2xl overflow-hidden max-w-2xl w-full max-h-[90vh] flex flex-col shadow-2xl animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{ border: '1px solid #e5e7eb' }}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: '#e5e7eb' }}>
+              <div>
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>
+                  JazzCash Payment Screenshot
+                </h3>
+                <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+                  {selectedReceiptBiz.title} • Fee: Rs. {selectedReceiptBiz.paymentAmount || 500}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedReceiptBiz(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-100 transition-colors"
+                style={{ border: 'none', cursor: 'pointer' }}
+                aria-label="Close modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Image Body */}
+            <div className="p-4 overflow-y-auto flex-1 flex flex-col items-center justify-center bg-gray-50">
+              {selectedReceiptBiz.paymentReceipt?.url ? (
+                <div className="relative max-w-full rounded-xl overflow-hidden shadow-sm border border-gray-200">
+                  <img
+                    src={selectedReceiptBiz.paymentReceipt.url}
+                    alt={`Payment screenshot for ${selectedReceiptBiz.title}`}
+                    className="max-h-[55vh] w-auto max-w-full object-contain mx-auto"
+                  />
+                </div>
+              ) : (
+                <p style={{ color: '#6b7280', padding: '2rem' }}>No screenshot attached or already deleted.</p>
+              )}
+
+              {/* Owner metadata */}
+              <div className="w-full mt-3 p-3 bg-white rounded-xl border border-gray-200 text-xs text-gray-600 flex flex-wrap justify-between gap-2">
+                <div>
+                  <strong>Submitted by:</strong> {selectedReceiptBiz.owner?.name || 'User'} ({selectedReceiptBiz.owner?.email || 'N/A'})
+                </div>
+                <div>
+                  <strong>City:</strong> {selectedReceiptBiz.address?.city || 'N/A'}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="p-4 border-t flex flex-wrap items-center justify-between gap-3 bg-white" style={{ borderColor: '#e5e7eb' }}>
+              <div className="flex items-center gap-2">
+                {selectedReceiptBiz.paymentReceipt?.url && (
+                  <a
+                    href={selectedReceiptBiz.paymentReceipt.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-secondary flex items-center gap-1.5 text-xs py-2 px-3"
+                  >
+                    <ExternalLink size={13} /> Open Full Size
+                  </a>
+                )}
+                {selectedReceiptBiz.paymentReceipt?.url && (
+                  <button
+                    type="button"
+                    disabled={deletingReceipt}
+                    onClick={() => handleDeleteReceipt(selectedReceiptBiz._id)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors"
+                    style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', cursor: 'pointer' }}
+                    title="Delete screenshot from Cloudinary"
+                  >
+                    <Trash2 size={13} />
+                    {deletingReceipt ? 'Deleting...' : 'Delete Screenshot'}
+                  </button>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {!selectedReceiptBiz.isApproved && (
+                  <button
+                    type="button"
+                    onClick={() => handleApprove(selectedReceiptBiz._id)}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors shadow-sm"
+                    style={{ border: 'none', cursor: 'pointer' }}
+                  >
+                    <Check size={14} /> Approve Business
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setSelectedReceiptBiz(null)}
+                  className="btn-secondary text-xs py-2 px-4"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

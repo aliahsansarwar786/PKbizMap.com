@@ -157,7 +157,16 @@ export const adminAPI = {
     return api.get(`/admin/reviews${qs ? `?${qs}` : ''}`);
   },
   getBusinessById: (id) => api.get(`/admin/businesses/${id}`),
+  getPaymentSettings: () => api.get('/settings/payment'),
+  updatePaymentSettings: (data) => api.patch('/admin/settings/payment', data),
+  deleteReceipt: (businessId) => api.delete(`/admin/businesses/${businessId}/receipt`),
+};
+
+// ─── Settings API ─────────────────────────────────────────────────────────────
+export const settingsAPI = {
+  getPayment: () => api.get('/settings/payment'),
 };
 
 export { ApiError };
 export default api;
+

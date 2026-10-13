@@ -19,6 +19,7 @@ const authRoutes = require('./routes/authRoutes');
 const businessRoutes = require('./routes/businessRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const adminRoutes = require('./routes/adminRoutes');
+const settingRoutes = require('./routes/settingRoutes');
 
 // ─── Initialize Express app ───────────────────────────────────────────────────
 const app = express();
@@ -172,6 +173,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/businesses', businessRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/settings', settingRoutes);
 
 // ─── Health check endpoint ────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

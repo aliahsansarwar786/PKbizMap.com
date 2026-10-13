@@ -12,7 +12,9 @@ const {
   updateUserRole,
   deleteUser,
   getAllReviews,
+  deleteBusinessReceipt,
 } = require('../controllers/adminController');
+const { updatePaymentSettings } = require('../controllers/settingController');
 const { protect } = require('../middlewares/auth');
 const { authorize } = require('../middlewares/authorize');
 
@@ -24,6 +26,9 @@ router.use(authorize('admin'));
 
 // Dashboard
 router.get('/dashboard', getDashboard);
+
+// Payment Settings
+router.patch('/settings/payment', updatePaymentSettings);
 
 // Users
 router.get('/users', getUsers);
@@ -37,6 +42,7 @@ router.get('/businesses/:id', getAdminBusinessById);
 router.patch('/businesses/:id/approve', approveBusiness);
 router.patch('/businesses/:id/reject', rejectBusiness);
 router.delete('/businesses/:id', adminDeleteBusiness);
+router.delete('/businesses/:id/receipt', deleteBusinessReceipt);
 
 // Reviews
 router.get('/reviews', getAllReviews);

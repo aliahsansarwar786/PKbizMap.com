@@ -3,10 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { businessAPI } from '@/lib/api';
+import { businessAPI, settingsAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
-import { Upload, X, AlertCircle } from 'lucide-react';
+import { Upload, X, AlertCircle, CreditCard, Copy, Check, FileCheck } from 'lucide-react';
 
 const CATEGORIES = [
   'IT', 'Real Estate', 'Restaurant', 'Healthcare', 'Education',
@@ -36,12 +36,24 @@ export default function BusinessForm({ existingBusiness = null }) {
   const [newImages, setNewImages] = useState([]);
   const [previews, setPreviews] = useState([]);
   const [existingImages, setExistingImages] = useState(existingBusiness?.images || []);
+  const [paymentSettings, setPaymentSettings] = useState(null);
+  const [paymentReceiptFile, setPaymentReceiptFile] = useState(null);
+  const [paymentReceiptPreview, setPaymentReceiptPreview] = useState(null);
+  const [copiedNumber, setCopiedNumber] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) router.push('/login');
   }, [authLoading, isAuthenticated, router]);
+
+  useEffect(() => {
+    if (!isEdit) {
+      settingsAPI.getPayment()
+        .then((res) => setPaymentSettings(res.data?.settings || null))
+        .catch(() => {});
+    }
+  }, [isEdit]);
 
   const set = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value });
@@ -93,6 +105,38 @@ export default function BusinessForm({ existingBusiness = null }) {
     }
   };
 
+  const handleReceiptSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Payment receipt must be under 5MB.');
+      return;
+    }
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Only JPG, JPEG, PNG, and WebP files are allowed.');
+      return;
+    }
+    setPaymentReceiptFile(file);
+    const previewUrl = URL.createObjectURL(file);
+    setPaymentReceiptPreview(previewUrl);
+    if (errors.paymentReceipt) setErrors({ ...errors, paymentReceipt: '' });
+  };
+
+  const removeReceipt = () => {
+    if (paymentReceiptPreview) URL.revokeObjectURL(paymentReceiptPreview);
+    setPaymentReceiptFile(null);
+    setPaymentReceiptPreview(null);
+  };
+
+  const handleCopyNumber = () => {
+    if (!paymentSettings?.jazzCashNumber) return;
+    navigator.clipboard.writeText(paymentSettings.jazzCashNumber);
+    setCopiedNumber(true);
+    toast.success('JazzCash number copied!');
+    setTimeout(() => setCopiedNumber(false), 2000);
+  };
+
   const validate = () => {
     const errs = {};
     if (!form.title.trim() || form.title.length < 2) errs.title = 'Business title is required (min 2 chars)';
@@ -100,6 +144,9 @@ export default function BusinessForm({ existingBusiness = null }) {
     if (!form.category) errs.category = 'Please select a category';
     if (!form.city.trim()) errs.city = 'City is required';
     if (form.email && !/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Invalid email address';
+    if (!isEdit && paymentSettings?.isEnabled && !paymentReceiptFile) {
+      errs.paymentReceipt = 'Payment screenshot is required to complete submission';
+    }
     return errs;
   };
 
@@ -121,6 +168,9 @@ export default function BusinessForm({ existingBusiness = null }) {
       if (form.street) formData.append('address[street]', form.street.trim());
       if (form.zipCode) formData.append('address[zipCode]', form.zipCode.trim());
       newImages.forEach((img) => formData.append('images', img));
+      if (paymentReceiptFile) {
+        formData.append('paymentReceipt', paymentReceiptFile);
+      }
 
       if (isEdit) {
         await businessAPI.update(existingBusiness._id, formData);
@@ -391,6 +441,162 @@ export default function BusinessForm({ existingBusiness = null }) {
           </label>
         )}
       </section>
+
+      {/* JazzCash Payment Section (When Enabled by Admin) */}
+      {!isEdit && paymentSettings?.isEnabled && (
+        <section
+          aria-label="Payment Information"
+          className="p-5 rounded-2xl relative overflow-hidden space-y-4"
+          style={{
+            background: 'linear-gradient(145deg, #fff9f0 0%, #fff2e0 100%)',
+            border: '1.5px solid #fed7aa',
+          }}
+        >
+          <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b" style={{ borderColor: '#fed7aa' }}>
+            <div className="flex items-center gap-2.5">
+              <div
+                className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-xs shadow-sm"
+                style={{ background: '#d97706' }}
+              >
+                JC
+              </div>
+              <div>
+                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#9a3412' }}>
+                  JazzCash Listing Payment
+                </h3>
+                <p style={{ fontSize: '0.75rem', color: '#c2410c' }}>
+                  Please complete payment to submit your listing for review
+                </p>
+              </div>
+            </div>
+            <div
+              className="px-3 py-1.5 rounded-full font-bold text-sm tracking-wide shadow-sm"
+              style={{ background: '#ea580c', color: '#ffffff' }}
+            >
+              Fee: Rs. {paymentSettings.feeAmount}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div
+              className="p-3.5 rounded-xl flex flex-col justify-between"
+              style={{ background: '#ffffff', border: '1px solid #fed7aa' }}
+            >
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9a3412', textTransform: 'uppercase' }}>
+                JazzCash Mobile Account Number
+              </span>
+              <div className="flex items-center justify-between mt-1">
+                <span style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1f2937', letterSpacing: '0.5px' }}>
+                  {paymentSettings.jazzCashNumber || '03001234567'}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleCopyNumber}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all hover:scale-105"
+                  style={{
+                    background: copiedNumber ? '#dcfce7' : '#ffedd5',
+                    color: copiedNumber ? '#15803d' : '#c2410c',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
+                  aria-label="Copy JazzCash Account Number"
+                >
+                  {copiedNumber ? <Check size={13} /> : <Copy size={13} />}
+                  {copiedNumber ? 'Copied' : 'Copy'}
+                </button>
+              </div>
+            </div>
+
+            <div
+              className="p-3.5 rounded-xl flex flex-col justify-between"
+              style={{ background: '#ffffff', border: '1px solid #fed7aa' }}
+            >
+              <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9a3412', textTransform: 'uppercase' }}>
+                Account Title
+              </span>
+              <span style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937', marginTop: '0.25rem' }}>
+                {paymentSettings.accountTitle || 'BizPrimeHub'}
+              </span>
+            </div>
+          </div>
+
+          {paymentSettings.instructions && (
+            <p style={{ fontSize: '0.8125rem', color: '#7c2d12', lineHeight: 1.5, background: '#ffedd5', padding: '10px 14px', borderRadius: '10px' }}>
+              💡 {paymentSettings.instructions}
+            </p>
+          )}
+
+          {/* Screenshot Upload Input */}
+          <div className="space-y-2 pt-1">
+            <label htmlFor="payment-receipt" className="form-label" style={{ color: '#9a3412', fontWeight: 600 }}>
+              Upload Payment Screenshot <span style={{ color: '#dc2626' }}>*</span>
+            </label>
+
+            {paymentReceiptPreview ? (
+              <div
+                className="flex items-center justify-between p-3 rounded-xl"
+                style={{ background: '#ffffff', border: '2px solid #bbf7d0' }}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="relative rounded-lg overflow-hidden flex-shrink-0" style={{ width: 56, height: 56, border: '1px solid #e5e7eb' }}>
+                    <Image src={paymentReceiptPreview} alt="Payment receipt screenshot" fill className="object-cover" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-1.5" style={{ color: '#16a34a', fontWeight: 600, fontSize: '0.875rem' }}>
+                      <FileCheck size={16} /> Screenshot Attached
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                      {paymentReceiptFile?.name} ({(paymentReceiptFile?.size / 1024).toFixed(0)} KB)
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={removeReceipt}
+                  className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-50 transition-colors"
+                  style={{ background: '#fee2e2', border: 'none', cursor: 'pointer', color: '#dc2626' }}
+                  aria-label="Remove payment receipt"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            ) : (
+              <label
+                htmlFor="payment-receipt"
+                className={`flex flex-col items-center justify-center p-5 rounded-xl cursor-pointer transition-all ${
+                  errors.paymentReceipt ? 'border-red-400 bg-red-50' : 'hover:border-amber-400 hover:bg-amber-50/50'
+                }`}
+                style={{
+                  border: errors.paymentReceipt ? '2px dashed #f87171' : '2px dashed #fbbf24',
+                  background: '#ffffff',
+                }}
+              >
+                <Upload size={22} style={{ color: '#d97706', marginBottom: 4 }} />
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#9a3412' }}>
+                  Click to upload payment screenshot
+                </span>
+                <span style={{ fontSize: '0.75rem', color: '#78716c', marginTop: 2 }}>
+                  JPG, PNG, or WebP up to 5MB
+                </span>
+                <input
+                  id="payment-receipt"
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png,image/webp"
+                  onChange={handleReceiptSelect}
+                  className="sr-only"
+                  aria-label="Upload payment screenshot"
+                />
+              </label>
+            )}
+
+            {errors.paymentReceipt && (
+              <p role="alert" style={{ color: '#dc2626', fontSize: '0.8125rem', marginTop: '0.25rem' }}>
+                {errors.paymentReceipt}
+              </p>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Submit */}
       <div className="flex gap-3 pt-2">

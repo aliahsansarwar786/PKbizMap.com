@@ -118,19 +118,41 @@ const createBusiness = [
 
     const { title, description, category, email, phone, website, address } = req.body;
 
-    // Process uploaded images
-    const images = req.files
-      ? req.files.map((file) => ({
-          url: file.path,
-          publicId: file.filename,
-        }))
-      : [];
+    // Process uploaded business images
+    const imageFiles = Array.isArray(req.files)
+      ? req.files
+      : (req.files?.images || []);
+    const images = imageFiles.map((file) => ({
+      url: file.path,
+      publicId: file.filename,
+    }));
+
+    // Process payment receipt if uploaded
+    const receiptFile = req.files?.paymentReceipt?.[0];
+    let paymentReceipt = { url: '', publicId: '' };
+    let paymentStatus = 'none';
+    let paymentAmount = 0;
+
+    if (receiptFile) {
+      paymentReceipt = {
+        url: receiptFile.path,
+        publicId: receiptFile.filename,
+      };
+      paymentStatus = 'pending';
+    }
+
+    // Check payment system settings
+    const PaymentSetting = require('../models/PaymentSetting');
+    const paymentSetting = await PaymentSetting.getSettings();
+    if (paymentSetting && paymentSetting.isEnabled) {
+      paymentAmount = paymentSetting.feeAmount;
+      paymentStatus = receiptFile ? 'pending' : 'none';
+    }
 
     // --- PRO TIER LIMIT CHECK ---
     const MAX_BUSINESSES = 2000; // Increased limit for free tier
     const totalCount = await Business.countDocuments();
     if (totalCount >= MAX_BUSINESSES) {
-      // In a real app, you might trigger an email to admin here
       console.log('🚨 ALERT: Business limit reached! Admin notified.');
       return res.status(403).json({
         success: false,
@@ -148,6 +170,9 @@ const createBusiness = [
       website,
       address,
       images,
+      paymentReceipt,
+      paymentStatus,
+      paymentAmount,
       owner: req.user._id, // Server-side only
       isApproved: req.user.role === 'admin', // Auto-approve if Admin
     });
@@ -196,8 +221,9 @@ const updateBusiness = [
     });
 
     // Handle new image uploads
-    if (req.files && req.files.length > 0) {
-      const newImages = req.files.map((file) => ({
+    const newImageFiles = Array.isArray(req.files) ? req.files : (req.files?.images || []);
+    if (newImageFiles && newImageFiles.length > 0) {
+      const newImages = newImageFiles.map((file) => ({
         url: file.path,
         publicId: file.filename,
       }));
@@ -212,6 +238,19 @@ const updateBusiness = [
       }
 
       updates.$push = { images: { $each: newImages } };
+    }
+
+    // Handle new payment receipt upload
+    const updatedReceiptFile = req.files?.paymentReceipt?.[0];
+    if (updatedReceiptFile) {
+      if (business.paymentReceipt?.publicId) {
+        await cloudinary.uploader.destroy(business.paymentReceipt.publicId).catch(() => {});
+      }
+      updates.paymentReceipt = {
+        url: updatedReceiptFile.path,
+        publicId: updatedReceiptFile.filename,
+      };
+      updates.paymentStatus = 'pending';
     }
 
     // Non-admin edits reset approval (content change requires re-approval)
@@ -263,6 +302,13 @@ const deleteBusiness = [
         console.error(`Failed to delete image ${img.publicId}:`, err.message);
       })
     );
+    if (business.paymentReceipt?.publicId) {
+      deletePromises.push(
+        cloudinary.uploader.destroy(business.paymentReceipt.publicId).catch((err) => {
+          console.error(`Failed to delete receipt ${business.paymentReceipt.publicId}:`, err.message);
+        })
+      );
+    }
     await Promise.all(deletePromises);
 
     // Delete all reviews for this business

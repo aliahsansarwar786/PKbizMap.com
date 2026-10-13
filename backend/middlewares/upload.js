@@ -45,15 +45,32 @@ const uploadAvatar = multer({
   },
 }).single('avatar');
 
-// ─── Multer: Business images (multiple, max 5 files, max 5MB each) ────────────
+// ─── Cloudinary Storage: Business & Receipt Images ───────────────────────────
+const businessAndReceiptStorage = new CloudinaryStorage({
+  cloudinary,
+  params: async (req, file) => {
+    const isReceipt = file.fieldname === 'paymentReceipt';
+    return {
+      folder: isReceipt ? 'business-directory/receipts' : 'business-directory/businesses',
+      allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+      transformation: isReceipt
+        ? [{ width: 1600, height: 1600, crop: 'limit', quality: 'auto' }]
+        : [{ width: 1200, height: 800, crop: 'limit', quality: 'auto' }],
+    };
+  },
+});
+
+// ─── Multer: Business images (max 5) & Payment Receipt (max 1) ───────────────
 const uploadBusinessImages = multer({
-  storage: businessImageStorage,
+  storage: businessAndReceiptStorage,
   fileFilter,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB per file
-    files: 5,
   },
-}).array('images', 5);
+}).fields([
+  { name: 'images', maxCount: 5 },
+  { name: 'paymentReceipt', maxCount: 1 },
+]);
 
 // ─── Error-handling wrappers ──────────────────────────────────────────────────
 const handleAvatarUpload = (req, res, next) => {
@@ -75,10 +92,10 @@ const handleBusinessImageUpload = (req, res, next) => {
   uploadBusinessImages(req, res, (err) => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({ success: false, message: 'Each image must be under 5MB.' });
+        return res.status(400).json({ success: false, message: 'Each uploaded image/receipt must be under 5MB.' });
       }
       if (err.code === 'LIMIT_FILE_COUNT') {
-        return res.status(400).json({ success: false, message: 'Maximum 5 images allowed.' });
+        return res.status(400).json({ success: false, message: 'Too many files uploaded.' });
       }
       return res.status(400).json({ success: false, message: err.message });
     }
