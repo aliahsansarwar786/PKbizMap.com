@@ -4,16 +4,16 @@ import { useState } from 'react';
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({ name: '', email: '', message: '' });
+  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER;
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!whatsappNumber) return;
     
     // Format the message for WhatsApp
     const text = `*New Contact Request from BizPrimeHub*%0A%0A*Name:* ${formData.name}%0A*Email:* ${formData.email}%0A*Message:* ${formData.message}`;
     
     // Target WhatsApp Number (without + or leading zeros)
-    const whatsappNumber = '923106131361';
-    
     // Create WhatsApp URL
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${text}`;
     
@@ -53,10 +53,16 @@ export default function ContactForm() {
           placeholder="How can we help you?" 
           value={formData.message}
           onChange={(e) => setFormData({...formData, message: e.target.value})}
-          required
+          required 
         ></textarea>
       </div>
-      <button type="submit" className="btn-primary w-full">Send via WhatsApp</button>
+      {whatsappNumber ? (
+        <button type="submit" className="btn-primary w-full">Send via WhatsApp</button>
+      ) : (
+        <p style={{ fontSize: '0.875rem', color: '#6b7280', textAlign: 'center' }}>
+          WhatsApp messaging is currently unavailable.
+        </p>
+      )}
     </form>
   );
 }
