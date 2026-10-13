@@ -10,6 +10,8 @@ const morgan = require('morgan');
 const path = require('path');
 
 const connectDB = require('./config/db');
+const { getDbError } = require('./config/db');
+const mongoose = require('mongoose');
 const errorHandler = require('./middlewares/errorHandler');
 
 // ─── Route imports ────────────────────────────────────────────────────────────
@@ -147,6 +149,19 @@ const passwordResetLimiter = rateLimit({
 // Apply general limiter globally
 app.use('/api', generalLimiter);
 
+// ─── Ensure MongoDB connection before API routes (Serverless ready) ───────────
+app.use(async (req, res, next) => {
+  if (req.path === '/api/health' || req.path === '/' || req.path === '/favicon.ico') {
+    return next();
+  }
+  if (mongoose.connection.readyState !== 1) {
+    try {
+      await connectDB();
+    } catch (e) {}
+  }
+  next();
+});
+
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
@@ -160,9 +175,17 @@ app.use('/api/admin', adminRoutes);
 
 // ─── Health check endpoint ────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
+  const isConnected = mongoose.connection.readyState === 1;
+  const dbError = getDbError ? getDbError() : null;
+
   res.status(200).json({
     success: true,
     message: 'Business Directory API is running.',
+    database: {
+      status: isConnected ? 'connected' : 'disconnected',
+      host: isConnected ? mongoose.connection.host : null,
+      error: !isConnected ? dbError : null,
+    },
     environment: process.env.NODE_ENV,
     timestamp: new Date().toISOString(),
   });
