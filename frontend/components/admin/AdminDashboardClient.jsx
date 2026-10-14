@@ -227,7 +227,8 @@ export default function AdminDashboardClient() {
 
   const handleSavePaymentSettings = async (e) => {
     e?.preventDefault();
-    if (Number(paymentConfig.feeAmount) < 0) {
+    const finalFee = Number(paymentConfig.feeAmount);
+    if (isNaN(finalFee) || finalFee < 0) {
       toast.error('Listing fee amount cannot be negative.');
       return;
     }
@@ -235,7 +236,7 @@ export default function AdminDashboardClient() {
     try {
       const formData = new FormData();
       formData.append('isEnabled', paymentConfig.isEnabled);
-      formData.append('feeAmount', paymentConfig.feeAmount);
+      formData.append('feeAmount', finalFee);
       formData.append('raastId', paymentConfig.raastId || '');
       formData.append('accountTitle', paymentConfig.accountTitle || '');
       formData.append('bankName', paymentConfig.bankName || '');
@@ -674,71 +675,104 @@ export default function AdminDashboardClient() {
                 <form onSubmit={handleSavePaymentSettings} className="space-y-6">
                   {/* Fee Amount Section */}
                   <div className="card p-5 space-y-4">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <div>
                         <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
                           Listing Fee Amount (PKR)
                         </h3>
                         <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                          Set how much money (kam ya zyada) users need to pay per business listing
+                          Apni marzi ki custom amount (jaise 10, 70, 100, 500) likhein ya quick buttons se select karein
                         </p>
                       </div>
                       <div
                         className="px-3.5 py-1.5 rounded-xl font-bold text-base shadow-sm"
                         style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}
                       >
-                        Rs. {paymentConfig.feeAmount || 0}
+                        Rs. {paymentConfig.feeAmount !== '' && paymentConfig.feeAmount !== undefined ? paymentConfig.feeAmount : 0}
                       </div>
                     </div>
 
                     {/* Numeric Input & Step Controls */}
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setPaymentConfig((p) => ({ ...p, feeAmount: Math.max(0, Number(p.feeAmount) - 100) }))}
-                        className="btn-secondary px-3 py-2 text-sm font-bold"
-                        title="Decrease fee by Rs. 100"
-                      >
-                        - 100
-                      </button>
-                      <div className="relative flex-1">
-                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">
-                          Rs.
-                        </span>
-                        <input
-                          type="number"
-                          min="0"
-                          step="10"
-                          value={paymentConfig.feeAmount}
-                          onChange={(e) => setPaymentConfig({ ...paymentConfig, feeAmount: Number(e.target.value) })}
-                          className="form-input pl-12 text-base font-bold"
-                          placeholder="e.g. 500"
-                          required
-                        />
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-gray-700">
+                        Type Custom Amount (e.g. 10, 70):
+                      </label>
+                      <div className="flex items-center gap-2">
+                        {/* - 100 button */}
+                        <button
+                          type="button"
+                          onClick={() => setPaymentConfig((p) => ({ ...p, feeAmount: Math.max(0, (Number(p.feeAmount) || 0) - 100) }))}
+                          className="btn-secondary px-2.5 py-2 text-xs font-bold"
+                          title="Decrease fee by Rs. 100"
+                        >
+                          -100
+                        </button>
+                        {/* - 10 button */}
+                        <button
+                          type="button"
+                          onClick={() => setPaymentConfig((p) => ({ ...p, feeAmount: Math.max(0, (Number(p.feeAmount) || 0) - 10) }))}
+                          className="btn-secondary px-2.5 py-2 text-xs font-bold"
+                          title="Decrease fee by Rs. 10"
+                        >
+                          -10
+                        </button>
+
+                        <div className="relative flex-1">
+                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">
+                            Rs.
+                          </span>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={paymentConfig.feeAmount ?? ''}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setPaymentConfig({
+                                ...paymentConfig,
+                                feeAmount: val === '' ? '' : Math.max(0, Number(val)),
+                              });
+                            }}
+                            className="form-input pl-12 text-base font-bold"
+                            placeholder="Enter custom amount (e.g. 10, 70, 500)"
+                            required
+                          />
+                        </div>
+
+                        {/* + 10 button */}
+                        <button
+                          type="button"
+                          onClick={() => setPaymentConfig((p) => ({ ...p, feeAmount: (Number(p.feeAmount) || 0) + 10 }))}
+                          className="btn-secondary px-2.5 py-2 text-xs font-bold"
+                          title="Increase fee by Rs. 10"
+                        >
+                          +10
+                        </button>
+                        {/* + 100 button */}
+                        <button
+                          type="button"
+                          onClick={() => setPaymentConfig((p) => ({ ...p, feeAmount: (Number(p.feeAmount) || 0) + 100 }))}
+                          className="btn-secondary px-2.5 py-2 text-xs font-bold"
+                          title="Increase fee by Rs. 100"
+                        >
+                          +100
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setPaymentConfig((p) => ({ ...p, feeAmount: Number(p.feeAmount) + 100 }))}
-                        className="btn-secondary px-3 py-2 text-sm font-bold"
-                        title="Increase fee by Rs. 100"
-                      >
-                        + 100
-                      </button>
                     </div>
 
                     {/* Quick Amount Presets */}
                     <div>
                       <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
-                        Quick Select Amount:
+                        Quick Select Presets:
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        {[200, 300, 500, 750, 1000, 1500, 2000, 3000, 5000].map((amt) => (
+                        {[10, 20, 50, 70, 100, 200, 300, 500, 1000].map((amt) => (
                           <button
                             key={amt}
                             type="button"
                             onClick={() => setPaymentConfig((p) => ({ ...p, feeAmount: amt }))}
                             className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                              paymentConfig.feeAmount === amt
+                              Number(paymentConfig.feeAmount) === amt
                                 ? 'bg-blue-600 text-white shadow-xs'
                                 : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
@@ -749,6 +783,10 @@ export default function AdminDashboardClient() {
                         ))}
                       </div>
                     </div>
+
+                    <p style={{ fontSize: '0.75rem', color: '#6b7280', background: '#f9fafb', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', border: '1px solid #f3f4f6' }}>
+                      💡 <strong>Custom Amount:</strong> Aap apni marzi se box me koi bhi number (jaise <strong>10</strong> ya <strong>70</strong>) likh sakte hain, aur neechay <strong>&ldquo;Save Payment Settings&rdquo;</strong> par click karein.
+                    </p>
                   </div>
 
                   {/* Raast QR Code & Account Information Card */}
