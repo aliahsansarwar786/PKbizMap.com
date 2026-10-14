@@ -234,7 +234,7 @@ export default function BusinessDetail({ id }) {
                   <div className="flex items-center gap-2 mt-2">
                     <MapPin size={14} style={{ color: '#6b7280', flexShrink: 0 }} />
                     <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                      {[business.address?.street, business.address?.city, business.address?.zipCode]
+                      {[business.address?.street, business.address?.city, business.address?.country, business.address?.zipCode]
                         .filter(Boolean).join(', ')}
                     </span>
                   </div>

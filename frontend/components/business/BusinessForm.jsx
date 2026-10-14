@@ -7,6 +7,8 @@ import { businessAPI, settingsAPI, adminAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import { Upload, X, AlertCircle, CreditCard, Copy, Check, FileCheck, QrCode, Download } from 'lucide-react';
+import SearchableCombobox from '@/components/ui/SearchableCombobox';
+import { COUNTRIES, getCities, isValidCity } from '@/data/locations';
 
 const CATEGORIES = [
   'IT', 'Real Estate', 'Restaurant', 'Healthcare', 'Education',
@@ -34,6 +36,7 @@ export default function BusinessForm({
     phone: existingBusiness?.phone || '',
     website: existingBusiness?.website || '',
     street: existingBusiness?.address?.street || '',
+    country: existingBusiness?.address?.country || 'Pakistan',
     city: existingBusiness?.address?.city || '',
     zipCode: existingBusiness?.address?.zipCode || '',
   });
@@ -71,6 +74,22 @@ export default function BusinessForm({
   const set = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value });
     if (errors[field]) setErrors({ ...errors, [field]: '' });
+  };
+
+  const handleCountryChange = (e) => {
+    const newCountry = e.target.value;
+    setForm((prev) => ({
+      ...prev,
+      country: newCountry,
+      city: '', // Reset dependent city when country changes
+    }));
+    if (errors.country) setErrors((prev) => ({ ...prev, country: '' }));
+    if (errors.city) setErrors((prev) => ({ ...prev, city: '' }));
+  };
+
+  const handleCityChange = (newCity) => {
+    setForm((prev) => ({ ...prev, city: newCity }));
+    if (errors.city) setErrors((prev) => ({ ...prev, city: '' }));
   };
 
   const handleImageSelect = (e) => {
@@ -148,7 +167,12 @@ export default function BusinessForm({
     if (!form.title.trim() || form.title.length < 2) errs.title = 'Business title is required (min 2 chars)';
     if (!form.description.trim() || form.description.length < 20) errs.description = 'Description must be at least 20 characters';
     if (!form.category) errs.category = 'Please select a category';
-    if (!form.city.trim()) errs.city = 'City is required';
+    if (!form.country) errs.country = 'Country is required';
+    if (!form.city.trim()) {
+      errs.city = 'City is required';
+    } else if (form.country && !isValidCity(form.country, form.city)) {
+      errs.city = `Please select a valid city in ${form.country}`;
+    }
     if (form.email && !/\S+@\S+\.\S+/.test(form.email)) errs.email = 'Invalid email address';
     if (!isEdit && paymentSettings?.isEnabled && !paymentReceiptFile) {
       errs.paymentReceipt = 'Payment screenshot is required to complete submission';
@@ -170,6 +194,7 @@ export default function BusinessForm({
       if (form.email) formData.append('email', form.email.toLowerCase());
       if (form.phone) formData.append('phone', form.phone.trim());
       if (form.website) formData.append('website', form.website.trim());
+      formData.append('address[country]', form.country);
       formData.append('address[city]', form.city.trim());
       if (form.street) formData.append('address[street]', form.street.trim());
       if (form.zipCode) formData.append('address[zipCode]', form.zipCode.trim());
@@ -188,6 +213,7 @@ export default function BusinessForm({
             phone: form.phone ? form.phone.trim() : '',
             website: form.website ? form.website.trim() : '',
             address: {
+              country: form.country,
               city: form.city.trim(),
               street: form.street ? form.street.trim() : '',
               zipCode: form.zipCode ? form.zipCode.trim() : '',
@@ -346,37 +372,75 @@ export default function BusinessForm({
       {/* Address */}
       <section aria-label="Address">
         <h2 style={{ fontSize: '1rem', fontWeight: 600, color: '#1f2937', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid #f3f4f6' }}>
-          Location
+          Location & Address
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="sm:col-span-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Country Dropdown */}
+          <div className="sm:col-span-1 lg:col-span-2">
+            <label htmlFor="biz-country" className="form-label">
+              Country <span style={{ color: '#dc2626' }}>*</span>
+            </label>
+            <select
+              id="biz-country"
+              value={form.country}
+              onChange={handleCountryChange}
+              className={`select-field ${errors.country ? 'error' : ''}`}
+              aria-required="true"
+              aria-invalid={!!errors.country}
+            >
+              <option value="">Select Country</option>
+              {COUNTRIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            {errors.country && (
+              <p role="alert" style={{ color: '#dc2626', fontSize: '0.8125rem', marginTop: '0.25rem' }}>
+                {errors.country}
+              </p>
+            )}
+          </div>
+
+          {/* City Dependent Searchable Combobox */}
+          <div className="sm:col-span-1 lg:col-span-2">
+            <label htmlFor="biz-city" className="form-label">
+              City <span style={{ color: '#dc2626' }}>*</span>
+            </label>
+            <SearchableCombobox
+              id="biz-city"
+              value={form.city}
+              onChange={handleCityChange}
+              options={form.country ? getCities(form.country) : []}
+              disabled={!form.country}
+              placeholder="Search or select city..."
+              disabledPlaceholder="Select country first"
+              error={!!errors.city}
+              emptyMessage="No city found"
+              ariaLabel="Business City"
+            />
+            {errors.city && (
+              <p role="alert" style={{ color: '#dc2626', fontSize: '0.8125rem', marginTop: '0.25rem' }}>
+                {errors.city}
+              </p>
+            )}
+          </div>
+
+          {/* Street Address */}
+          <div className="sm:col-span-2 lg:col-span-3">
             <label htmlFor="biz-street" className="form-label">Street Address</label>
             <input
               id="biz-street"
               type="text"
               value={form.street}
               onChange={set('street')}
-              placeholder="123 Main Street"
+              placeholder="123 Main Street, Suite 100"
               className="input-field"
             />
           </div>
-          <div className="sm:col-span-2">
-            <label htmlFor="biz-city" className="form-label">
-              City <span style={{ color: '#dc2626' }}>*</span>
-            </label>
-            <input
-              id="biz-city"
-              type="text"
-              value={form.city}
-              onChange={set('city')}
-              placeholder="New York"
-              className={`input-field ${errors.city ? 'error' : ''}`}
-              aria-required="true"
-              aria-invalid={!!errors.city}
-            />
-            {errors.city && <p role="alert" style={{ color: '#dc2626', fontSize: '0.8125rem', marginTop: '0.25rem' }}>{errors.city}</p>}
-          </div>
-          <div>
+
+          {/* ZIP / Postal Code */}
+          <div className="sm:col-span-1 lg:col-span-1">
             <label htmlFor="biz-zip" className="form-label">ZIP / Postal Code</label>
             <input
               id="biz-zip"

@@ -3,6 +3,7 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import HomeFeatured from '@/components/business/HomeFeatured';
 import TopListingsMarquee from '@/components/business/TopListingsMarquee';
+import HeroSearch from '@/components/home/HeroSearch';
 import {
   Search,
   ArrowRight,
@@ -148,76 +149,7 @@ export default async function HomePage() {
 
         {/* ── Elevated Search Section ──────────────────────────────────────────────── */}
         <section className="relative z-20 -mt-16 max-w-5xl mx-auto px-4 mb-16">
-          <div className="rounded-2xl border border-gray-100 bg-white/95 p-6 sm:p-8 shadow-2xl backdrop-blur-md">
-            <h2 className="text-xl font-bold text-gray-900 mb-5 text-center sm:text-left">
-              Search Local Businesses
-            </h2>
-            <form
-              action="/businesses"
-              method="GET"
-              className="w-full flex flex-col md:flex-row gap-3"
-              aria-label="Business search form"
-            >
-              <div className="flex-1 relative">
-                <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
-                <input
-                  type="text"
-                  name="keyword"
-                  placeholder="What are you looking for?"
-                  className="w-full h-12 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 pl-11 pr-4 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none"
-                />
-              </div>
-
-              <div className="md:w-48 relative">
-                <select 
-                  name="city"
-                  className="w-full h-12 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-4 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none appearance-none"
-                >
-                  <option value="">All Cities</option>
-                  <option value="Karachi">Karachi</option>
-                  <option value="Lahore">Lahore</option>
-                  <option value="Islamabad">Islamabad</option>
-                  <option value="Multan">Multan</option>
-                  <option value="Faisalabad">Faisalabad</option>
-                  <option value="Rawalpindi">Rawalpindi</option>
-                </select>
-              </div>
-
-              <div className="md:w-56 relative">
-                <select 
-                  name="category"
-                  className="w-full h-12 rounded-xl border border-gray-200 bg-gray-50 text-gray-900 px-4 text-sm focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none appearance-none"
-                >
-                  <option value="">All Categories</option>
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat.name} value={cat.name}>{cat.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                className="h-12 px-6 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-sm transition-colors shadow-md md:w-32 flex-shrink-0 flex items-center justify-center gap-2"
-              >
-                Search
-              </button>
-            </form>
-            <p style={{ fontSize: '0.8125rem', color: '#9ca3af', marginTop: '1rem', textAlign: 'center' }}>
-              Popular: &nbsp;
-              {['Restaurant', 'IT', 'Healthcare', 'Real Estate'].map((cat, i) => (
-                <span key={cat}>
-                  <Link
-                    href={`/businesses?category=${encodeURIComponent(cat)}`}
-                    style={{ color: '#2563eb', fontWeight: 500 }}
-                    className="hover:underline"
-                  >
-                    {cat}
-                  </Link>
-                  {i < 3 && <span> &middot; </span>}
-                </span>
-              ))}
-            </p>
-          </div>
+          <HeroSearch categories={CATEGORIES} />
         </section>
 
         {/* ── Stats ──────────────────────────────────────────────────────── */}

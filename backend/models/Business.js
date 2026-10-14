@@ -70,6 +70,16 @@ const businessSchema = new mongoose.Schema(
         required: [true, 'City is required'],
         maxlength: 100,
       },
+      country: {
+        type: String,
+        trim: true,
+        required: [true, 'Country is required'],
+        enum: {
+          values: ['Pakistan', 'UAE', 'USA'],
+          message: 'Country must be Pakistan, UAE, or USA',
+        },
+        default: 'Pakistan',
+      },
       zipCode: { type: String, trim: true, maxlength: 20 },
     },
     images: [
@@ -122,13 +132,15 @@ const businessSchema = new mongoose.Schema(
 // ─── Indexes ──────────────────────────────────────────────────────────────────
 businessSchema.index({ owner: 1 });
 businessSchema.index({ category: 1 });
+businessSchema.index({ 'address.country': 1 });
 businessSchema.index({ 'address.city': 1 });
+businessSchema.index({ 'address.country': 1, 'address.city': 1 });
 businessSchema.index({ isApproved: 1 });
 businessSchema.index({ createdAt: -1 });
 // Text search index
 businessSchema.index(
-  { title: 'text', description: 'text', category: 'text', 'address.city': 'text' },
-  { weights: { title: 10, category: 5, 'address.city': 3, description: 1 } }
+  { title: 'text', description: 'text', category: 'text', 'address.city': 'text', 'address.country': 'text' },
+  { weights: { title: 10, category: 5, 'address.city': 3, 'address.country': 2, description: 1 } }
 );
 
 // ─── Export constants too ─────────────────────────────────────────────────────

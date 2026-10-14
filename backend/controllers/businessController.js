@@ -12,7 +12,9 @@ const getBusinesses = asyncHandler(async (req, res) => {
   const {
     keyword,
     category,
+    country,
     city,
+    rating,
     sort = '-createdAt',
     page = 1,
     limit = 12,
@@ -20,19 +22,39 @@ const getBusinesses = asyncHandler(async (req, res) => {
 
   const queryObj = { isApproved: true }; // Only approved businesses publicly
 
-  // ─── Text search ────────────────────────────────────────────────────────
+  // ─── Keyword search (name / description / service / city) ─────────────────
   if (keyword && keyword.trim()) {
-    queryObj.$text = { $search: keyword.trim() };
+    const safeKeyword = escapeRegex(keyword.trim());
+    queryObj.$or = [
+      { title: { $regex: safeKeyword, $options: 'i' } },
+      { description: { $regex: safeKeyword, $options: 'i' } },
+      { category: { $regex: safeKeyword, $options: 'i' } },
+      { 'address.city': { $regex: safeKeyword, $options: 'i' } },
+    ];
   }
 
-  // ─── Category filter ─────────────────────────────────────────────────────
-  if (category && category.trim()) {
+  // ─── Country filter ───────────────────────────────────────────────────────
+  if (country && country.trim() && country.trim().toLowerCase() !== 'all') {
+    queryObj['address.country'] = country.trim();
+  }
+
+  // ─── City filter ──────────────────────────────────────────────────────────
+  if (city && city.trim() && city.trim().toLowerCase() !== 'all') {
+    queryObj['address.city'] = { $regex: escapeRegex(city.trim()), $options: 'i' };
+  }
+
+  // ─── Category filter ──────────────────────────────────────────────────────
+  if (category && category.trim() && category.trim().toLowerCase() !== 'all') {
     queryObj.category = category.trim();
   }
 
-  // ─── City filter (case-insensitive partial match with safe regex escaping) ─
-  if (city && city.trim()) {
-    queryObj['address.city'] = { $regex: escapeRegex(city.trim()), $options: 'i' };
+  // ─── Rating filter (5, 4+, 3+) ────────────────────────────────────────────
+  if (rating && rating.trim() && rating.trim().toLowerCase() !== 'all') {
+    const cleanRating = rating.trim().replace('+', '');
+    const numRating = parseFloat(cleanRating);
+    if (!isNaN(numRating) && numRating > 0) {
+      queryObj.averageRating = { $gte: numRating };
+    }
   }
 
   // ─── Pagination ───────────────────────────────────────────────────────────
@@ -172,6 +194,13 @@ const createBusiness = [
       });
     }
 
+    const businessAddress = {
+      country: address?.country || req.body?.country || 'Pakistan',
+      city: address?.city || req.body?.city || '',
+      street: address?.street || req.body?.street || '',
+      zipCode: address?.zipCode || req.body?.zipCode || '',
+    };
+
     // NEVER trust owner from req.body - always use authenticated user
     const business = await Business.create({
       title,
@@ -180,7 +209,7 @@ const createBusiness = [
       email,
       phone,
       website,
-      address,
+      address: businessAddress,
       images,
       paymentReceipt,
       paymentStatus,
@@ -224,13 +253,22 @@ const updateBusiness = [
     }
 
     // Allowed update fields - NEVER allow owner, isApproved, role from body
-    const allowedFields = ['title', 'description', 'category', 'email', 'phone', 'website', 'address'];
+    const allowedFields = ['title', 'description', 'category', 'email', 'phone', 'website'];
     const updates = {};
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) {
         updates[field] = req.body[field];
       }
     });
+
+    if (req.body.address && typeof req.body.address === 'object') {
+      updates.address = {
+        country: req.body.address.country || business.address?.country || 'Pakistan',
+        city: req.body.address.city !== undefined ? req.body.address.city : business.address?.city,
+        street: req.body.address.street !== undefined ? req.body.address.street : business.address?.street,
+        zipCode: req.body.address.zipCode !== undefined ? req.body.address.zipCode : business.address?.zipCode,
+      };
+    }
 
     // Handle new image uploads
     const newImageFiles = Array.isArray(req.files) ? req.files : (req.files?.images || []);

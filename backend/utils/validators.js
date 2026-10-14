@@ -86,6 +86,7 @@ const updateProfileValidator = [
 
 // ─── Business Validators ──────────────────────────────────────────────────────
 const { CATEGORIES } = require('../models/Business');
+const { COUNTRIES, isValidCity } = require('./locations');
 
 const businessValidator = [
   body('title')
@@ -108,10 +109,31 @@ const businessValidator = [
   body('website')
     .optional({ checkFalsy: true })
     .isURL({ require_protocol: false }).withMessage('Please provide a valid website URL'),
+  body('address.country')
+    .custom((val, { req }) => {
+      const country = val || req.body?.country;
+      if (!country || !country.trim()) {
+        throw new Error('Country is required');
+      }
+      if (!COUNTRIES.includes(country.trim())) {
+        throw new Error(`Country must be one of: ${COUNTRIES.join(', ')}`);
+      }
+      return true;
+    }),
   body('address.city')
     .trim()
     .notEmpty().withMessage('City is required')
-    .isLength({ max: 100 }).withMessage('City cannot exceed 100 characters'),
+    .isLength({ max: 100 }).withMessage('City cannot exceed 100 characters')
+    .custom((city, { req }) => {
+      const country = req.body?.address?.country || req.body?.country;
+      if (!country) {
+        throw new Error('Country is required before selecting city');
+      }
+      if (!isValidCity(country, city)) {
+        throw new Error(`City '${city}' is not a valid city in ${country}`);
+      }
+      return true;
+    }),
   body('address.street')
     .optional({ checkFalsy: true })
     .isLength({ max: 200 }).withMessage('Street cannot exceed 200 characters'),
@@ -143,11 +165,33 @@ const updateBusinessValidator = [
   body('website')
     .optional({ checkFalsy: true })
     .isURL({ require_protocol: false }).withMessage('Please provide a valid website URL'),
+  body('address.country')
+    .optional()
+    .custom((val, { req }) => {
+      const country = val || req.body?.country;
+      if (country && !COUNTRIES.includes(country.trim())) {
+        throw new Error(`Country must be one of: ${COUNTRIES.join(', ')}`);
+      }
+      return true;
+    }),
   body('address.city')
     .optional()
     .trim()
-    .notEmpty().withMessage('City cannot be empty')
-    .isLength({ max: 100 }).withMessage('City cannot exceed 100 characters'),
+    .isLength({ max: 100 }).withMessage('City cannot exceed 100 characters')
+    .custom(async (city, { req }) => {
+      if (!city) return true;
+      let country = req.body?.address?.country || req.body?.country;
+      if (!country && req.params?.id) {
+        const Business = require('../models/Business');
+        const existing = await Business.findById(req.params.id).select('address.country').lean();
+        country = existing?.address?.country;
+      }
+      if (!country) country = 'Pakistan';
+      if (!isValidCity(country, city)) {
+        throw new Error(`City '${city}' is not a valid city in ${country}`);
+      }
+      return true;
+    }),
   body('address.street')
     .optional({ checkFalsy: true })
     .isLength({ max: 200 }).withMessage('Street cannot exceed 200 characters'),

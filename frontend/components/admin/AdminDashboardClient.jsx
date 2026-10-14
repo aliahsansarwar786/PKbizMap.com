@@ -510,7 +510,7 @@ export default function AdminDashboardClient() {
                               {biz.category}
                             </span>
                             <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                              {biz.address?.city}
+                              {[biz.address?.city, biz.address?.country].filter(Boolean).join(', ')}
                             </span>
                             {biz.owner && (
                               <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>

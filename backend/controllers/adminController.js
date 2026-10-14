@@ -128,7 +128,7 @@ const getUsers = asyncHandler(async (req, res) => {
 // ─── GET /api/admin/businesses ────────────────────────────────────────────────
 // Admin: Get all businesses (approved + unapproved)
 const getAllBusinesses = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20, isApproved, category, search } = req.query;
+  const { page = 1, limit = 20, isApproved, category, country, search } = req.query;
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
   const skip = (pageNum - 1) * limitNum;
@@ -139,6 +139,9 @@ const getAllBusinesses = asyncHandler(async (req, res) => {
   }
   if (category && category.trim()) {
     queryObj.category = category.trim();
+  }
+  if (country && country.trim() && country.trim().toLowerCase() !== 'all') {
+    queryObj['address.country'] = country.trim();
   }
   if (search && search.trim()) {
     const safeSearch = escapeRegex(search.trim());
@@ -464,10 +467,12 @@ const adminUpdateBusiness = [
     });
 
     if (req.body.address && typeof req.body.address === 'object') {
+      if (req.body.address.country !== undefined) business.address.country = req.body.address.country;
       if (req.body.address.street !== undefined) business.address.street = req.body.address.street;
       if (req.body.address.city !== undefined) business.address.city = req.body.address.city;
       if (req.body.address.zipCode !== undefined) business.address.zipCode = req.body.address.zipCode;
     } else {
+      if (req.body.country !== undefined) business.address.country = req.body.country;
       if (req.body.street !== undefined) business.address.street = req.body.street;
       if (req.body.city !== undefined) business.address.city = req.body.city;
       if (req.body.zipCode !== undefined) business.address.zipCode = req.body.zipCode;
