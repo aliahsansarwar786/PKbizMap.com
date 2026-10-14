@@ -153,8 +153,18 @@ export const adminAPI = {
   updateUserRole: (id, role) => api.patch(`/admin/users/${id}/role`, { role }),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
   getAllReviews: (params = {}) => {
-    const qs = new URLSearchParams(params).toString();
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v !== '' && v != null))
+    ).toString();
     return api.get(`/admin/reviews${qs ? `?${qs}` : ''}`);
+  },
+  deleteReview: (id) => api.delete(`/admin/reviews/${id}`),
+  adminUpdateBusiness: (id, data) => api.patch(`/admin/businesses/${id}`, data),
+  getPaymentHistory: (params = {}) => {
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v !== '' && v != null))
+    ).toString();
+    return api.get(`/admin/payments${qs ? `?${qs}` : ''}`);
   },
   getBusinessById: (id) => api.get(`/admin/businesses/${id}`),
   getPaymentSettings: () => api.get('/settings/payment'),

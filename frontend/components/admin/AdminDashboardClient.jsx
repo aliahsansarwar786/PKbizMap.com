@@ -12,8 +12,9 @@ import {
   Check, X, Trash2, ChevronLeft, ChevronRight, Shield, Edit3,
   CreditCard, Eye, Image as ImageIcon, Save, ExternalLink,
   DollarSign, CheckCircle, AlertCircle, Phone, ArrowUpRight,
-  QrCode, Upload
+  QrCode, Upload, MessageSquare, Search, Filter
 } from 'lucide-react';
+import BusinessForm from '@/components/business/BusinessForm';
 
 function StatCard({ label, value, icon: Icon, color = '#2563eb' }) {
   return (
@@ -60,6 +61,21 @@ export default function AdminDashboardClient() {
   const [selectedReceiptBiz, setSelectedReceiptBiz] = useState(null);
   const [deletingReceipt, setDeletingReceipt] = useState(false);
 
+  // Reviews Moderation State
+  const [reviews, setReviews] = useState([]);
+  const [reviewSearch, setReviewSearch] = useState('');
+
+  // Payment History State
+  const [payments, setPayments] = useState([]);
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
+  const [paymentSearch, setPaymentSearch] = useState('');
+
+  // Admin Edit Business State
+  const [editingBusiness, setEditingBusiness] = useState(null);
+
+  // Bank App Verification Checkbox
+  const [verifiedInBankApp, setVerifiedInBankApp] = useState(false);
+
   // Auth guard
   useEffect(() => {
     if (!authLoading) {
@@ -101,6 +117,23 @@ export default function AdminDashboardClient() {
         const res = await adminAPI.getUsers({ page, limit: 10 });
         setUsers(res.data.users);
         setPagination(res.data.pagination);
+      } else if (tab === 'payments') {
+        const res = await adminAPI.getPaymentHistory({
+          page,
+          limit: 10,
+          paymentStatus: paymentStatusFilter,
+          search: paymentSearch,
+        });
+        setPayments(res.data.payments || []);
+        setPagination(res.data.pagination);
+      } else if (tab === 'reviews') {
+        const res = await adminAPI.getAllReviews({
+          page,
+          limit: 10,
+          search: reviewSearch,
+        });
+        setReviews(res.data.reviews || []);
+        setPagination(res.data.pagination);
       } else if (tab === 'payment-settings') {
         setLoadingPaymentConfig(true);
         try {
@@ -121,7 +154,7 @@ export default function AdminDashboardClient() {
     } finally {
       setLoading(false);
     }
-  }, [tab, page, isAdmin]);
+  }, [tab, page, isAdmin, reviewSearch, paymentStatusFilter, paymentSearch]);
 
   useEffect(() => {
     loadTabData();
@@ -170,6 +203,18 @@ export default function AdminDashboardClient() {
       toast.success('User deleted.');
     } catch (err) {
       toast.error(err.message || 'Failed to delete user.');
+    }
+  };
+
+  const handleDeleteReview = async (id, businessTitle) => {
+    if (!confirm(`Are you sure you want to permanently delete this review for "${businessTitle || 'this business'}"?`)) return;
+    try {
+      await adminAPI.deleteReview(id);
+      setReviews((prev) => prev.filter((r) => r._id !== id));
+      setDashStats((s) => (s ? { ...s, totalReviews: Math.max(0, s.totalReviews - 1) } : s));
+      toast.success('Review deleted and ratings recalculated.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete review.');
     }
   };
 
@@ -310,6 +355,8 @@ export default function AdminDashboardClient() {
   const tabs = [
     { id: 'pending', label: 'Pending', badge: dashStats?.pendingBusinesses },
     { id: 'all-businesses', label: 'All Businesses' },
+    { id: 'payments', label: 'Payments' },
+    { id: 'reviews', label: 'Reviews', badge: dashStats?.totalReviews },
     { id: 'users', label: 'Users' },
     {
       id: 'payment-settings',
@@ -475,7 +522,10 @@ export default function AdminDashboardClient() {
                             {biz.paymentReceipt?.url ? (
                               <button
                                 type="button"
-                                onClick={() => setSelectedReceiptBiz(biz)}
+                                onClick={() => {
+                                  setVerifiedInBankApp(false);
+                                  setSelectedReceiptBiz(biz);
+                                }}
                                 className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold cursor-pointer hover:opacity-90 transition-opacity"
                                 style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}
                                 title="Click to view payment screenshot"
@@ -488,6 +538,17 @@ export default function AdminDashboardClient() {
                                 Fee: Rs. {biz.paymentAmount} (No Receipt)
                               </span>
                             ) : null}
+
+                            {/* Warning Badge if Payment is ON and Receipt is Missing */}
+                            {paymentConfig.isEnabled && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url) && !biz.isApproved && (
+                              <span
+                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold"
+                                style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}
+                                title="Payment screenshot is missing! Do not approve."
+                              >
+                                <AlertCircle size={12} /> Receipt Missing - Do NOT Approve
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -496,11 +557,14 @@ export default function AdminDashboardClient() {
                           {biz.paymentReceipt?.url && (
                             <button
                               type="button"
-                              onClick={() => setSelectedReceiptBiz(biz)}
+                              onClick={() => {
+                                setVerifiedInBankApp(false);
+                                setSelectedReceiptBiz(biz);
+                              }}
                               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
                               style={{ background: '#ecfdf5', color: '#065f46', border: '1px solid #6ee7b7', cursor: 'pointer' }}
                               aria-label={`View payment receipt for ${biz.title}`}
-                              title="View JazzCash Payment Screenshot"
+                              title="View Payment Screenshot"
                             >
                               <Eye size={13} /> View Screenshot
                             </button>
@@ -508,10 +572,26 @@ export default function AdminDashboardClient() {
 
                           {!biz.isApproved && (
                             <button
-                              onClick={() => handleApprove(biz._id)}
-                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-                              style={{ background: '#f0fdf4', color: '#166534', border: '1px solid #bbf7d0', cursor: 'pointer' }}
+                              onClick={() => {
+                                if (paymentConfig.isEnabled && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url)) {
+                                  toast.error('Cannot approve: Payment screenshot is missing!');
+                                  return;
+                                }
+                                handleApprove(biz._id);
+                              }}
+                              disabled={paymentConfig.isEnabled && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url)}
+                              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                paymentConfig.isEnabled && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url)
+                                  ? 'opacity-40 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200'
+                                  : 'bg-green-50 text-green-800 border-green-200 hover:bg-green-100 cursor-pointer'
+                              }`}
+                              style={{ border: '1px solid' }}
                               aria-label={`Approve ${biz.title}`}
+                              title={
+                                paymentConfig.isEnabled && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url)
+                                  ? 'Receipt Missing - Do NOT Approve'
+                                  : `Approve ${biz.title}`
+                              }
                             >
                               <Check size={13} /> Approve
                             </button>
@@ -526,6 +606,15 @@ export default function AdminDashboardClient() {
                               <X size={13} /> Reject
                             </button>
                           )}
+                          <button
+                            type="button"
+                            onClick={() => setEditingBusiness(biz)}
+                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200 cursor-pointer"
+                            aria-label={`Edit ${biz.title}`}
+                            title="Edit Business Details (Admin)"
+                          >
+                            <Edit3 size={13} /> Edit
+                          </button>
                           <Link
                             href={biz.isApproved ? `/businesses/${biz._id}` : '#'}
                             className={`p-2 rounded-lg transition-colors ${!biz.isApproved ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-200'}`}
@@ -534,14 +623,6 @@ export default function AdminDashboardClient() {
                             onClick={(e) => !biz.isApproved && e.preventDefault()}
                           >
                             <CheckCircle2 size={15} />
-                          </Link>
-                          <Link
-                            href={`/dashboard/businesses/${biz._id}`}
-                            className="p-2 rounded-lg hover:bg-gray-200 transition-colors"
-                            aria-label={`Edit ${biz.title}`}
-                            style={{ color: '#2563eb' }}
-                          >
-                            <Edit3 size={15} />
                           </Link>
                           <button
                             onClick={() => handleDeleteBusiness(biz._id, biz.title)}
@@ -557,6 +638,231 @@ export default function AdminDashboardClient() {
                   </div>
                 )}
               </>
+            ) : tab === 'payments' ? (
+              <div className="space-y-4">
+                {/* Payments Toolbar */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-2">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      setPage(1);
+                      loadTabData();
+                    }}
+                    className="flex items-center gap-2 flex-1 max-w-md"
+                  >
+                    <div className="relative flex-1">
+                      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        value={paymentSearch}
+                        onChange={(e) => setPaymentSearch(e.target.value)}
+                        placeholder="Search by business title or owner..."
+                        className="form-input pl-9 text-sm"
+                      />
+                    </div>
+                    <button type="submit" className="btn-secondary text-xs px-3 py-2 font-semibold">
+                      Search
+                    </button>
+                    {paymentSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentSearch('');
+                          setPage(1);
+                        }}
+                        className="text-xs text-gray-500 hover:text-gray-700 px-1"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </form>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-500 whitespace-nowrap">Status:</span>
+                    <select
+                      value={paymentStatusFilter}
+                      onChange={(e) => {
+                        setPaymentStatusFilter(e.target.value);
+                        setPage(1);
+                      }}
+                      className="form-input text-xs py-1.5 px-2.5 font-medium"
+                    >
+                      <option value="">All Statuses</option>
+                      <option value="pending">Pending</option>
+                      <option value="verified">Verified</option>
+                      <option value="rejected">Rejected</option>
+                      <option value="none">None</option>
+                    </select>
+                  </div>
+                </div>
+
+                {payments.length === 0 ? (
+                  <div className="text-center py-12">
+                    <CreditCard size={40} style={{ color: '#d1d5db', margin: '0 auto 1rem' }} />
+                    <p style={{ color: '#6b7280' }}>No payment records found.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {payments.map((p) => (
+                      <div
+                        key={p._id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl"
+                        style={{ background: '#f9fafb', border: '1px solid #f3f4f6' }}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p style={{ fontWeight: 600, fontSize: '0.925rem', color: '#1f2937' }} className="truncate">
+                              {p.title}
+                            </p>
+                            <span
+                              className={`badge ${
+                                p.paymentStatus === 'verified'
+                                  ? 'badge-green'
+                                  : p.paymentStatus === 'rejected'
+                                  ? 'badge-red'
+                                  : p.paymentStatus === 'pending'
+                                  ? 'badge-yellow'
+                                  : 'badge-gray'
+                              }`}
+                              style={{ fontSize: '0.7rem', padding: '2px 6px', textTransform: 'capitalize' }}
+                            >
+                              Payment: {p.paymentStatus || 'pending'}
+                            </span>
+                            <span
+                              className={`badge ${p.isApproved ? 'badge-green' : 'badge-yellow'}`}
+                              style={{ fontSize: '0.7rem', padding: '2px 6px' }}
+                            >
+                              {p.isApproved ? 'Approved' : 'Pending'}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-gray-500">
+                            <span className="font-bold text-gray-800">
+                              Amount: Rs. {p.paymentAmount || 0}
+                            </span>
+                            {p.owner && (
+                              <span>
+                                Owner: <strong>{p.owner.name}</strong> ({p.owner.email})
+                              </span>
+                            )}
+                            <span>
+                              Date: {new Date(p.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                          {p.paymentReceipt?.url && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setVerifiedInBankApp(false);
+                                setSelectedReceiptBiz(p);
+                              }}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-200 cursor-pointer"
+                              title="View uploaded payment receipt"
+                            >
+                              <Eye size={13} /> View Receipt
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setEditingBusiness(p)}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200 cursor-pointer"
+                            title="Edit Business Details (Admin)"
+                          >
+                            <Edit3 size={13} /> Edit Business
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : tab === 'reviews' ? (
+              <div className="space-y-4">
+                {/* Reviews Toolbar */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setPage(1);
+                    loadTabData();
+                  }}
+                  className="flex items-center gap-2 max-w-md pb-2"
+                >
+                  <div className="relative flex-1">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={reviewSearch}
+                      onChange={(e) => setReviewSearch(e.target.value)}
+                      placeholder="Search reviews by comment..."
+                      className="form-input pl-9 text-sm"
+                    />
+                  </div>
+                  <button type="submit" className="btn-secondary text-xs px-3 py-2 font-semibold">
+                    Search
+                  </button>
+                  {reviewSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReviewSearch('');
+                        setPage(1);
+                      }}
+                      className="text-xs text-gray-500 hover:text-gray-700 px-1"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </form>
+
+                {reviews.length === 0 ? (
+                  <div className="text-center py-12">
+                    <MessageSquare size={40} style={{ color: '#d1d5db', margin: '0 auto 1rem' }} />
+                    <p style={{ color: '#6b7280' }}>No reviews found.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {reviews.map((r) => (
+                      <div
+                        key={r._id}
+                        className="p-4 rounded-xl flex flex-col sm:flex-row sm:items-start justify-between gap-4"
+                        style={{ background: '#f9fafb', border: '1px solid #f3f4f6' }}
+                      >
+                        <div className="flex-1 min-w-0 space-y-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-gray-900 text-sm">
+                              {r.business?.title || 'Business'}
+                            </span>
+                            <div className="flex items-center gap-1 text-amber-500 text-xs font-bold">
+                              <Star size={13} fill="currentColor" />
+                              <span>{r.rating} / 5</span>
+                            </div>
+                            <span className="text-xs text-gray-400">
+                              {new Date(r.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            By <strong>{r.user?.name || 'User'}</strong> ({r.user?.email || 'N/A'})
+                          </p>
+                          <p className="text-sm text-gray-700 pt-1 italic bg-white p-3 rounded-lg border border-gray-100">
+                            &ldquo;{r.comment}&rdquo;
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteReview(r._id, r.business?.title)}
+                          className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors border border-red-200 self-end sm:self-start cursor-pointer font-medium"
+                          title="Delete this review permanently"
+                        >
+                          <Trash2 size={13} /> Delete Review
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             ) : tab === 'users' ? (
               <>
                 {users.length === 0 ? (
@@ -1042,9 +1348,29 @@ export default function AdminDashboardClient() {
                   <strong>Submitted by:</strong> {selectedReceiptBiz.owner?.name || 'User'} ({selectedReceiptBiz.owner?.email || 'N/A'})
                 </div>
                 <div>
-                  <strong>City:</strong> {selectedReceiptBiz.address?.city || 'N/A'}
+                  <strong>Date:</strong> {new Date(selectedReceiptBiz.createdAt).toLocaleDateString()}
                 </div>
               </div>
+
+              {/* Fake Screenshot Verification Warning */}
+              <div className="w-full mt-3 p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 leading-relaxed">
+                <strong>⚠️ Verification Note:</strong> Approve se pehle apne bank/JazzCash app me amount + date + transaction ID match kar ke verify karein.
+              </div>
+
+              {/* Checkbox for Paid Listings */}
+              {((selectedReceiptBiz.paymentAmount > 0) || selectedReceiptBiz.paymentReceipt?.url) && (
+                <label className="w-full mt-2 flex items-start gap-2.5 p-3 bg-gray-50 rounded-xl border border-gray-200 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={verifiedInBankApp}
+                    onChange={(e) => setVerifiedInBankApp(e.target.checked)}
+                    className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                  />
+                  <span className="text-xs font-semibold text-gray-800">
+                    I verified this payment in my bank/JazzCash app
+                  </span>
+                </label>
+              )}
             </div>
 
             {/* Modal Actions Footer */}
@@ -1079,9 +1405,19 @@ export default function AdminDashboardClient() {
                 {!selectedReceiptBiz.isApproved && (
                   <button
                     type="button"
+                    disabled={((selectedReceiptBiz.paymentAmount > 0) || selectedReceiptBiz.paymentReceipt?.url) && !verifiedInBankApp}
                     onClick={() => handleApprove(selectedReceiptBiz._id)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-green-600 hover:bg-green-700 transition-colors shadow-sm"
-                    style={{ border: 'none', cursor: 'pointer' }}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-colors shadow-sm ${
+                      ((selectedReceiptBiz.paymentAmount > 0) || selectedReceiptBiz.paymentReceipt?.url) && !verifiedInBankApp
+                        ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                        : 'bg-green-600 hover:bg-green-700 text-white cursor-pointer'
+                    }`}
+                    style={{ border: 'none' }}
+                    title={
+                      ((selectedReceiptBiz.paymentAmount > 0) || selectedReceiptBiz.paymentReceipt?.url) && !verifiedInBankApp
+                        ? 'Please tick the verification checkbox first'
+                        : 'Approve Business'
+                    }
                   >
                     <Check size={14} /> Approve Business
                   </button>
@@ -1094,6 +1430,52 @@ export default function AdminDashboardClient() {
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Edit Business Modal */}
+      {editingBusiness && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
+          onClick={() => setEditingBusiness(null)}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Admin Edit Business Modal"
+        >
+          <div
+            className="bg-white rounded-2xl overflow-hidden max-w-3xl w-full my-8 max-h-[90vh] flex flex-col shadow-2xl animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+            style={{ border: '1px solid #e5e7eb' }}
+          >
+            <div className="flex items-center justify-between p-4 border-b bg-gray-50" style={{ borderColor: '#e5e7eb' }}>
+              <div className="flex items-center gap-2">
+                <Edit3 size={18} className="text-blue-600" />
+                <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>
+                  Edit Business: {editingBusiness.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingBusiness(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200 transition-colors"
+                style={{ border: 'none', cursor: 'pointer' }}
+                aria-label="Close edit modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1">
+              <BusinessForm
+                existingBusiness={editingBusiness}
+                isAdminEdit={true}
+                onAdminSaved={() => {
+                  setEditingBusiness(null);
+                  loadTabData();
+                }}
+                onCancel={() => setEditingBusiness(null)}
+              />
             </div>
           </div>
         </div>

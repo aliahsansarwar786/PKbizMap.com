@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import { businessAPI, settingsAPI } from '@/lib/api';
+import { businessAPI, settingsAPI, adminAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import { Upload, X, AlertCircle, CreditCard, Copy, Check, FileCheck, QrCode, Download } from 'lucide-react';
@@ -16,7 +16,12 @@ const CATEGORIES = [
 
 const MAX_IMAGES = 5;
 
-export default function BusinessForm({ existingBusiness = null }) {
+export default function BusinessForm({
+  existingBusiness = null,
+  isAdminEdit = false,
+  onAdminSaved = null,
+  onCancel = null,
+}) {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
   const isEdit = !!existingBusiness;
@@ -137,13 +142,6 @@ export default function BusinessForm({ existingBusiness = null }) {
     setPaymentReceiptPreview(null);
   };
 
-  const handleCopyNumber = () => {
-    if (!paymentSettings?.jazzCashNumber) return;
-    navigator.clipboard.writeText(paymentSettings.jazzCashNumber);
-    setCopiedNumber(true);
-    toast.success('JazzCash number copied!');
-    setTimeout(() => setCopiedNumber(false), 2000);
-  };
 
   const validate = () => {
     const errs = {};
@@ -181,9 +179,32 @@ export default function BusinessForm({ existingBusiness = null }) {
       }
 
       if (isEdit) {
-        await businessAPI.update(existingBusiness._id, formData);
-        toast.success('Business updated. Pending re-approval.');
-        router.push('/dashboard');
+        if (isAdminEdit) {
+          const updateData = {
+            title: form.title.trim(),
+            description: form.description.trim(),
+            category: form.category,
+            email: form.email ? form.email.toLowerCase() : '',
+            phone: form.phone ? form.phone.trim() : '',
+            website: form.website ? form.website.trim() : '',
+            address: {
+              city: form.city.trim(),
+              street: form.street ? form.street.trim() : '',
+              zipCode: form.zipCode ? form.zipCode.trim() : '',
+            },
+          };
+          await adminAPI.adminUpdateBusiness(existingBusiness._id, updateData);
+          toast.success('Business updated successfully.');
+          if (onAdminSaved) {
+            onAdminSaved();
+          } else {
+            router.push('/dashboard');
+          }
+        } else {
+          await businessAPI.update(existingBusiness._id, formData);
+          toast.success('Business updated. Pending re-approval.');
+          router.push('/dashboard');
+        }
       } else {
         await businessAPI.create(formData);
         toast.success('Business submitted! Pending admin approval.');
@@ -202,7 +223,9 @@ export default function BusinessForm({ existingBusiness = null }) {
       <div className="flex gap-3 p-4 rounded-xl" style={{ background: '#fffbeb', border: '1px solid #fde68a' }}>
         <AlertCircle size={18} style={{ color: '#d97706', flexShrink: 0, marginTop: 2 }} />
         <p style={{ fontSize: '0.875rem', color: '#92400e' }}>
-          New listings require admin approval before becoming publicly visible. This usually takes up to 24 hours.
+          {isAdminEdit
+            ? 'Admin Edit Mode: Core details will update directly without changing approval status or payment info.'
+            : 'New listings require admin approval before becoming publicly visible. This usually takes up to 24 hours.'}
         </p>
       </div>
 
@@ -647,6 +670,8 @@ export default function BusinessForm({ existingBusiness = null }) {
                   onChange={handleReceiptSelect}
                   className="sr-only"
                   aria-label="Upload payment screenshot"
+                  aria-required="true"
+                  required={!isEdit && paymentSettings?.isEnabled}
                 />
               </label>
             )}
@@ -664,7 +689,10 @@ export default function BusinessForm({ existingBusiness = null }) {
       <div className="flex gap-3 pt-2">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => {
+            if (onCancel) onCancel();
+            else router.back();
+          }}
           className="btn-secondary flex-1"
         >
           Cancel

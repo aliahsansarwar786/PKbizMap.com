@@ -4,7 +4,7 @@ const Review = require('../models/Review');
 const asyncHandler = require('../utils/asyncHandler');
 const cloudinary = require('../config/cloudinary');
 const escapeRegex = require('../utils/escapeRegex');
-const { validate, objectIdValidator } = require('../utils/validators');
+const { validate, objectIdValidator, updateBusinessValidator } = require('../utils/validators');
 
 // ─── GET /api/admin/dashboard ─────────────────────────────────────────────────
 // Admin: Application statistics
@@ -385,22 +385,27 @@ const deleteUser = [
 ];
 
 // ─── GET /api/admin/reviews ───────────────────────────────────────────────────
-// Admin: Get all reviews
+// Admin: Get all reviews with search and pagination
 const getAllReviews = asyncHandler(async (req, res) => {
-  const { page = 1, limit = 20 } = req.query;
+  const { page = 1, limit = 20, search } = req.query;
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
   const skip = (pageNum - 1) * limitNum;
 
+  const queryObj = {};
+  if (search && search.trim()) {
+    queryObj.comment = { $regex: escapeRegex(search.trim()), $options: 'i' };
+  }
+
   const [reviews, total] = await Promise.all([
-    Review.find()
+    Review.find(queryObj)
       .populate('user', 'name email')
       .populate('business', 'title')
       .sort('-createdAt')
       .skip(skip)
       .limit(limitNum)
       .lean(),
-    Review.countDocuments(),
+    Review.countDocuments(queryObj),
   ]);
 
   res.status(200).json({
@@ -408,6 +413,126 @@ const getAllReviews = asyncHandler(async (req, res) => {
     message: 'Reviews retrieved successfully.',
     data: {
       reviews,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(total / limitNum),
+        totalResults: total,
+        resultsPerPage: limitNum,
+      },
+    },
+  });
+});
+
+// ─── DELETE /api/admin/reviews/:id ───────────────────────────────────────────
+// Admin: Delete a review (triggers post findOneAndDelete hook to recalc ratings)
+const adminDeleteReview = [
+  ...objectIdValidator('id'),
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    const review = await Review.findByIdAndDelete(req.params.id);
+    if (!review) {
+      return res.status(404).json({ success: false, message: 'Review not found.' });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Review deleted successfully and ratings updated.',
+    });
+  }),
+];
+
+// ─── PATCH /api/admin/businesses/:id ─────────────────────────────────────────
+// Admin: Edit a business's core details without resetting approval or payment
+const adminUpdateBusiness = [
+  ...objectIdValidator('id'),
+  ...updateBusinessValidator,
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    const business = await Business.findById(req.params.id);
+    if (!business) {
+      return res.status(404).json({ success: false, message: 'Business not found.' });
+    }
+
+    // Allowed fields ONLY: title, description, category, email, phone, website, address
+    const allowedScalarFields = ['title', 'description', 'category', 'email', 'phone', 'website'];
+    allowedScalarFields.forEach((field) => {
+      if (req.body[field] !== undefined) {
+        business[field] = req.body[field];
+      }
+    });
+
+    if (req.body.address && typeof req.body.address === 'object') {
+      if (req.body.address.street !== undefined) business.address.street = req.body.address.street;
+      if (req.body.address.city !== undefined) business.address.city = req.body.address.city;
+      if (req.body.address.zipCode !== undefined) business.address.zipCode = req.body.address.zipCode;
+    } else {
+      if (req.body.street !== undefined) business.address.street = req.body.street;
+      if (req.body.city !== undefined) business.address.city = req.body.city;
+      if (req.body.zipCode !== undefined) business.address.zipCode = req.body.zipCode;
+    }
+
+    // FORBIDDEN fields: owner, isApproved, averageRating, reviewCount, paymentReceipt, paymentStatus, paymentAmount, images
+    // None of these are modified.
+    await business.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Business updated successfully by admin.',
+      data: { business },
+    });
+  }),
+];
+
+// ─── GET /api/admin/payments ──────────────────────────────────────────────────
+// Admin: Get payment history for listings with payment receipts
+const getPaymentHistory = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20, paymentStatus, search } = req.query;
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+  const skip = (pageNum - 1) * limitNum;
+
+  const queryObj = {
+    'paymentReceipt.url': { $exists: true, $ne: '' },
+  };
+
+  if (paymentStatus && ['none', 'pending', 'verified', 'rejected'].includes(paymentStatus)) {
+    queryObj.paymentStatus = paymentStatus;
+  }
+
+  if (search && search.trim()) {
+    const safeSearch = escapeRegex(search.trim());
+    const matchingUsers = await User.find({
+      $or: [
+        { name: { $regex: safeSearch, $options: 'i' } },
+        { email: { $regex: safeSearch, $options: 'i' } },
+      ],
+    }).select('_id');
+    const userIds = matchingUsers.map((u) => u._id);
+
+    queryObj.$or = [
+      { title: { $regex: safeSearch, $options: 'i' } },
+      { owner: { $in: userIds } },
+    ];
+  }
+
+  const [payments, total] = await Promise.all([
+    Business.find(queryObj)
+      .select('_id title owner paymentAmount paymentStatus paymentReceipt.url createdAt isApproved')
+      .populate('owner', 'name email')
+      .sort('-createdAt')
+      .skip(skip)
+      .limit(limitNum)
+      .lean(),
+    Business.countDocuments(queryObj),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    message: 'Payment history retrieved successfully.',
+    data: {
+      payments,
       pagination: {
         currentPage: pageNum,
         totalPages: Math.ceil(total / limitNum),
@@ -481,5 +606,8 @@ module.exports = {
   updateUserRole,
   deleteUser,
   getAllReviews,
+  adminDeleteReview,
+  adminUpdateBusiness,
+  getPaymentHistory,
   deleteBusinessReceipt,
 };

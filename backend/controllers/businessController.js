@@ -145,8 +145,20 @@ const createBusiness = [
     const PaymentSetting = require('../models/PaymentSetting');
     const paymentSetting = await PaymentSetting.getSettings();
     if (paymentSetting && paymentSetting.isEnabled) {
+      if (!receiptFile) {
+        // Clean up any uploaded business images to avoid orphaned files in Cloudinary
+        if (images.length > 0) {
+          await Promise.all(
+            images.map((img) => cloudinary.uploader.destroy(img.publicId).catch(() => {}))
+          );
+        }
+        return res.status(400).json({
+          success: false,
+          message: 'Payment screenshot is required to complete submission',
+        });
+      }
       paymentAmount = paymentSetting.feeAmount;
-      paymentStatus = receiptFile ? 'pending' : 'none';
+      paymentStatus = 'pending';
     }
 
     // --- PRO TIER LIMIT CHECK ---

@@ -12,6 +12,9 @@ const {
   updateUserRole,
   deleteUser,
   getAllReviews,
+  adminDeleteReview,
+  adminUpdateBusiness,
+  getPaymentHistory,
   deleteBusinessReceipt,
 } = require('../controllers/adminController');
 const { updatePaymentSettings, deletePaymentQrCode } = require('../controllers/settingController');
@@ -32,6 +35,9 @@ router.get('/dashboard', getDashboard);
 router.patch('/settings/payment', handleQrCodeUpload, updatePaymentSettings);
 router.delete('/settings/payment/qr', deletePaymentQrCode);
 
+// Payments History
+router.get('/payments', getPaymentHistory);
+
 // Users
 router.get('/users', getUsers);
 router.patch('/users/:id/role', updateUserRole);
@@ -41,6 +47,7 @@ router.delete('/users/:id', deleteUser);
 router.get('/businesses/pending', getPendingBusinesses);
 router.get('/businesses', getAllBusinesses);
 router.get('/businesses/:id', getAdminBusinessById);
+router.patch('/businesses/:id', adminUpdateBusiness);
 router.patch('/businesses/:id/approve', approveBusiness);
 router.patch('/businesses/:id/reject', rejectBusiness);
 router.delete('/businesses/:id', adminDeleteBusiness);
@@ -48,5 +55,6 @@ router.delete('/businesses/:id/receipt', deleteBusinessReceipt);
 
 // Reviews
 router.get('/reviews', getAllReviews);
+router.delete('/reviews/:id', adminDeleteReview);
 
 module.exports = router;
