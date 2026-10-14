@@ -3,7 +3,7 @@ import Link from 'next/link';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import HeroSearch from '@/components/home/HeroSearch';
-import BusinessDirectory from '@/components/business/BusinessDirectory';
+import BrowseSection from '@/components/business/BrowseSection';
 import {
   Search,
   ArrowRight,
@@ -172,20 +172,48 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ── Browse Directory (Country, City, Category Cards & Filter Bar) ─── */}
-        <section className="section bg-slate-50/60" aria-labelledby="browse-directory-heading">
+        {/* ── Browse Directory Section (Country, City & Category Cards with Images) ─── */}
+        <section className="section bg-slate-50/70" aria-labelledby="browse-directory-heading">
           <div className="container-max">
-            <div className="text-center mb-8">
-              <h2 id="browse-directory-heading" className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
-                Browse & Explore Directory
+            <div
+              style={{
+                textAlign: 'center',
+                maxWidth: '44rem',
+                margin: '0 auto 2.5rem auto',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <h2
+                id="browse-directory-heading"
+                style={{
+                  fontSize: '2rem',
+                  fontWeight: 800,
+                  color: '#0f172a',
+                  letterSpacing: '-0.025em',
+                  marginBottom: '0.625rem',
+                  textAlign: 'center',
+                }}
+              >
+                Browse Businesses by Location & Category
               </h2>
-              <p className="text-slate-500 max-w-xl mx-auto text-sm sm:text-base">
-                Discover verified businesses by country, city, or category with instant live filtering.
+              <p
+                style={{
+                  fontSize: '0.975rem',
+                  color: '#64748b',
+                  textAlign: 'center',
+                  margin: '0 auto',
+                  lineHeight: 1.6,
+                }}
+              >
+                Select a country below to explore local cities and discover verified businesses across top industries.
               </p>
             </div>
 
             <Suspense fallback={<div className="py-12 text-center text-slate-400">Loading directory...</div>}>
-              <BusinessDirectory />
+              <BrowseSection isHomePage={true} />
             </Suspense>
           </div>
         </section>
