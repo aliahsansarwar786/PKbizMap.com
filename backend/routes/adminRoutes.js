@@ -16,6 +16,7 @@ const {
   adminUpdateBusiness,
   getPaymentHistory,
   deleteBusinessReceipt,
+  migrateLocations,
 } = require('../controllers/adminController');
 const { updatePaymentSettings, deletePaymentQrCode } = require('../controllers/settingController');
 const { handleQrCodeUpload } = require('../middlewares/upload');
@@ -52,6 +53,7 @@ router.patch('/businesses/:id/approve', approveBusiness);
 router.patch('/businesses/:id/reject', rejectBusiness);
 router.delete('/businesses/:id', adminDeleteBusiness);
 router.delete('/businesses/:id/receipt', deleteBusinessReceipt);
+router.post('/migrate-locations', migrateLocations);
 
 // Reviews
 router.get('/reviews', getAllReviews);

@@ -20,32 +20,50 @@ const getBusinesses = asyncHandler(async (req, res) => {
     limit = 12,
   } = req.query;
 
-  const queryObj = { isApproved: true }; // Only approved businesses publicly
+  const andConditions = [{ isApproved: true }]; // Only approved businesses publicly
 
   // ─── Keyword search (name / description / service / city) ─────────────────
   if (keyword && keyword.trim()) {
     const safeKeyword = escapeRegex(keyword.trim());
-    queryObj.$or = [
-      { title: { $regex: safeKeyword, $options: 'i' } },
-      { description: { $regex: safeKeyword, $options: 'i' } },
-      { category: { $regex: safeKeyword, $options: 'i' } },
-      { 'address.city': { $regex: safeKeyword, $options: 'i' } },
-    ];
+    andConditions.push({
+      $or: [
+        { title: { $regex: safeKeyword, $options: 'i' } },
+        { description: { $regex: safeKeyword, $options: 'i' } },
+        { category: { $regex: safeKeyword, $options: 'i' } },
+        { 'address.city': { $regex: safeKeyword, $options: 'i' } },
+      ],
+    });
   }
 
-  // ─── Country filter ───────────────────────────────────────────────────────
+  // ─── Country filter with permanent Pakistan backward-compat fallback ──────
   if (country && country.trim() && country.trim().toLowerCase() !== 'all') {
-    queryObj['address.country'] = country.trim();
+    const c = country.trim();
+    if (c.toLowerCase() === 'pakistan') {
+      // Include explicit Pakistan OR legacy records where country is missing/null/empty
+      andConditions.push({
+        $or: [
+          { 'address.country': 'Pakistan' },
+          { 'address.country': { $exists: false } },
+          { 'address.country': null },
+          { 'address.country': '' },
+        ],
+      });
+    } else {
+      // For UAE, USA, or other countries: strict match only
+      andConditions.push({ 'address.country': c });
+    }
   }
 
   // ─── City filter ──────────────────────────────────────────────────────────
   if (city && city.trim() && city.trim().toLowerCase() !== 'all') {
-    queryObj['address.city'] = { $regex: escapeRegex(city.trim()), $options: 'i' };
+    andConditions.push({
+      'address.city': { $regex: `^${escapeRegex(city.trim())}$`, $options: 'i' },
+    });
   }
 
   // ─── Category filter ──────────────────────────────────────────────────────
   if (category && category.trim() && category.trim().toLowerCase() !== 'all') {
-    queryObj.category = category.trim();
+    andConditions.push({ category: category.trim() });
   }
 
   // ─── Rating filter (5, 4+, 3+) ────────────────────────────────────────────
@@ -53,9 +71,11 @@ const getBusinesses = asyncHandler(async (req, res) => {
     const cleanRating = rating.trim().replace('+', '');
     const numRating = parseFloat(cleanRating);
     if (!isNaN(numRating) && numRating > 0) {
-      queryObj.averageRating = { $gte: numRating };
+      andConditions.push({ averageRating: { $gte: numRating } });
     }
   }
+
+  const queryObj = andConditions.length > 1 ? { $and: andConditions } : andConditions[0];
 
   // ─── Pagination ───────────────────────────────────────────────────────────
   const pageNum = Math.max(1, parseInt(page, 10) || 1);
@@ -441,9 +461,56 @@ const getMyBusinesses = asyncHandler(async (req, res) => {
   });
 });
 
+// ─── GET /api/businesses/summary ──────────────────────────────────────────────
+// Public: Returns listing counts grouped by country, city, and category
+const getBusinessSummary = asyncHandler(async (req, res) => {
+  const businesses = await Business.find(
+    { isApproved: true },
+    'address.country address.city category'
+  ).lean();
+
+  const countries = { Pakistan: 0, UAE: 0, USA: 0 };
+  const cities = { Pakistan: {}, UAE: {}, USA: {} };
+  const categories = { Pakistan: {}, UAE: {}, USA: {} };
+
+  for (const b of businesses) {
+    let country = (b.address?.country || '').trim();
+    // Backward-compat fallback: if country is missing or invalid, treat as Pakistan
+    if (!country || !['Pakistan', 'UAE', 'USA'].includes(country)) {
+      country = 'Pakistan';
+    }
+
+    countries[country] = (countries[country] || 0) + 1;
+
+    const rawCity = (b.address?.city || '').trim();
+    if (rawCity) {
+      if (!cities[country]) cities[country] = {};
+      cities[country][rawCity] = (cities[country][rawCity] || 0) + 1;
+    }
+
+    const cat = (b.category || '').trim();
+    if (cat) {
+      if (!categories[country]) categories[country] = {};
+      categories[country][cat] = (categories[country][cat] || 0) + 1;
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    message: 'Business summary counts retrieved successfully.',
+    data: {
+      total: businesses.length,
+      countries,
+      cities,
+      categories,
+    },
+  });
+});
+
 module.exports = {
   getBusinesses,
   getBusiness,
+  getBusinessSummary,
   createBusiness,
   updateBusiness,
   deleteBusiness,

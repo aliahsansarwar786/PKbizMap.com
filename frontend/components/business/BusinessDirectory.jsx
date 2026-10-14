@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import BusinessCard from './BusinessCard';
+import BrowseSection from './BrowseSection';
 import { businessAPI } from '@/lib/api';
 import SearchableCombobox from '@/components/ui/SearchableCombobox';
 import { COUNTRIES, getCities } from '@/data/locations';
@@ -73,6 +74,7 @@ export default function BusinessDirectory() {
   const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [summary, setSummary] = useState(null);
 
   // Filters state initialized from URL query params
   const [keywordInput, setKeywordInput] = useState(searchParams.get('keyword') || '');
@@ -153,6 +155,17 @@ export default function BusinessDirectory() {
     fetchBusinesses();
   }, [fetchBusinesses]);
 
+  // Fetch summary counts for Country / City / Category cards
+  useEffect(() => {
+    businessAPI.getSummary()
+      .then((res) => {
+        if (res.data) setSummary(res.data);
+      })
+      .catch((err) => {
+        console.error('Failed to load summary counts:', err);
+      });
+  }, []);
+
   // Sync state to URL without full page reload
   useEffect(() => {
     const params = new URLSearchParams();
@@ -190,7 +203,19 @@ export default function BusinessDirectory() {
   return (
     <div className="section-sm">
       <div className="container-max">
-        {/* ── Filter Bar (Mandatory, above card section) ──────────────── */}
+        {/* ── Browse Section (Level 1: Country -> Level 2: City/Category -> Level 3: Grids) ── */}
+        <BrowseSection
+          selectedCountry={country}
+          selectedCity={city}
+          selectedCategory={category}
+          onSelectCountry={handleCountryChange}
+          onSelectCity={handleCityChange}
+          onSelectCategory={handleCategoryChange}
+          onClearAll={clearFilters}
+          summary={summary}
+        />
+
+        {/* ── Filter Bar (Mandatory, directly below Browse cards) ─────────────── */}
         <section
           className="rounded-2xl p-5 mb-8 shadow-sm transition-all"
           style={{
@@ -516,8 +541,7 @@ export default function BusinessDirectory() {
               No businesses found
             </h2>
             <p className="text-gray-500 max-w-md mx-auto mb-6 text-sm">
-              We couldn&apos;t find any businesses matching your filter criteria. Try
-              adjusting or clearing your filters to see more results.
+              No businesses found - try another city / category
             </p>
             <button
               type="button"

@@ -71,6 +71,24 @@ export default function BusinessForm({
     }
   }, [isEdit]);
 
+  useEffect(() => {
+    if (existingBusiness) {
+      setForm({
+        title: existingBusiness.title || '',
+        description: existingBusiness.description || '',
+        category: existingBusiness.category || '',
+        email: existingBusiness.email || '',
+        phone: existingBusiness.phone || '',
+        website: existingBusiness.website || '',
+        street: existingBusiness.address?.street || '',
+        country: existingBusiness.address?.country || 'Pakistan',
+        city: existingBusiness.address?.city || '',
+        zipCode: existingBusiness.address?.zipCode || '',
+      });
+      setExistingImages(existingBusiness.images || []);
+    }
+  }, [existingBusiness]);
+
   const set = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value });
     if (errors[field]) setErrors({ ...errors, [field]: '' });

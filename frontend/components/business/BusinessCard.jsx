@@ -83,7 +83,7 @@ export default function BusinessCard({ business }) {
         <div className="flex items-center gap-1.5 text-slate-500 mb-3">
           <MapPin size={14} className="shrink-0 text-slate-400" />
           <span className="text-sm font-medium truncate">
-            {[business.address?.city, business.address?.country].filter(Boolean).join(', ') || 'Location not specified'}
+            {[business.address?.city, business.address?.country || 'Pakistan'].filter(Boolean).join(', ') || 'Location not specified'}
           </span>
         </div>
 

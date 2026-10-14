@@ -1,9 +1,11 @@
+import { Suspense } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import HomeFeatured from '@/components/business/HomeFeatured';
 import TopListingsMarquee from '@/components/business/TopListingsMarquee';
 import HeroSearch from '@/components/home/HeroSearch';
+import BusinessDirectory from '@/components/business/BusinessDirectory';
 import {
   Search,
   ArrowRight,
@@ -172,42 +174,21 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ── Categories ─────────────────────────────────────────────────── */}
-        <section className="section" style={{ background: '#f9fafb' }} aria-labelledby="categories-heading">
+        {/* ── Browse Directory (Country, City, Category Cards & Filter Bar) ─── */}
+        <section className="section bg-slate-50/60" aria-labelledby="browse-directory-heading">
           <div className="container-max">
-            <div className="text-center mb-10">
-              <h2 id="categories-heading" style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem' }}>
-                Browse by Category
+            <div className="text-center mb-8">
+              <h2 id="browse-directory-heading" className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+                Browse & Explore Directory
               </h2>
-              <p style={{ color: '#6b7280' }}>Find exactly what you need from our growing list of categories</p>
+              <p className="text-slate-500 max-w-xl mx-auto text-sm sm:text-base">
+                Discover verified businesses by country, city, or category with instant live filtering.
+              </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {CATEGORIES.map(({ name, image }) => (
-                <Link
-                  key={name}
-                  href={`/businesses?category=${encodeURIComponent(name)}`}
-                  className="flex items-center gap-4 p-3 bg-white rounded-2xl border border-slate-200 hover:border-blue-400 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
-                >
-                  <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 relative bg-slate-100 shadow-sm">
-                    <img
-                      src={image}
-                      alt={name}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                  </div>
-                  <span className="font-semibold text-slate-800 text-[15px] group-hover:text-blue-600 transition-colors">
-                    {name}
-                  </span>
-                </Link>
-              ))}
-            </div>
-
-            <div className="text-center mt-8">
-              <Link href="/categories" className="btn-secondary">
-                View All Categories <ArrowRight size={15} />
-              </Link>
-            </div>
+            <Suspense fallback={<div className="py-12 text-center text-slate-400">Loading directory...</div>}>
+              <BusinessDirectory />
+            </Suspense>
           </div>
         </section>
 

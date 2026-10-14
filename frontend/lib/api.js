@@ -104,6 +104,7 @@ export const businessAPI = {
     ).toString();
     return api.get(`/businesses${qs ? `?${qs}` : ''}`);
   },
+  getSummary: () => api.get('/businesses/summary'),
   getById: (id) => api.get(`/businesses/${id}`),
   getMyBusinesses: (params = {}) => {
     const qs = new URLSearchParams(
@@ -171,6 +172,7 @@ export const adminAPI = {
   updatePaymentSettings: (data) => api.patch('/admin/settings/payment', data),
   deletePaymentQrCode: () => api.delete('/admin/settings/payment/qr'),
   deleteReceipt: (businessId) => api.delete(`/admin/businesses/${businessId}/receipt`),
+  migrateLocations: () => api.post('/admin/migrate-locations'),
 };
 
 // ─── Settings API ─────────────────────────────────────────────────────────────

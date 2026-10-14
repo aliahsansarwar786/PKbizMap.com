@@ -133,23 +133,41 @@ const getAllBusinesses = asyncHandler(async (req, res) => {
   const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
   const skip = (pageNum - 1) * limitNum;
 
-  const queryObj = {};
+  const andConditions = [];
   if (isApproved !== undefined && isApproved !== '') {
-    queryObj.isApproved = isApproved === 'true';
+    andConditions.push({ isApproved: isApproved === 'true' });
   }
   if (category && category.trim()) {
-    queryObj.category = category.trim();
+    andConditions.push({ category: category.trim() });
   }
   if (country && country.trim() && country.trim().toLowerCase() !== 'all') {
-    queryObj['address.country'] = country.trim();
+    const c = country.trim();
+    if (c.toLowerCase() === 'pakistan') {
+      // Include explicit Pakistan OR legacy records where country is missing/null/empty
+      andConditions.push({
+        $or: [
+          { 'address.country': 'Pakistan' },
+          { 'address.country': { $exists: false } },
+          { 'address.country': null },
+          { 'address.country': '' },
+        ],
+      });
+    } else {
+      // For UAE, USA, or other: strict match only
+      andConditions.push({ 'address.country': c });
+    }
   }
   if (search && search.trim()) {
     const safeSearch = escapeRegex(search.trim());
-    queryObj.$or = [
-      { title: { $regex: safeSearch, $options: 'i' } },
-      { 'address.city': { $regex: safeSearch, $options: 'i' } },
-    ];
+    andConditions.push({
+      $or: [
+        { title: { $regex: safeSearch, $options: 'i' } },
+        { 'address.city': { $regex: safeSearch, $options: 'i' } },
+      ],
+    });
   }
+
+  const queryObj = andConditions.length > 1 ? { $and: andConditions } : (andConditions[0] || {});
 
   const [businesses, total] = await Promise.all([
     Business.find(queryObj)
@@ -599,6 +617,49 @@ const deleteBusinessReceipt = [
   }),
 ];
 
+// ─── POST /api/admin/migrate-locations ───────────────────────────────────────
+// Admin: One-time migration to set address.country = 'Pakistan' & fix typos
+const migrateLocations = asyncHandler(async (req, res) => {
+  const locationsData = require('../data/locations.json');
+  const pakistanCities = (locationsData.Pakistan || []).map((c) => c.toLowerCase());
+
+  // 1. Fix typo 'multsn' -> 'Multan'
+  const typoResult = await Business.updateMany(
+    { 'address.city': { $regex: /^multsn$/i } },
+    { $set: { 'address.city': 'Multan' } }
+  );
+
+  // 2. Find businesses where address.country is missing / null / empty
+  const businesses = await Business.find({
+    $or: [
+      { 'address.country': { $exists: false } },
+      { 'address.country': null },
+      { 'address.country': '' },
+    ],
+  });
+
+  let updatedCount = 0;
+  for (const b of businesses) {
+    const city = (b.address?.city || '').trim().toLowerCase();
+    if (pakistanCities.includes(city) || city === 'multan' || city === 'multsn') {
+      b.address = b.address || {};
+      b.address.country = 'Pakistan';
+      if (city === 'multsn') b.address.city = 'Multan';
+      await b.save({ validateBeforeSave: false });
+      updatedCount++;
+    }
+  }
+
+  res.status(200).json({
+    success: true,
+    message: `Locations migration finished. Fixed ${typoResult.modifiedCount || 0} typo(s) and updated ${updatedCount} business(es).`,
+    data: {
+      typoFixedCount: typoResult.modifiedCount || 0,
+      countryUpdatedCount: updatedCount,
+    },
+  });
+});
+
 module.exports = {
   getDashboard,
   getUsers,
@@ -615,4 +676,5 @@ module.exports = {
   adminUpdateBusiness,
   getPaymentHistory,
   deleteBusinessReceipt,
+  migrateLocations,
 };

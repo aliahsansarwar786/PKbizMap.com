@@ -3,6 +3,7 @@ const router = express.Router();
 const {
   getBusinesses,
   getBusiness,
+  getBusinessSummary,
   createBusiness,
   updateBusiness,
   deleteBusiness,
@@ -17,6 +18,7 @@ const { handleBusinessImageUpload } = require('../middlewares/upload');
 router.get('/', getBusinesses);
 
 // IMPORTANT: specific routes BEFORE parameterized routes
+router.get('/summary', getBusinessSummary);
 router.get('/my', protect, getMyBusinesses);
 
 router.get('/:id', getBusiness);
