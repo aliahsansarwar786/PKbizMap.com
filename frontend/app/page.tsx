@@ -2,8 +2,6 @@ import { Suspense } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
-import HomeFeatured from '@/components/business/HomeFeatured';
-import TopListingsMarquee from '@/components/business/TopListingsMarquee';
 import HeroSearch from '@/components/home/HeroSearch';
 import BusinessDirectory from '@/components/business/BusinessDirectory';
 import {
@@ -192,36 +190,8 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* ── Top Listings Marquee ────────────────────────────────────────── */}
-        <TopListingsMarquee />
-
-        {/* ── Featured Businesses ─────────────────────────────────────────── */}
-        <section className="section" aria-labelledby="featured-heading">
-          <div className="container-max">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h2 id="featured-heading" style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1f2937' }}>
-                  Featured Businesses
-                </h2>
-                <p style={{ color: '#6b7280', marginTop: '0.25rem' }}>Handpicked and approved businesses</p>
-              </div>
-              <Link href="/businesses" className="btn-secondary hidden sm:flex">
-                View All <ArrowRight size={15} />
-              </Link>
-            </div>
-
-            <HomeFeatured />
-
-            <div className="text-center mt-8 sm:hidden">
-              <Link href="/businesses" className="btn-secondary">
-                View All Businesses <ArrowRight size={15} />
-              </Link>
-            </div>
-          </div>
-        </section>
-
         {/* ── How It Works ────────────────────────────────────────────────── */}
-        <section className="section" style={{ background: '#f9fafb' }} aria-labelledby="how-heading">
+        <section className="section" style={{ background: '#ffffff', borderTop: '1px solid #f1f5f9' }} aria-labelledby="how-heading">
           <div className="container-max">
             <div className="text-center mb-10">
               <h2 id="how-heading" style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.5rem' }}>
