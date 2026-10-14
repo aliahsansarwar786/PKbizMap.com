@@ -11,7 +11,8 @@ import {
   Users, Building2, Clock, CheckCircle2, Star,
   Check, X, Trash2, ChevronLeft, ChevronRight, Shield, Edit3,
   CreditCard, Eye, Image as ImageIcon, Save, ExternalLink,
-  DollarSign, CheckCircle, AlertCircle, Phone, ArrowUpRight
+  DollarSign, CheckCircle, AlertCircle, Phone, ArrowUpRight,
+  QrCode, Upload
 } from 'lucide-react';
 
 function StatCard({ label, value, icon: Icon, color = '#2563eb' }) {
@@ -41,17 +42,19 @@ export default function AdminDashboardClient() {
   const [loading, setLoading] = useState(false);
   const [statsLoading, setStatsLoading] = useState(true);
 
-  // Payment Gateway Settings
+  // Raast QR Payment Gateway Settings
   const [paymentConfig, setPaymentConfig] = useState({
     isEnabled: false,
     feeAmount: 500,
-    bankName: 'Mobilink Microfinance Bank (JazzCash)',
-    ibanNumber: '',
+    qrCode: { url: '', publicId: '' },
+    raastId: '',
     accountTitle: 'BizPrimeHub',
-    jazzCashNumber: '',
-    instructions: 'Send fee via Raast / 1Link IBFT to the JazzCash IBAN above and attach the transaction screenshot below.',
-    allowFreeSubmissionIfDisabled: true,
+    bankName: 'Raast Instant Payment',
+    instructions: 'Scan this Raast QR code with any banking or wallet app (JazzCash, EasyPaisa, SadaPay, NayaPay, HBL, Meezan, etc.), complete payment, and upload the transaction screenshot below.',
   });
+  const [qrCodeFile, setQrCodeFile] = useState(null);
+  const [qrCodePreview, setQrCodePreview] = useState(null);
+  const [deletingQrCode, setDeletingQrCode] = useState(false);
   const [loadingPaymentConfig, setLoadingPaymentConfig] = useState(false);
   const [savingPaymentConfig, setSavingPaymentConfig] = useState(false);
   const [selectedReceiptBiz, setSelectedReceiptBiz] = useState(null);
@@ -183,6 +186,45 @@ export default function AdminDashboardClient() {
   };
 
   // Payment Settings Handlers
+  const handleQrCodeFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('QR code image must be under 5MB.');
+      return;
+    }
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Only JPG, JPEG, PNG, and WebP are allowed.');
+      return;
+    }
+    setQrCodeFile(file);
+    if (qrCodePreview) URL.revokeObjectURL(qrCodePreview);
+    setQrCodePreview(URL.createObjectURL(file));
+  };
+
+  const handleDeleteQrCode = async () => {
+    if (!confirm('Are you sure you want to permanently delete the Raast QR Code image?')) return;
+    setDeletingQrCode(true);
+    try {
+      const res = await adminAPI.deletePaymentQrCode();
+      const s = res.data?.settings;
+      if (s) {
+        setPaymentConfig(s);
+      } else {
+        setPaymentConfig((prev) => ({ ...prev, qrCode: { url: '', publicId: '' } }));
+      }
+      if (qrCodePreview) URL.revokeObjectURL(qrCodePreview);
+      setQrCodeFile(null);
+      setQrCodePreview(null);
+      toast.success('Raast QR code image deleted successfully.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete QR code.');
+    } finally {
+      setDeletingQrCode(false);
+    }
+  };
+
   const handleSavePaymentSettings = async (e) => {
     e?.preventDefault();
     if (Number(paymentConfig.feeAmount) < 0) {
@@ -191,12 +233,28 @@ export default function AdminDashboardClient() {
     }
     setSavingPaymentConfig(true);
     try {
-      const res = await adminAPI.updatePaymentSettings(paymentConfig);
+      const formData = new FormData();
+      formData.append('isEnabled', paymentConfig.isEnabled);
+      formData.append('feeAmount', paymentConfig.feeAmount);
+      formData.append('raastId', paymentConfig.raastId || '');
+      formData.append('accountTitle', paymentConfig.accountTitle || '');
+      formData.append('bankName', paymentConfig.bankName || '');
+      formData.append('instructions', paymentConfig.instructions || '');
+      if (qrCodeFile) {
+        formData.append('qrCode', qrCodeFile);
+      }
+
+      const res = await adminAPI.updatePaymentSettings(formData);
       const s = res.data?.settings || res.data?.paymentSetting;
       if (s) {
         setPaymentConfig(s);
       }
-      toast.success('Payment settings updated successfully!');
+      if (qrCodePreview) {
+        URL.revokeObjectURL(qrCodePreview);
+        setQrCodePreview(null);
+      }
+      setQrCodeFile(null);
+      toast.success('Raast payment settings updated successfully!');
     } catch (err) {
       toast.error(err.message || 'Failed to update payment settings.');
     } finally {
@@ -209,10 +267,10 @@ export default function AdminDashboardClient() {
     const updated = { ...paymentConfig, isEnabled: nextState };
     setPaymentConfig(updated);
     try {
-      await adminAPI.updatePaymentSettings(updated);
+      await adminAPI.updatePaymentSettings({ isEnabled: nextState });
       toast.success(
         nextState
-          ? 'JazzCash payment requirement ENABLED for all new listings!'
+          ? 'Raast QR payment requirement ENABLED for all new listings!'
           : 'Payment requirement DISABLED — Business listings are now FREE!'
       );
     } catch (err) {
@@ -254,7 +312,7 @@ export default function AdminDashboardClient() {
     { id: 'users', label: 'Users' },
     {
       id: 'payment-settings',
-      label: 'JazzCash Settings',
+      label: 'Raast QR Settings',
       badge: paymentConfig.isEnabled ? 'ON' : 'OFF',
       badgeClass: paymentConfig.isEnabled ? 'badge-green' : 'badge-gray',
     },
@@ -270,7 +328,7 @@ export default function AdminDashboardClient() {
           </div>
           <div>
             <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#1f2937' }}>Admin Dashboard</h1>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Manage businesses, users, and JazzCash payment gateway</p>
+            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Manage businesses, users, and Raast QR payment gateway</p>
           </div>
         </div>
 
@@ -573,9 +631,9 @@ export default function AdminDashboardClient() {
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div>
                       <div className="flex items-center gap-2 mb-1.5">
-                        <CreditCard size={20} style={{ color: paymentConfig.isEnabled ? '#15803d' : '#6b7280' }} />
+                        <QrCode size={20} style={{ color: paymentConfig.isEnabled ? '#15803d' : '#6b7280' }} />
                         <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>
-                          JazzCash Business Listing Payment
+                          Raast QR Business Listing Payment
                         </h2>
                         <span
                           className={`badge ${paymentConfig.isEnabled ? 'badge-green' : 'badge-gray'}`}
@@ -586,7 +644,7 @@ export default function AdminDashboardClient() {
                       </div>
                       <p style={{ fontSize: '0.875rem', color: paymentConfig.isEnabled ? '#166534' : '#4b5563' }}>
                         {paymentConfig.isEnabled
-                          ? `Currently ON: Users must pay Rs. ${paymentConfig.feeAmount} via JazzCash & submit screenshot to list their business.`
+                          ? `Currently ON: Users must scan your Raast QR Code, pay Rs. ${paymentConfig.feeAmount} & submit screenshot to list their business.`
                           : 'Currently OFF: Business submissions are 100% FREE. No payment or screenshot is required from users.'}
                       </p>
                     </div>
@@ -693,61 +751,110 @@ export default function AdminDashboardClient() {
                     </div>
                   </div>
 
-                  {/* JazzCash IBAN & Bank Information */}
-                  <div className="card p-5 space-y-4">
+                  {/* Raast QR Code & Account Information Card */}
+                  <div className="card p-5 space-y-5">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
-                          JazzCash IBAN &amp; Bank Transfer Details
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }} className="flex items-center gap-2">
+                          <QrCode size={18} className="text-emerald-600" />
+                          Raast QR Code &amp; Account Details
                         </h3>
                         <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                          Using IBAN keeps your personal mobile number 100% private and protected.
+                          Upload your official Raast QR Code. Users across Pakistan can scan it via JazzCash, EasyPaisa, SadaPay, or any Mobile Banking app.
                         </p>
                       </div>
                       <span className="badge badge-green" style={{ fontSize: '0.75rem', padding: '3px 8px' }}>
-                        🔒 Safe &amp; Recommended
+                        ⚡ Raast P2M / Instant Pay
                       </span>
                     </div>
 
+                    {/* QR Code Upload / Preview Box */}
+                    <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
+                      <label className="form-label mb-2 block font-semibold text-gray-800">
+                        Raast QR Code Image <span style={{ color: '#dc2626' }}>*</span>
+                      </label>
+
+                      {qrCodePreview || paymentConfig.qrCode?.url ? (
+                        <div className="flex flex-col sm:flex-row items-center gap-5 p-3 bg-white rounded-xl border border-gray-200">
+                          <div className="relative w-36 h-36 rounded-lg overflow-hidden border border-gray-200 bg-white flex items-center justify-center p-2 flex-shrink-0 shadow-xs">
+                            <img
+                              src={qrCodePreview || paymentConfig.qrCode?.url}
+                              alt="Raast QR Code"
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+
+                          <div className="flex-1 space-y-2 text-center sm:text-left">
+                            <div className="flex items-center justify-center sm:justify-start gap-2">
+                              <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>
+                                ✓ QR Image Active
+                              </span>
+                              {qrCodeFile && (
+                                <span className="badge badge-blue" style={{ fontSize: '0.7rem' }}>
+                                  New file selected (Click Save)
+                                </span>
+                              )}
+                            </div>
+                            <p style={{ fontSize: '0.8125rem', color: '#4b5563' }}>
+                              This QR code will be displayed to users in a scanner frame when adding a business.
+                            </p>
+
+                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
+                              <label
+                                className="btn-secondary text-xs px-3 py-1.5 cursor-pointer flex items-center gap-1.5 hover:bg-gray-100"
+                                title="Upload a new QR code image"
+                              >
+                                <Upload size={13} />
+                                <span>Change / Replace QR</span>
+                                <input
+                                  type="file"
+                                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                                  onChange={handleQrCodeFileChange}
+                                  className="hidden"
+                                />
+                              </label>
+
+                              {paymentConfig.qrCode?.url && (
+                                <button
+                                  type="button"
+                                  onClick={handleDeleteQrCode}
+                                  disabled={deletingQrCode}
+                                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors border border-red-200"
+                                  title="Delete Raast QR Code image"
+                                >
+                                  <Trash2 size={13} />
+                                  {deletingQrCode ? 'Deleting...' : 'Delete QR Image'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-emerald-500 rounded-xl p-6 bg-white cursor-pointer transition-all hover:bg-emerald-50/20 group text-center">
+                          <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform mb-2">
+                            <Upload size={22} />
+                          </div>
+                          <p className="text-sm font-semibold text-gray-800">
+                            Click or drag to upload Raast QR Code image
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Supports PNG, JPG, JPEG, WebP (Max 5MB)
+                          </p>
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/jpg,image/webp"
+                            onChange={handleQrCodeFileChange}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+
+                      <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>
+                        💡 Raast QR code apne bank ya JazzCash/Easypaisa/SadaPay app se download ya screenshot le kar yahan upload karein.
+                      </p>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* JazzCash IBAN Number */}
-                      <div className="md:col-span-2">
-                        <label className="form-label flex items-center justify-between flex-wrap gap-1">
-                          <span>
-                            JazzCash IBAN Number (24 characters) <span style={{ color: '#dc2626' }}>*</span>
-                          </span>
-                          <span style={{ fontSize: '0.75rem', color: '#059669', fontWeight: 600 }}>
-                            (Personal number hide rehta hai)
-                          </span>
-                        </label>
-                        <input
-                          type="text"
-                          value={paymentConfig.ibanNumber || ''}
-                          onChange={(e) => setPaymentConfig({ ...paymentConfig, ibanNumber: e.target.value.toUpperCase() })}
-                          className="form-input font-mono tracking-wider text-base"
-                          placeholder="e.g. PK36MOBK0000000000000000"
-                          required
-                        />
-                        <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.35rem' }}>
-                          💡 JazzCash app me <strong>&ldquo;My Account&rdquo; &rarr; &ldquo;Raast ID / IBAN&rdquo;</strong> se apna 24-digit IBAN copy kar ke yahan paste karein. Users kisi bhi bank ya JazzCash app se is par payment bhej sakein gay.
-                        </p>
-                      </div>
-
-                      {/* Bank Name */}
-                      <div>
-                        <label className="form-label">
-                          Bank Name <span style={{ color: '#dc2626' }}>*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={paymentConfig.bankName || 'Mobilink Microfinance Bank (JazzCash)'}
-                          onChange={(e) => setPaymentConfig({ ...paymentConfig, bankName: e.target.value })}
-                          className="form-input"
-                          placeholder="Mobilink Microfinance Bank (JazzCash)"
-                          required
-                        />
-                      </div>
-
                       {/* Account Title */}
                       <div>
                         <label className="form-label">
@@ -758,12 +865,31 @@ export default function AdminDashboardClient() {
                           value={paymentConfig.accountTitle || ''}
                           onChange={(e) => setPaymentConfig({ ...paymentConfig, accountTitle: e.target.value })}
                           className="form-input"
-                          placeholder="e.g. BizPrimeHub"
+                          placeholder="e.g. BizPrimeHub or Your Name"
                           required
                         />
                       </div>
+
+                      {/* Raast ID / Number (Optional) */}
+                      <div>
+                        <label className="form-label flex items-center justify-between">
+                          <span>Raast ID / Registered Number (Optional)</span>
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Optional</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={paymentConfig.raastId || ''}
+                          onChange={(e) => setPaymentConfig({ ...paymentConfig, raastId: e.target.value })}
+                          className="form-input font-mono"
+                          placeholder="e.g. 03001234567"
+                        />
+                        <p style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                          Users can also copy this Raast ID if their camera fails.
+                        </p>
+                      </div>
                     </div>
 
+                    {/* Instructions */}
                     <div>
                       <label className="form-label">
                         Payment Instructions for Users (Optional)
@@ -773,7 +899,7 @@ export default function AdminDashboardClient() {
                         value={paymentConfig.instructions || ''}
                         onChange={(e) => setPaymentConfig({ ...paymentConfig, instructions: e.target.value })}
                         className="form-input"
-                        placeholder="e.g. Please transfer the fee to the JazzCash IBAN above and upload the transaction screenshot."
+                        placeholder="e.g. Scan the Raast QR Code with any banking app, send the exact fee amount, and upload the transaction screenshot."
                       />
                     </div>
                   </div>
@@ -841,7 +967,7 @@ export default function AdminDashboardClient() {
             <div className="flex items-center justify-between p-4 border-b" style={{ borderColor: '#e5e7eb' }}>
               <div>
                 <h3 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>
-                  JazzCash Payment Screenshot
+                  Raast Payment Screenshot
                 </h3>
                 <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
                   {selectedReceiptBiz.title} • Fee: Rs. {selectedReceiptBiz.paymentAmount || 500}

@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { businessAPI, settingsAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
-import { Upload, X, AlertCircle, CreditCard, Copy, Check, FileCheck } from 'lucide-react';
+import { Upload, X, AlertCircle, CreditCard, Copy, Check, FileCheck, QrCode, Download } from 'lucide-react';
 
 const CATEGORIES = [
   'IT', 'Real Estate', 'Restaurant', 'Healthcare', 'Education',
@@ -39,22 +39,16 @@ export default function BusinessForm({ existingBusiness = null }) {
   const [paymentSettings, setPaymentSettings] = useState(null);
   const [paymentReceiptFile, setPaymentReceiptFile] = useState(null);
   const [paymentReceiptPreview, setPaymentReceiptPreview] = useState(null);
-  const [copiedIban, setCopiedIban] = useState(false);
+  const [copiedRaastId, setCopiedRaastId] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
-  const formatIban = (iban) => {
-    if (!iban) return '';
-    return iban.replace(/\s+/g, '').replace(/(.{4})/g, '$1 ').trim();
-  };
-
-  const handleCopyIban = (ibanText) => {
-    if (!ibanText) return;
-    const clean = ibanText.replace(/\s+/g, '');
-    navigator.clipboard.writeText(clean);
-    setCopiedIban(true);
-    toast.success('JazzCash IBAN copied to clipboard!');
-    setTimeout(() => setCopiedIban(false), 2500);
+  const handleCopyRaastId = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text.trim());
+    setCopiedRaastId(true);
+    toast.success('Raast ID copied to clipboard!');
+    setTimeout(() => setCopiedRaastId(false), 2500);
   };
 
   useEffect(() => {
@@ -456,107 +450,134 @@ export default function BusinessForm({ existingBusiness = null }) {
         )}
       </section>
 
-      {/* JazzCash Payment Section (When Enabled by Admin) */}
+      {/* Raast QR Code Payment Section (When Enabled by Admin) */}
       {!isEdit && paymentSettings?.isEnabled && (
         <section
           aria-label="Payment Information"
-          className="p-5 rounded-2xl relative overflow-hidden space-y-4"
+          className="p-5 sm:p-6 rounded-2xl relative overflow-hidden space-y-4 shadow-sm"
           style={{
-            background: 'linear-gradient(145deg, #fff9f0 0%, #fff2e0 100%)',
-            border: '1.5px solid #fed7aa',
+            background: 'linear-gradient(145deg, #f0fdf4 0%, #e6f7ec 100%)',
+            border: '2px solid #86efac',
           }}
         >
-          <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b" style={{ borderColor: '#fed7aa' }}>
+          {/* Header */}
+          <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b" style={{ borderColor: '#bbf7d0' }}>
             <div className="flex items-center gap-2.5">
               <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center font-bold text-white text-xs shadow-sm"
-                style={{ background: '#d97706' }}
+                className="w-10 h-10 rounded-xl flex items-center justify-center font-bold text-white shadow-sm"
+                style={{ background: '#16a34a' }}
               >
-                JC
+                <QrCode size={22} />
               </div>
               <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#9a3412' }}>
-                  JazzCash Listing Payment
-                </h3>
-                <p style={{ fontSize: '0.75rem', color: '#c2410c' }}>
-                  Please complete payment to submit your listing for review
+                <div className="flex items-center gap-2">
+                  <h3 style={{ fontSize: '1.05rem', fontWeight: 700, color: '#14532d' }}>
+                    Raast QR Code Payment
+                  </h3>
+                  <span className="badge badge-green" style={{ fontSize: '0.68rem', padding: '1px 6px' }}>
+                    Instant Transfer
+                  </span>
+                </div>
+                <p style={{ fontSize: '0.775rem', color: '#166534' }}>
+                  Scan with ANY Banking or Wallet App (EasyPaisa, JazzCash, SadaPay, HBL, Meezan, etc.)
                 </p>
               </div>
             </div>
             <div
-              className="px-3 py-1.5 rounded-full font-bold text-sm tracking-wide shadow-sm"
-              style={{ background: '#ea580c', color: '#ffffff' }}
+              className="px-3.5 py-1.5 rounded-full font-bold text-sm tracking-wide shadow-sm"
+              style={{ background: '#16a34a', color: '#ffffff' }}
             >
               Fee: Rs. {paymentSettings.feeAmount}
             </div>
           </div>
 
-          {/* Secure JazzCash IBAN Details */}
-          <div className="space-y-3">
-            {/* Primary IBAN Card */}
-            <div
-              className="p-4 rounded-xl space-y-2.5"
-              style={{ background: '#ffffff', border: '1.5px solid #fed7aa', boxShadow: '0 1px 3px rgba(0,0,0,0.03)' }}
-            >
-              <div className="flex items-center justify-between flex-wrap gap-1">
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9a3412', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  JazzCash IBAN Number (Raast / 1Link IBFT)
-                </span>
-                <span className="badge badge-green" style={{ fontSize: '0.68rem', padding: '1px 6px' }}>
-                  Official Bank Transfer
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between flex-wrap gap-2 p-2.5 rounded-xl" style={{ background: '#fff7ed', border: '1px solid #ffedd5' }}>
-                <span style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937', letterSpacing: '1px', fontFamily: 'monospace' }}>
-                  {formatIban(paymentSettings.ibanNumber) || 'PK36 MOBK 0000 0000 0000 0000'}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => handleCopyIban(paymentSettings.ibanNumber || 'PK36MOBK0000000000000000')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all hover:scale-105"
-                  style={{
-                    background: copiedIban ? '#dcfce7' : '#ea580c',
-                    color: copiedIban ? '#15803d' : '#ffffff',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
-                  aria-label="Copy JazzCash IBAN Number"
+          {/* Raast QR Code Display Card */}
+          <div className="bg-white p-5 rounded-2xl border border-green-200 shadow-xs flex flex-col md:flex-row items-center gap-6">
+            {/* QR Code Graphic Frame */}
+            {paymentSettings.qrCode?.url ? (
+              <div className="flex flex-col items-center gap-2 shrink-0">
+                <div className="relative p-3 bg-white rounded-2xl border-2 border-green-500 shadow-md">
+                  {/* Scanner corner markers */}
+                  <div className="absolute top-1 left-1 w-3 h-3 border-t-2 border-l-2 border-green-600 rounded-tl"></div>
+                  <div className="absolute top-1 right-1 w-3 h-3 border-t-2 border-r-2 border-green-600 rounded-tr"></div>
+                  <div className="absolute bottom-1 left-1 w-3 h-3 border-b-2 border-l-2 border-green-600 rounded-bl"></div>
+                  <div className="absolute bottom-1 right-1 w-3 h-3 border-b-2 border-r-2 border-green-600 rounded-br"></div>
+                  
+                  <img
+                    src={paymentSettings.qrCode.url}
+                    alt="Raast Official Payment QR Code"
+                    className="w-48 h-48 sm:w-56 sm:h-56 object-contain rounded-lg"
+                  />
+                </div>
+                <a
+                  href={paymentSettings.qrCode.url}
+                  download="raast-payment-qr.png"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-green-700 hover:text-green-800 transition-colors mt-1"
                 >
-                  {copiedIban ? <Check size={14} /> : <Copy size={14} />}
-                  {copiedIban ? 'IBAN Copied!' : 'Copy IBAN'}
-                </button>
+                  <Download size={13} /> Save QR to Gallery
+                </a>
+              </div>
+            ) : (
+              <div className="w-48 h-48 rounded-xl bg-gray-50 flex flex-col items-center justify-center text-center p-3 border border-dashed border-gray-300 shrink-0">
+                <QrCode size={44} className="text-gray-400 mb-2" />
+                <p className="text-xs text-gray-500 font-medium">Raast QR Code will appear here once uploaded by Admin.</p>
+              </div>
+            )}
+
+            {/* Raast Payment Details & Step Instructions */}
+            <div className="flex-1 space-y-3 w-full">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100">
+                  <span className="text-[0.7rem] font-bold text-emerald-800 uppercase tracking-wider block">
+                    Account Title
+                  </span>
+                  <span className="text-sm font-bold text-gray-900 block mt-0.5">
+                    {paymentSettings.accountTitle || 'BizPrimeHub'}
+                  </span>
+                </div>
+
+                <div className="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100">
+                  <span className="text-[0.7rem] font-bold text-emerald-800 uppercase tracking-wider block">
+                    Payment Gateway
+                  </span>
+                  <span className="text-sm font-bold text-gray-900 block mt-0.5">
+                    {paymentSettings.bankName || 'Raast Instant Payment'}
+                  </span>
+                </div>
               </div>
 
-              <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0 }}>
-                💡 <strong>How to Pay:</strong> Open JazzCash, Easypaisa, Nayapay, Sadapay, or Any Bank App &rarr; Select <strong>Send Money / Bank Transfer</strong> &rarr; Select <strong>Mobilink Microfinance Bank (JazzCash)</strong> &rarr; Paste this IBAN.
-              </p>
-            </div>
+              {paymentSettings.raastId && (
+                <div className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-200">
+                  <div>
+                    <span className="text-[0.7rem] font-bold text-gray-500 uppercase tracking-wider block">
+                      Raast ID (Optional)
+                    </span>
+                    <span className="text-sm font-bold text-gray-800 font-mono">
+                      {paymentSettings.raastId}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyRaastId(paymentSettings.raastId)}
+                    className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors"
+                  >
+                    {copiedRaastId ? <Check size={12} /> : <Copy size={12} />}
+                    {copiedRaastId ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              )}
 
-            {/* Bank Name & Title Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div
-                className="p-3.5 rounded-xl flex flex-col justify-between"
-                style={{ background: '#ffffff', border: '1px solid #fed7aa' }}
-              >
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9a3412', textTransform: 'uppercase' }}>
-                  Bank Name
-                </span>
-                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1f2937', marginTop: '0.25rem' }}>
-                  {paymentSettings.bankName || 'Mobilink Microfinance Bank (JazzCash)'}
-                </span>
-              </div>
-
-              <div
-                className="p-3.5 rounded-xl flex flex-col justify-between"
-                style={{ background: '#ffffff', border: '1px solid #fed7aa' }}
-              >
-                <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9a3412', textTransform: 'uppercase' }}>
-                  Account Title
-                </span>
-                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#1f2937', marginTop: '0.25rem' }}>
-                  {paymentSettings.accountTitle || 'BizPrimeHub'}
-                </span>
+              {/* Instructions steps */}
+              <div className="text-xs text-emerald-950 bg-emerald-50/80 p-3 rounded-xl border border-emerald-100 space-y-1 leading-relaxed">
+                <p className="font-bold text-emerald-900 mb-1">📲 Payment Steps:</p>
+                <ol className="list-decimal pl-4 space-y-0.5 text-emerald-800">
+                  <li>Apni banking app (JazzCash, EasyPaisa, SadaPay, HBL, Meezan, etc.) open karein.</li>
+                  <li><strong>&ldquo;Raast QR&rdquo; / &ldquo;Scan QR&rdquo;</strong> select kar ke yeh QR code scan karein (ya gallery se choose karein).</li>
+                  <li>Amount <strong>Rs. {paymentSettings.feeAmount}</strong> verify kar ke transfer confirm karein.</li>
+                  <li>Payment ka screenshot le kar neechay attach karein.</li>
+                </ol>
               </div>
             </div>
           </div>

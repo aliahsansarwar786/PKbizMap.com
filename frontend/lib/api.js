@@ -159,6 +159,7 @@ export const adminAPI = {
   getBusinessById: (id) => api.get(`/admin/businesses/${id}`),
   getPaymentSettings: () => api.get('/settings/payment'),
   updatePaymentSettings: (data) => api.patch('/admin/settings/payment', data),
+  deletePaymentQrCode: () => api.delete('/admin/settings/payment/qr'),
   deleteReceipt: (businessId) => api.delete(`/admin/businesses/${businessId}/receipt`),
 };
 

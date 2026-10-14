@@ -14,7 +14,8 @@ const {
   getAllReviews,
   deleteBusinessReceipt,
 } = require('../controllers/adminController');
-const { updatePaymentSettings } = require('../controllers/settingController');
+const { updatePaymentSettings, deletePaymentQrCode } = require('../controllers/settingController');
+const { handleQrCodeUpload } = require('../middlewares/upload');
 const { protect } = require('../middlewares/auth');
 const { authorize } = require('../middlewares/authorize');
 
@@ -27,8 +28,9 @@ router.use(authorize('admin'));
 // Dashboard
 router.get('/dashboard', getDashboard);
 
-// Payment Settings
-router.patch('/settings/payment', updatePaymentSettings);
+// Payment Settings (Raast QR Code & Gateway)
+router.patch('/settings/payment', handleQrCodeUpload, updatePaymentSettings);
+router.delete('/settings/payment/qr', deletePaymentQrCode);
 
 // Users
 router.get('/users', getUsers);

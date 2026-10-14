@@ -11,12 +11,19 @@ const paymentSettingSchema = new mongoose.Schema(
       default: 500, // PKR
       min: [0, 'Fee amount cannot be negative'],
     },
-    bankName: {
-      type: String,
-      default: 'Mobilink Microfinance Bank (JazzCash)',
-      trim: true,
+    qrCode: {
+      url: {
+        type: String,
+        default: '',
+        trim: true,
+      },
+      publicId: {
+        type: String,
+        default: '',
+        trim: true,
+      },
     },
-    ibanNumber: {
+    raastId: {
       type: String,
       default: '',
       trim: true,
@@ -26,15 +33,14 @@ const paymentSettingSchema = new mongoose.Schema(
       default: 'BizPrimeHub',
       trim: true,
     },
-    // Optional mobile number kept for legacy compatibility if admin wants to show it
-    jazzCashNumber: {
+    bankName: {
       type: String,
-      default: '',
+      default: 'Raast Instant Payment',
       trim: true,
     },
     instructions: {
       type: String,
-      default: 'Send payment via Raast / 1Link IBFT to the JazzCash IBAN above, then upload transaction screenshot below.',
+      default: 'Scan this Raast QR code with any banking or wallet app (JazzCash, EasyPaisa, SadaPay, NayaPay, HBL, Meezan, etc.), complete payment, and upload the transaction screenshot below.',
       trim: true,
       maxlength: 500,
     },
