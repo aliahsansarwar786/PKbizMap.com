@@ -5,103 +5,26 @@ import { useRouter } from 'next/navigation';
 import { businessAPI } from '@/lib/api';
 import { COUNTRIES, getCities } from '@/data/locations';
 import {
-  MapPin,
-  Tag,
   ChevronLeft,
   RotateCcw,
   Search,
   Check,
   ArrowRight,
   ExternalLink,
-  Sparkles,
-  Monitor,
-  Home,
-  UtensilsCrossed,
-  Heart,
-  GraduationCap,
-  Car,
-  ShoppingBag,
-  HardHat,
-  DollarSign,
-  Plane,
-  Briefcase,
-  Layers,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
-const CATEGORIES = [
-  'IT',
-  'Real Estate',
-  'Restaurant',
-  'Healthcare',
-  'Education',
-  'Automotive',
-  'Retail',
-  'Construction',
-  'Finance',
-  'Beauty',
-  'Travel',
-  'Professional Services',
-  'Other',
-];
-
-const CATEGORY_DETAILS = {
-  IT: {
-    image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&q=80',
-    icon: Monitor,
-  },
-  'Real Estate': {
-    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500&q=80',
-    icon: Home,
-  },
-  Restaurant: {
-    image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500&q=80',
-    icon: UtensilsCrossed,
-  },
-  Healthcare: {
-    image: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=500&q=80',
-    icon: Heart,
-  },
-  Education: {
-    image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=500&q=80',
-    icon: GraduationCap,
-  },
-  Automotive: {
-    image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=500&q=80',
-    icon: Car,
-  },
-  Retail: {
-    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=500&q=80',
-    icon: ShoppingBag,
-  },
-  Construction: {
-    image: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80',
-    icon: HardHat,
-  },
-  Finance: {
-    image: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500&q=80',
-    icon: DollarSign,
-  },
-  Beauty: {
-    image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500&q=80',
-    icon: Sparkles,
-  },
-  Travel: {
-    image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=500&q=80',
-    icon: Plane,
-  },
-  'Professional Services': {
-    image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=500&q=80',
-    icon: Briefcase,
-  },
-  Other: {
-    image: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=500&q=80',
-    icon: Layers,
-  },
+// Verified working Unsplash images (Status 200 OK audited)
+const COUNTRY_FALLBACKS = {
+  Pakistan: 'https://images.unsplash.com/photo-1627894483216-2138af692e32?w=400&q=80',
+  UAE: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&q=80',
+  USA: 'https://images.unsplash.com/photo-1485738422979-f5c462d49f74?w=400&q=80',
 };
 
 function PakistanFlag() {
   return (
-    <svg viewBox="0 0 900 600" className="w-6 h-4 rounded-xs shadow-sm inline-block" aria-hidden="true">
+    <svg viewBox="0 0 900 600" className="w-5 h-3.5 rounded-xs shadow-xs inline-block shrink-0" aria-hidden="true">
       <rect width="900" height="600" fill="#01411c" />
       <rect width="225" height="600" fill="#ffffff" />
       <circle cx="562.5" cy="300" r="180" fill="#ffffff" />
@@ -113,7 +36,7 @@ function PakistanFlag() {
 
 function UAEFlag() {
   return (
-    <svg viewBox="0 0 1200 600" className="w-6 h-4 rounded-xs shadow-sm inline-block" aria-hidden="true">
+    <svg viewBox="0 0 1200 600" className="w-5 h-3.5 rounded-xs shadow-xs inline-block shrink-0" aria-hidden="true">
       <rect width="1200" height="200" y="0" fill="#00732f" />
       <rect width="1200" height="200" y="200" fill="#ffffff" />
       <rect width="1200" height="200" y="400" fill="#000000" />
@@ -124,7 +47,7 @@ function UAEFlag() {
 
 function USAFlag() {
   return (
-    <svg viewBox="0 0 7410 3900" className="w-6 h-4 rounded-xs shadow-sm inline-block" aria-hidden="true">
+    <svg viewBox="0 0 7410 3900" className="w-5 h-3.5 rounded-xs shadow-xs inline-block shrink-0" aria-hidden="true">
       <rect width="7410" height="3900" fill="#b22234" />
       <path d="M0,450H7410M0,1050H7410M0,1650H7410M0,2250H7410M0,2850H7410M0,3450H7410" stroke="#fff" strokeWidth="300" />
       <rect width="2964" height="2100" fill="#3c3b6e" />
@@ -136,21 +59,112 @@ const COUNTRY_DETAILS = {
   Pakistan: {
     name: 'Pakistan',
     FlagComponent: PakistanFlag,
-    image: 'https://images.unsplash.com/photo-1588718904583-62b77dce7803?w=800&q=80',
-    subtitle: 'Lahore, Karachi, Islamabad, Multan & 168+ cities',
+    image: 'https://images.unsplash.com/photo-1627894483216-2138af692e32?w=400&q=80',
+    description: 'Explore verified businesses across Lahore, Karachi, Islamabad, Multan and 168+ cities.',
   },
   UAE: {
     name: 'UAE',
     FlagComponent: UAEFlag,
-    image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&q=80',
-    subtitle: 'Dubai, Abu Dhabi, Sharjah & 40+ cities',
+    image: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&q=80',
+    description: 'Discover companies in Dubai, Abu Dhabi, Sharjah, Ajman and across the United Arab Emirates.',
   },
   USA: {
     name: 'USA',
     FlagComponent: USAFlag,
-    image: 'https://images.unsplash.com/photo-1506146332389-18140dc7b2fb?w=800&q=80',
-    subtitle: 'New York, Los Angeles, Chicago & 277+ cities',
+    image: 'https://images.unsplash.com/photo-1506146332389-18140dc7b2fb?w=400&q=80',
+    description: 'Find local businesses across New York, California, Texas, Illinois and 270+ cities.',
   },
+};
+
+// Exact 13 categories with exact requested descriptions and verified working Unsplash images
+const CATEGORIES_LIST = [
+  {
+    name: 'IT',
+    description: 'Software, web development, IT services and tech companies',
+    image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80',
+  },
+  {
+    name: 'Real Estate',
+    description: 'Property listings, agents, and real estate services',
+    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&q=80',
+  },
+  {
+    name: 'Restaurant',
+    description: 'Restaurants, cafes, food delivery, and catering',
+    image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&q=80',
+  },
+  {
+    name: 'Healthcare',
+    description: 'Clinics, hospitals, doctors, dentists, and wellness',
+    image: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=400&q=80',
+  },
+  {
+    name: 'Education',
+    description: 'Schools, tutoring, courses, and educational services',
+    image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400&q=80',
+  },
+  {
+    name: 'Automotive',
+    description: 'Car dealers, repair shops, and auto services',
+    image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400&q=80',
+  },
+  {
+    name: 'Retail',
+    description: 'Shops, stores, boutiques, and online retail',
+    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&q=80',
+  },
+  {
+    name: 'Finance',
+    description: 'Banks, accountants, financial advisors, and insurance',
+    image: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400&q=80',
+  },
+  {
+    name: 'Beauty',
+    description: 'Salons, spas, barbershops, and beauty services',
+    image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&q=80',
+  },
+  {
+    name: 'Travel',
+    description: 'Travel agencies, tours, hotels, and transport',
+    image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400&q=80',
+  },
+  {
+    name: 'Professional Services',
+    description: 'Lawyers, consultants, agencies, and professional services',
+    image: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?w=400&q=80',
+  },
+  {
+    name: 'Construction',
+    description: 'Builders, contractors, and construction services',
+    image: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&q=80',
+  },
+  {
+    name: 'Other',
+    description: 'Other local businesses and services',
+    image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=400&q=80',
+  },
+];
+
+// Verified major city images
+const CITY_IMAGES = {
+  Lahore: 'https://images.unsplash.com/photo-1627894483216-2138af692e32?w=400&q=80',
+  Karachi: 'https://images.unsplash.com/photo-1608667508764-33cf0726b13a?w=400&q=80',
+  Islamabad: 'https://images.unsplash.com/photo-1567157577867-05ccb1388e66?w=400&q=80',
+  Multan: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=400&q=80',
+  Rawalpindi: 'https://images.unsplash.com/photo-1567157577867-05ccb1388e66?w=400&q=80',
+  Faisalabad: 'https://images.unsplash.com/photo-1609137144813-7d9921338f24?w=400&q=80',
+  Peshawar: 'https://images.unsplash.com/photo-1627894483216-2138af692e32?w=400&q=80',
+  Quetta: 'https://images.unsplash.com/photo-1609137144813-7d9921338f24?w=400&q=80',
+  Kabirwala: 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=400&q=80',
+  Dubai: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&q=80',
+  'Abu Dhabi': 'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=400&q=80',
+  Sharjah: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&q=80',
+  Ajman: 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=400&q=80',
+  'New York': 'https://images.unsplash.com/photo-1496442226666-8d4d0e62e6e9?w=400&q=80',
+  'Los Angeles': 'https://images.unsplash.com/photo-1580655653885-65763b2597d0?w=400&q=80',
+  Chicago: 'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?w=400&q=80',
+  Houston: 'https://images.unsplash.com/photo-1485738422979-f5c462d49f74?w=400&q=80',
+  Miami: 'https://images.unsplash.com/photo-1506146332389-18140dc7b2fb?w=400&q=80',
 };
 
 export default function BrowseSection({
@@ -166,14 +180,10 @@ export default function BrowseSection({
 }) {
   const router = useRouter();
 
-  // Navigation view state:
-  // 'country' (Level 1)
-  // 'options' (Level 2: City vs Category)
-  // 'city' (Level 3A: City grid)
-  // 'category' (Level 3B: Category grid)
-  const [activeView, setActiveView] = useState('country');
+  // Selected Country state
   const [localCountry, setLocalCountry] = useState(selectedCountry || '');
   const [citySearch, setCitySearch] = useState('');
+  const [showAllCities, setShowAllCities] = useState(false);
   const [internalSummary, setInternalSummary] = useState(summary || null);
 
   // Load summary if not provided from parent
@@ -191,60 +201,72 @@ export default function BrowseSection({
       });
   }, [summary]);
 
-  // Sync with external selectedCountry / city / category changes (e.g. from Filter Bar on /businesses)
+  // Keep localCountry in sync with selectedCountry when on directory page
   useEffect(() => {
     if (!isHomePage) {
       setLocalCountry(selectedCountry);
-      if (!selectedCountry) {
-        setActiveView('country');
-      } else if (selectedCity) {
-        setActiveView('city');
-      } else if (selectedCategory) {
-        setActiveView('category');
-      } else if (activeView === 'country' && selectedCountry) {
-        setActiveView('options');
-      }
     }
-  }, [isHomePage, selectedCountry, selectedCity, selectedCategory, activeView]);
+  }, [isHomePage, selectedCountry]);
 
   const effectiveCountry = isHomePage ? localCountry : selectedCountry;
 
-  // Cities for the selected country (from locations.json)
-  const countryCities = useMemo(() => {
+  // Cities for the selected country
+  const allCountryCities = useMemo(() => {
     if (!effectiveCountry) return [];
     return getCities(effectiveCountry);
   }, [effectiveCountry]);
 
+  // Sort cities: active listings first, then alphabetical
+  const sortedCities = useMemo(() => {
+    if (!effectiveCountry || !allCountryCities.length) return [];
+    const cityCounts = internalSummary?.cities?.[effectiveCountry] || {};
+
+    return [...allCountryCities].sort((a, b) => {
+      const countA = cityCounts[a] || cityCounts[a.toLowerCase()] || 0;
+      const countB = cityCounts[b] || cityCounts[b.toLowerCase()] || 0;
+      if (countB !== countA) return countB - countA; // Higher listings first
+      return a.localeCompare(b);
+    });
+  }, [allCountryCities, effectiveCountry, internalSummary]);
+
   // Filtered cities based on quick search
   const filteredCities = useMemo(() => {
-    if (!citySearch.trim()) return countryCities;
+    if (!citySearch.trim()) return sortedCities;
     const q = citySearch.trim().toLowerCase();
-    return countryCities.filter((c) => c.toLowerCase().includes(q));
-  }, [countryCities, citySearch]);
+    return sortedCities.filter((c) => c.toLowerCase().includes(q));
+  }, [sortedCities, citySearch]);
+
+  // Paginate or limit initial city cards so page isn't 280 cards long unless searched or expanded
+  const displayedCities = useMemo(() => {
+    if (citySearch.trim() || showAllCities) {
+      return filteredCities;
+    }
+    return filteredCities.slice(0, 12); // Initial top 12 cities
+  }, [filteredCities, citySearch, showAllCities]);
 
   // Handlers
-  const handleCountryClick = (country) => {
+  const handleCountrySelect = (countryName) => {
     if (isHomePage) {
-      setLocalCountry(country);
-      setActiveView('options');
+      setLocalCountry(countryName);
+      setCitySearch('');
+      setShowAllCities(false);
     } else {
-      if (onSelectCountry) onSelectCountry(country);
-      setActiveView('options');
+      if (onSelectCountry) onSelectCountry(countryName);
+      setCitySearch('');
+      setShowAllCities(false);
     }
   };
 
-  const handleBackToCountries = () => {
+  const handleResetCountry = () => {
     if (isHomePage) {
       setLocalCountry('');
-      setActiveView('country');
+      setCitySearch('');
+      setShowAllCities(false);
     } else {
       if (onSelectCountry) onSelectCountry('');
-      setActiveView('country');
+      setCitySearch('');
+      setShowAllCities(false);
     }
-  };
-
-  const handleBackToOptions = () => {
-    setActiveView('options');
   };
 
   const handleCityClick = (cityName) => {
@@ -259,45 +281,50 @@ export default function BrowseSection({
     }
   };
 
-  const handleCategoryClick = (catName) => {
+  const handleCategoryClick = (categoryName) => {
     if (isHomePage) {
-      router.push(`/businesses?country=${encodeURIComponent(effectiveCountry)}&category=${encodeURIComponent(catName)}`);
+      router.push(`/businesses?country=${encodeURIComponent(effectiveCountry)}&category=${encodeURIComponent(categoryName)}`);
     } else {
-      if (selectedCategory === catName) {
+      if (selectedCategory === categoryName) {
         if (onSelectCategory) onSelectCategory('');
       } else {
-        if (onSelectCategory) onSelectCategory(catName);
+        if (onSelectCategory) onSelectCategory(categoryName);
       }
     }
   };
 
-  const handleViewAllCountryListings = () => {
+  const handleViewAllCountry = () => {
     router.push(`/businesses?country=${encodeURIComponent(effectiveCountry)}`);
   };
 
-  // Helper to fetch listing count for a city safely
+  // Helper: City listing count
   const getCityCount = (cityName) => {
     if (!internalSummary?.cities || !effectiveCountry) return 0;
     const countryMap = internalSummary.cities[effectiveCountry] || {};
     return countryMap[cityName] || countryMap[cityName.toLowerCase()] || 0;
   };
 
-  // Helper to fetch listing count for a category safely
-  const getCategoryCount = (catName) => {
+  // Helper: Category listing count
+  const getCategoryCount = (categoryName) => {
     if (!internalSummary?.categories || !effectiveCountry) return 0;
     const countryMap = internalSummary.categories[effectiveCountry] || {};
-    return countryMap[catName] || 0;
+    return countryMap[categoryName] || 0;
+  };
+
+  // Helper: City Image with reliable fallback
+  const getCityImage = (cityName) => {
+    return CITY_IMAGES[cityName] || COUNTRY_FALLBACKS[effectiveCountry] || COUNTRY_FALLBACKS.Pakistan;
   };
 
   return (
     <div
-      aria-label="Interactive Browse Section"
-      className="bg-white rounded-3xl border border-slate-200 shadow-sm p-5 sm:p-7 mb-8 transition-all duration-300"
+      aria-label="Browse Section"
+      className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-5 sm:p-7 mb-8 transition-all duration-300"
     >
       {/* ───────────────────────────────────────────────────────────────── */}
-      {/* LEVEL 1: BROWSE BY COUNTRY (Rich cards with landmark images)       */}
+      {/* LEVEL 1: BROWSE BY COUNTRY (Horizontal Reference Style Cards)     */}
       {/* ───────────────────────────────────────────────────────────────── */}
-      {activeView === 'country' && (
+      {!effectiveCountry && (
         <div>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-6 border-b border-slate-100">
             <div>
@@ -305,7 +332,7 @@ export default function BrowseSection({
                 Browse by Country
               </h3>
               <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                Select a country to view local cities and verified business categories
+                Select a country to explore local cities and verified business categories
               </p>
             </div>
             {!isHomePage && (selectedCountry || selectedCity || selectedCategory) && (
@@ -321,75 +348,61 @@ export default function BrowseSection({
             )}
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+          {/* Grid: 3 cards on desktop, 2 on tablet, 1 on mobile */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {COUNTRIES.map((c) => {
-              const info = COUNTRY_DETAILS[c] || { name: c, subtitle: '', image: '', FlagComponent: null };
+              const info = COUNTRY_DETAILS[c] || { name: c, description: '', image: '', FlagComponent: null };
               const Flag = info.FlagComponent;
               const count = internalSummary?.countries?.[c] ?? 0;
-              const isSelected = effectiveCountry === c;
 
               return (
                 <button
                   key={c}
                   type="button"
-                  onClick={() => handleCountryClick(c)}
-                  className={`group relative text-left rounded-2xl border transition-all duration-300 cursor-pointer overflow-hidden flex flex-col justify-between bg-white ${
-                    isSelected
-                      ? 'border-blue-600 shadow-xl ring-2 ring-blue-500/30'
-                      : 'border-slate-200 hover:border-blue-500 hover:shadow-xl hover:-translate-y-1'
-                  }`}
+                  onClick={() => handleCountrySelect(c)}
+                  className="flex items-center gap-4 bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs hover:shadow-md hover:border-blue-500 hover:-translate-y-0.5 transition-all duration-200 text-left w-full group cursor-pointer"
                   aria-label={`Browse businesses in ${c}`}
                 >
-                  {/* Card Cover Image with Zoom Effect */}
-                  <div className="relative h-44 w-full overflow-hidden bg-slate-100">
+                  {/* Left: 100x100px rounded image */}
+                  <div className="w-[100px] h-[100px] min-w-[100px] min-h-[100px] rounded-[10px] overflow-hidden relative shrink-0 bg-slate-100 border border-slate-100 shadow-xs">
                     <img
                       src={info.image}
                       alt={info.name}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = COUNTRY_FALLBACKS[c] || COUNTRY_FALLBACKS.Pakistan;
+                      }}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-900/30 to-transparent pointer-events-none" />
-
-                    {/* Flag Badge on Top Left */}
-                    <div className="absolute top-3.5 left-3.5 flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-white/95 backdrop-blur-md shadow-md border border-white/50">
+                    <div className="absolute top-1.5 left-1.5 bg-white/95 backdrop-blur-xs p-1 rounded-sm shadow-xs border border-white/60">
                       {Flag && <Flag />}
-                      <span className="text-xs font-bold text-slate-900">{info.name}</span>
+                    </div>
+                  </div>
+
+                  {/* Right: Title, description, listings count */}
+                  <div className="flex-1 min-w-0 flex flex-col justify-center">
+                    <div className="flex items-center justify-between gap-1">
+                      <h4 className="text-base sm:text-[17px] font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                        {info.name}
+                      </h4>
+                      <ArrowRight size={15} className="text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all shrink-0" />
                     </div>
 
-                    {/* Listing Count Badge on Top Right */}
-                    <div className="absolute top-3.5 right-3.5">
+                    <p className="text-xs sm:text-[13px] text-slate-500 leading-snug line-clamp-2 mt-1">
+                      {info.description}
+                    </p>
+
+                    <div className="mt-2.5 flex items-center gap-2">
                       <span
-                        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-extrabold shadow-md backdrop-blur-md transition-colors ${
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                           count > 0
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-slate-900/60 text-white/90 border border-white/20'
+                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                            : 'bg-slate-100 text-slate-600 border border-slate-200'
                         }`}
                       >
                         {count} {count === 1 ? 'Listing' : 'Listings'}
                       </span>
-                    </div>
-
-                    {/* Country Title on Bottom of Image */}
-                    <div className="absolute bottom-3 left-4 right-4 flex items-end justify-between">
-                      <div>
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-blue-300">Explore</span>
-                        <h4 className="text-2xl font-black text-white leading-tight drop-shadow-sm">
-                          {info.name}
-                        </h4>
-                      </div>
-                      <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md text-white flex items-center justify-center group-hover:bg-blue-600 group-hover:scale-110 transition-all">
-                        <ArrowRight size={16} />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Card Description */}
-                  <div className="p-4 bg-white flex flex-col justify-between flex-1 border-t border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium line-clamp-1">
-                      {info.subtitle}
-                    </p>
-                    <div className="mt-2.5 flex items-center justify-between text-xs font-bold text-blue-600 group-hover:text-blue-700">
-                      <span>Explore cities & categories</span>
-                      <span className="text-[11px] text-slate-400 font-normal">Click to browse &rarr;</span>
                     </div>
                   </div>
                 </button>
@@ -400,32 +413,35 @@ export default function BrowseSection({
       )}
 
       {/* ───────────────────────────────────────────────────────────────── */}
-      {/* LEVEL 2: AFTER COUNTRY SELECT (Choose City or Category)          */}
+      {/* AFTER COUNTRY SELECT: TWO STACKED SECTIONS DIRECTLY                */}
+      {/* Section 1: Browse by City                                         */}
+      {/* Section 2: Browse by Category                                     */}
       {/* ───────────────────────────────────────────────────────────────── */}
-      {activeView === 'options' && effectiveCountry && (
-        <div>
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-6 border-b border-slate-100">
+      {effectiveCountry && (
+        <div className="space-y-10">
+          {/* Top Country Header Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-100">
             <div className="flex items-center gap-3">
               {COUNTRY_DETAILS[effectiveCountry]?.FlagComponent && (
-                <div className="p-1 rounded-md bg-slate-100 border border-slate-200">
+                <div className="p-1.5 rounded-lg bg-slate-50 border border-slate-200 shadow-xs">
                   {COUNTRY_DETAILS[effectiveCountry].FlagComponent()}
                 </div>
               )}
               <div>
-                <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
+                <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
                   Browse {effectiveCountry}
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                  Explore businesses by city or browse all 13 categories in {effectiveCountry}
+                  Showing cities and business categories in {effectiveCountry}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-2.5 flex-wrap">
               <button
                 type="button"
-                onClick={handleViewAllCountryListings}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-xl transition-all shadow-sm cursor-pointer"
+                onClick={handleViewAllCountry}
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-xl transition-all shadow-xs cursor-pointer"
                 aria-label={`View all listings in ${effectiveCountry}`}
               >
                 <span>View All {effectiveCountry} Listings</span>
@@ -433,7 +449,7 @@ export default function BrowseSection({
               </button>
               <button
                 type="button"
-                onClick={handleBackToCountries}
+                onClick={handleResetCountry}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-slate-200/80 px-3.5 py-2 rounded-xl transition-colors cursor-pointer"
                 aria-label="Change country"
               >
@@ -443,327 +459,217 @@ export default function BrowseSection({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {/* Option 1: Browse by City */}
-            <button
-              type="button"
-              onClick={() => setActiveView('city')}
-              className="group relative text-left rounded-2xl border border-slate-200 overflow-hidden bg-white hover:border-blue-500 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col"
-              aria-label={`Browse by City in ${effectiveCountry}`}
-            >
-              <div className="relative h-40 w-full overflow-hidden bg-slate-100">
-                <img
-                  src="https://images.unsplash.com/photo-1477959858617-67f30bc75b82?w=800&q=80"
-                  alt="Browse by City"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-900/30 to-transparent" />
-                <div className="absolute bottom-3.5 left-4 right-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md">
-                      <MapPin size={20} />
-                    </div>
-                    <div>
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-blue-300">All Locations</span>
-                      <h4 className="text-xl font-bold text-white leading-tight">Browse by City</h4>
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-blue-200 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
-                    {countryCities.length} Cities
-                  </span>
-                </div>
-              </div>
-              <div className="p-4 flex items-center justify-between bg-white">
-                <p className="text-xs text-slate-500 line-clamp-1">
-                  Explore {countryCities.slice(0, 4).join(', ')}, and more in {effectiveCountry}.
-                </p>
-                <ArrowRight size={16} className="text-blue-600 group-hover:translate-x-1.5 transition-transform shrink-0 ml-2" />
-              </div>
-            </button>
-
-            {/* Option 2: Browse by Category */}
-            <button
-              type="button"
-              onClick={() => setActiveView('category')}
-              className="group relative text-left rounded-2xl border border-slate-200 overflow-hidden bg-white hover:border-indigo-500 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col"
-              aria-label={`Browse by Category in ${effectiveCountry}`}
-            >
-              <div className="relative h-40 w-full overflow-hidden bg-slate-100">
-                <img
-                  src="https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800&q=80"
-                  alt="Browse by Category"
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/85 via-slate-900/30 to-transparent" />
-                <div className="absolute bottom-3.5 left-4 right-4 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md">
-                      <Tag size={20} />
-                    </div>
-                    <div>
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-300">All Sectors</span>
-                      <h4 className="text-xl font-bold text-white leading-tight">Browse by Category</h4>
-                    </div>
-                  </div>
-                  <span className="text-xs font-bold text-indigo-200 bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
-                    {CATEGORIES.length} Categories
-                  </span>
-                </div>
-              </div>
-              <div className="p-4 flex items-center justify-between bg-white">
-                <p className="text-xs text-slate-500 line-clamp-1">
-                  IT, Real Estate, Restaurant, Healthcare, Retail & more.
-                </p>
-                <ArrowRight size={16} className="text-indigo-600 group-hover:translate-x-1.5 transition-transform shrink-0 ml-2" />
-              </div>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ───────────────────────────────────────────────────────────────── */}
-      {/* LEVEL 3A: BROWSE BY CITY                                          */}
-      {/* ───────────────────────────────────────────────────────────────── */}
-      {activeView === 'city' && effectiveCountry && (
-        <div>
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-5 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              {COUNTRY_DETAILS[effectiveCountry]?.FlagComponent && (
-                <div className="p-1 rounded-md bg-slate-100 border border-slate-200">
-                  {COUNTRY_DETAILS[effectiveCountry].FlagComponent()}
-                </div>
-              )}
+          {/* ─────────────────────────────────────────────────────────────── */}
+          {/* 1. FIRST SECTION: BROWSE BY CITY                                */}
+          {/* ─────────────────────────────────────────────────────────────── */}
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div>
-                <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                  Cities in {effectiveCountry}
-                </h3>
+                <h4 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                  <span>Browse by City</span>
+                  <span className="text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-100 px-2.5 py-0.5 rounded-full">
+                    {allCountryCities.length} Cities
+                  </span>
+                </h4>
                 <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                  Showing {countryCities.length} cities in {effectiveCountry}
-                  {selectedCity && (
-                    <span className="font-semibold text-blue-600"> • Selected: {selectedCity}</span>
-                  )}
+                  Explore businesses in popular cities across {effectiveCountry}
                 </p>
+              </div>
+
+              {/* City quick filter search */}
+              <div className="relative w-full sm:w-64">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                <input
+                  type="text"
+                  value={citySearch}
+                  onChange={(e) => setCitySearch(e.target.value)}
+                  placeholder={`Search ${allCountryCities.length} cities...`}
+                  className="w-full h-9 pl-8 pr-3 rounded-lg border border-slate-200 bg-slate-50 hover:bg-white text-xs text-slate-900 outline-none focus:bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                  aria-label={`Search city in ${effectiveCountry}`}
+                />
               </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={handleBackToOptions}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-slate-200/80 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                aria-label="Back to options"
-              >
-                <ChevronLeft size={13} />
-                Back to Options
-              </button>
-              <button
-                type="button"
-                onClick={handleBackToCountries}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-slate-200/80 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                aria-label="Change country"
-              >
-                Change Country
-              </button>
-              {!isHomePage && selectedCity && (
-                <button
-                  type="button"
-                  onClick={() => onSelectCity && onSelectCity('')}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                  aria-label="Clear selected city"
-                >
-                  <RotateCcw size={12} />
-                  Clear City
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Quick Search within country's cities */}
-          <div className="relative mb-4 max-w-sm">
-            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-            <input
-              type="text"
-              value={citySearch}
-              onChange={(e) => setCitySearch(e.target.value)}
-              placeholder={`Search in ${countryCities.length} cities...`}
-              className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white text-xs sm:text-sm text-slate-900 outline-none focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all"
-              aria-label={`Search city in ${effectiveCountry}`}
-            />
-          </div>
-
-          {/* City Cards Grid */}
-          {filteredCities.length === 0 ? (
-            <div className="text-center py-8 text-slate-500 text-sm">
-              No cities match &quot;{citySearch}&quot; in {effectiveCountry}.
-            </div>
-          ) : (
-            <div className="max-h-96 overflow-y-auto pr-1">
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
-                {filteredCities.map((cityName) => {
+            {/* City Grid: Reference Style (Image Left, Text Right, 3 cols desktop, 2 cols tablet, 1 col mobile) */}
+            {displayedCities.length === 0 ? (
+              <div className="text-center py-8 text-slate-500 text-sm bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                No cities found matching &quot;{citySearch}&quot; in {effectiveCountry}.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {displayedCities.map((cityName) => {
                   const count = getCityCount(cityName);
                   const isSelected = selectedCity.toLowerCase() === cityName.toLowerCase();
+                  const cityImg = getCityImage(cityName);
 
                   return (
                     <button
                       key={cityName}
                       type="button"
                       onClick={() => handleCityClick(cityName)}
-                      className={`text-left p-3 rounded-xl border transition-all duration-200 cursor-pointer flex flex-col justify-between ${
+                      className={`flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 text-left w-full group cursor-pointer bg-white ${
                         isSelected
-                          ? 'border-blue-600 bg-blue-50 shadow-sm ring-2 ring-blue-500/30'
-                          : count > 0
-                          ? 'border-blue-200 bg-blue-50/40 hover:border-blue-500 hover:bg-white hover:shadow-sm'
-                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                          ? 'border-blue-600 ring-2 ring-blue-500/30 bg-blue-50/20 shadow-sm'
+                          : 'border-slate-200/90 shadow-xs hover:shadow-md hover:border-blue-400 hover:-translate-y-0.5'
                       }`}
                       aria-label={`Select city ${cityName} in ${effectiveCountry}`}
                     >
-                      <div className="flex items-center justify-between gap-1 mb-1">
-                        <span
-                          className={`text-xs sm:text-sm font-semibold truncate ${
-                            isSelected ? 'text-blue-700' : 'text-slate-900'
-                          }`}
-                          title={cityName}
-                        >
-                          {cityName}
-                        </span>
-                        {isSelected && <Check size={14} className="text-blue-600 shrink-0" />}
+                      {/* Left: 100x100px rounded image */}
+                      <div className="w-[100px] h-[100px] min-w-[100px] min-h-[100px] rounded-[10px] overflow-hidden relative shrink-0 bg-slate-100 border border-slate-100 shadow-xs">
+                        <img
+                          src={cityImg}
+                          alt={cityName}
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = COUNTRY_FALLBACKS[effectiveCountry] || COUNTRY_FALLBACKS.Pakistan;
+                          }}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
                       </div>
 
-                      <span
-                        className={`text-[11px] font-medium ${
-                          count > 0 ? 'text-blue-600 font-bold' : 'text-slate-400'
-                        }`}
-                      >
-                        {count} {count === 1 ? 'biz' : 'bizs'}
-                      </span>
+                      {/* Right: City Name (bold), Description, Listings count */}
+                      <div className="flex-1 min-w-0 flex flex-col justify-center">
+                        <div className="flex items-center justify-between gap-1">
+                          <h5 className="text-base sm:text-[17px] font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                            {cityName}
+                          </h5>
+                          {isSelected ? (
+                            <Check size={16} className="text-blue-600 shrink-0" />
+                          ) : (
+                            <ArrowRight size={14} className="text-slate-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all shrink-0" />
+                          )}
+                        </div>
+
+                        <p className="text-xs sm:text-[13px] text-slate-500 leading-snug line-clamp-2 mt-1">
+                          Businesses in {cityName}, {effectiveCountry}
+                        </p>
+
+                        <div className="mt-2.5 flex items-center gap-2">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                              count > 0
+                                ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                                : 'bg-slate-100 text-slate-500 border border-slate-200'
+                            }`}
+                          >
+                            {count} {count === 1 ? 'business' : 'businesses'}
+                          </span>
+                        </div>
+                      </div>
                     </button>
                   );
                 })}
               </div>
-            </div>
-          )}
-        </div>
-      )}
+            )}
 
-      {/* ───────────────────────────────────────────────────────────────── */}
-      {/* LEVEL 3B: BROWSE BY CATEGORY (Cards with real images)             */}
-      {/* ───────────────────────────────────────────────────────────────── */}
-      {activeView === 'category' && effectiveCountry && (
-        <div>
-          {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-5 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              {COUNTRY_DETAILS[effectiveCountry]?.FlagComponent && (
-                <div className="p-1 rounded-md bg-slate-100 border border-slate-200">
-                  {COUNTRY_DETAILS[effectiveCountry].FlagComponent()}
-                </div>
-              )}
-              <div>
-                <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">
-                  Categories in {effectiveCountry}
-                </h3>
-                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-                  Browse verified businesses by industry in {effectiveCountry}
-                  {selectedCategory && (
-                    <span className="font-semibold text-indigo-600"> • Selected: {selectedCategory}</span>
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={handleBackToOptions}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-slate-200/80 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                aria-label="Back to options"
-              >
-                <ChevronLeft size={13} />
-                Back to Options
-              </button>
-              <button
-                type="button"
-                onClick={handleBackToCountries}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-slate-200/80 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                aria-label="Change country"
-              >
-                Change Country
-              </button>
-              {!isHomePage && selectedCategory && (
+            {/* Show all / Show fewer toggle when not searching */}
+            {!citySearch && filteredCities.length > 12 && (
+              <div className="text-center mt-5">
                 <button
                   type="button"
-                  onClick={() => onSelectCategory && onSelectCategory('')}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                  aria-label="Clear selected category"
+                  onClick={() => setShowAllCities((prev) => !prev)}
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-colors cursor-pointer border border-blue-200"
                 >
-                  <RotateCcw size={12} />
-                  Clear Category
+                  {showAllCities ? (
+                    <>
+                      <span>Show Fewer Cities</span>
+                      <ChevronUp size={14} />
+                    </>
+                  ) : (
+                    <>
+                      <span>View All {filteredCities.length} Cities in {effectiveCountry}</span>
+                      <ChevronDown size={14} />
+                    </>
+                  )}
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
 
-          {/* Category Cards Grid with Real Thumbnail Images */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {CATEGORIES.map((catName) => {
-              const info = CATEGORY_DETAILS[catName] || { image: '', icon: Layers };
-              const Icon = info.icon || Layers;
-              const count = getCategoryCount(catName);
-              const isSelected = selectedCategory === catName;
+          <hr className="border-slate-100" />
 
-              return (
-                <button
-                  key={catName}
-                  type="button"
-                  onClick={() => handleCategoryClick(catName)}
-                  className={`group text-left p-3 rounded-2xl border transition-all duration-300 cursor-pointer flex items-center gap-3.5 overflow-hidden bg-white ${
-                    isSelected
-                      ? 'border-indigo-600 bg-indigo-50/80 shadow-md ring-2 ring-indigo-500/30'
-                      : count > 0
-                      ? 'border-indigo-200 bg-indigo-50/20 hover:border-indigo-400 hover:bg-white hover:shadow-md hover:-translate-y-0.5'
-                      : 'border-slate-200 bg-white hover:border-indigo-300 hover:bg-slate-50/70 hover:shadow-sm'
-                  }`}
-                  aria-label={`Select category ${catName} in ${effectiveCountry}`}
-                >
-                  {/* Category Image Thumbnail */}
-                  <div className="w-14 h-14 rounded-xl overflow-hidden shrink-0 relative bg-slate-100 shadow-xs border border-slate-100">
-                    <img
-                      src={info.image}
-                      alt={catName}
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-                    />
-                    <div className="absolute inset-0 bg-slate-900/15 group-hover:bg-transparent transition-colors" />
-                    <div className="absolute bottom-1 right-1 w-5 h-5 rounded-md bg-white/90 backdrop-blur-xs flex items-center justify-center text-slate-700 shadow-xs">
-                      <Icon size={12} />
+          {/* ─────────────────────────────────────────────────────────────── */}
+          {/* 2. SECOND SECTION: BROWSE BY CATEGORY                           */}
+          {/* ─────────────────────────────────────────────────────────────── */}
+          <div>
+            <div className="mb-4">
+              <h4 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                <span>Browse by Category</span>
+                <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
+                  13 Categories
+                </span>
+              </h4>
+              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+                Explore local services and companies across all 13 industries in {effectiveCountry}
+              </p>
+            </div>
+
+            {/* Category Grid: Reference Style (Image Left, Text Right, 3 cols desktop, 2 cols tablet, 1 col mobile) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {CATEGORIES_LIST.map((cat) => {
+                const count = getCategoryCount(cat.name);
+                const isSelected = selectedCategory === cat.name;
+
+                return (
+                  <button
+                    key={cat.name}
+                    type="button"
+                    onClick={() => handleCategoryClick(cat.name)}
+                    className={`flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 text-left w-full group cursor-pointer bg-white ${
+                      isSelected
+                        ? 'border-indigo-600 ring-2 ring-indigo-500/30 bg-indigo-50/20 shadow-sm'
+                        : 'border-slate-200/90 shadow-xs hover:shadow-md hover:border-indigo-400 hover:-translate-y-0.5'
+                    }`}
+                    aria-label={`Select category ${cat.name} in ${effectiveCountry}`}
+                  >
+                    {/* Left: 100x100px rounded image */}
+                    <div className="w-[100px] h-[100px] min-w-[100px] min-h-[100px] rounded-[10px] overflow-hidden relative shrink-0 bg-slate-100 border border-slate-100 shadow-xs">
+                      <img
+                        src={cat.image}
+                        alt={cat.name}
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = COUNTRY_FALLBACKS[effectiveCountry] || COUNTRY_FALLBACKS.Pakistan;
+                        }}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
                     </div>
-                  </div>
 
-                  <div className="min-w-0 flex-1">
-                    <h4
-                      className={`text-sm font-bold truncate transition-colors ${
-                        isSelected ? 'text-indigo-700' : 'text-slate-900 group-hover:text-indigo-600'
-                      }`}
-                    >
-                      {catName}
-                    </h4>
-                    <p
-                      className={`text-xs mt-0.5 font-medium ${
-                        count > 0 ? 'text-indigo-600 font-bold' : 'text-slate-400'
-                      }`}
-                    >
-                      {count} {count === 1 ? 'business' : 'businesses'}
-                    </p>
-                  </div>
+                    {/* Right: Category Title (bold), exact description, Listings count */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                      <div className="flex items-center justify-between gap-1">
+                        <h5 className="text-base sm:text-[17px] font-bold text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
+                          {cat.name}
+                        </h5>
+                        {isSelected ? (
+                          <Check size={16} className="text-indigo-600 shrink-0" />
+                        ) : (
+                          <ArrowRight size={14} className="text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all shrink-0" />
+                        )}
+                      </div>
 
-                  {isSelected ? (
-                    <Check size={16} className="text-indigo-600 shrink-0 mr-1" />
-                  ) : (
-                    <ArrowRight size={14} className="text-slate-300 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all shrink-0 mr-1" />
-                  )}
-                </button>
-              );
-            })}
+                      <p className="text-xs sm:text-[13px] text-slate-500 leading-snug line-clamp-2 mt-1">
+                        {cat.description}
+                      </p>
+
+                      <div className="mt-2.5 flex items-center gap-2">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                            count > 0
+                              ? 'bg-indigo-50 text-indigo-700 border border-indigo-200'
+                              : 'bg-slate-100 text-slate-500 border border-slate-200'
+                          }`}
+                        >
+                          {count} {count === 1 ? 'business' : 'businesses'}
+                        </span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
