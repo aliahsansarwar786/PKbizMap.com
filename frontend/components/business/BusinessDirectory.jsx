@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import BusinessCard from './BusinessCard';
 import BrowseSection from './BrowseSection';
 import { businessAPI } from '@/lib/api';
@@ -69,6 +69,7 @@ function SkeletonCard() {
 export default function BusinessDirectory() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const pathname = usePathname();
 
   const [businesses, setBusinesses] = useState([]);
   const [pagination, setPagination] = useState(null);
@@ -166,8 +167,13 @@ export default function BusinessDirectory() {
       });
   }, []);
 
-  // Sync state to URL without full page reload
+  // Sync state to URL without full page reload (only when on /businesses)
   useEffect(() => {
+    // If not on '/businesses' (e.g. on homepage '/'), do NOT navigate away or sync to /businesses
+    if (pathname !== '/businesses') {
+      return;
+    }
+
     const params = new URLSearchParams();
     if (keyword) params.set('keyword', keyword);
     if (country && country !== 'All') params.set('country', country);
@@ -178,8 +184,15 @@ export default function BusinessDirectory() {
     if (page > 1) params.set('page', String(page));
 
     const qs = params.toString();
-    router.replace(qs ? `/businesses?${qs}` : '/businesses', { scroll: false });
-  }, [keyword, country, city, category, rating, sort, page, router]);
+    const targetUrl = qs ? `/businesses?${qs}` : '/businesses';
+    const currentQs = searchParams ? searchParams.toString() : '';
+    const currentUrl = currentQs ? `/businesses?${currentQs}` : '/businesses';
+
+    // Do NOT run router.replace if URL already matches current filter state
+    if (currentUrl !== targetUrl) {
+      router.replace(targetUrl, { scroll: false });
+    }
+  }, [pathname, keyword, country, city, category, rating, sort, page, router, searchParams]);
 
   const clearFilters = () => {
     setKeywordInput('');
