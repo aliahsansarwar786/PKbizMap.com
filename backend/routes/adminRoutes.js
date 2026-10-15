@@ -18,8 +18,15 @@ const {
   deleteBusinessReceipt,
   migrateLocations,
 } = require('../controllers/adminController');
-const { updatePaymentSettings, deletePaymentQrCode } = require('../controllers/settingController');
-const { handleQrCodeUpload } = require('../middlewares/upload');
+const {
+  updatePaymentSettings,
+  deletePaymentQrCode,
+  createPaymentMethod,
+  updatePaymentMethod,
+  deletePaymentMethod,
+  togglePaymentMethod,
+} = require('../controllers/settingController');
+const { handleQrCodeUpload, handlePaymentCardImageUpload } = require('../middlewares/upload');
 const { protect } = require('../middlewares/auth');
 const { authorize } = require('../middlewares/authorize');
 
@@ -35,6 +42,12 @@ router.get('/dashboard', getDashboard);
 // Payment Settings (Raast QR Code & Gateway)
 router.patch('/settings/payment', handleQrCodeUpload, updatePaymentSettings);
 router.delete('/settings/payment/qr', deletePaymentQrCode);
+
+// Configurable Payment Method Cards (Admin only)
+router.post('/settings/payment/methods', handlePaymentCardImageUpload, createPaymentMethod);
+router.patch('/settings/payment/methods/:methodId', handlePaymentCardImageUpload, updatePaymentMethod);
+router.delete('/settings/payment/methods/:methodId', deletePaymentMethod);
+router.patch('/settings/payment/methods/:methodId/toggle', togglePaymentMethod);
 
 // Payments History
 router.get('/payments', getPaymentHistory);

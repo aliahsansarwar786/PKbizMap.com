@@ -160,7 +160,7 @@ export default function BusinessForm({
   const [paymentReceiptFile, setPaymentReceiptFile] = useState(null);
   const [paymentReceiptPreview, setPaymentReceiptPreview] = useState(null);
   const [copiedRaastId, setCopiedRaastId] = useState(false);
-  const [copiedJazzCash, setCopiedJazzCash] = useState(false);
+  const [copiedMethodId, setCopiedMethodId] = useState(null);
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -356,12 +356,12 @@ export default function BusinessForm({
     setTimeout(() => setCopiedRaastId(false), 2500);
   };
 
-  const handleCopyJazzCash = (text) => {
+  const handleCopyMethodValue = (methodId, text, methodName, kind) => {
     if (!text) return;
     navigator.clipboard.writeText(text.trim());
-    setCopiedJazzCash(true);
-    toast.success('JazzCash number copied to clipboard!');
-    setTimeout(() => setCopiedJazzCash(false), 2500);
+    setCopiedMethodId(methodId);
+    toast.success(`${methodName || 'Account'} ${kind === 'iban' ? 'IBAN' : 'number'} copied to clipboard!`);
+    setTimeout(() => setCopiedMethodId(null), 2500);
   };
 
   // URL Validator Helper
@@ -1286,154 +1286,195 @@ export default function BusinessForm({
             </div>
           </div>
 
-          {/* PAYMENT OPTIONS (Side-by-side on desktop if JazzCash is set) */}
-          <div className={`grid grid-cols-1 ${paymentSettings.jazzCashNumber?.trim() ? 'lg:grid-cols-2' : ''} gap-5`}>
-            
-            {/* Option A: Raast QR Code Card */}
-            <div className="bg-gray-50/80 rounded-2xl border border-gray-200/90 p-5 flex flex-col justify-between space-y-4">
-              <div>
-                <div className="flex items-center justify-between pb-3 border-b border-gray-200">
-                  <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-                    <h3 className="text-sm font-bold text-gray-900">Raast QR Payment</h3>
-                  </div>
-                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
-                    Any Banking App
-                  </span>
-                </div>
+          {/* PAYMENT OPTIONS (Side-by-side with Configurable Payment Method Cards when enabled) */}
+          {(() => {
+            const enabledMethods = (paymentSettings.paymentMethods || []).filter((m) => m.isEnabled);
+            const hasMethods = enabledMethods.length > 0;
 
-                <div className="flex flex-col sm:flex-row items-center gap-4 mt-4">
-                  {/* QR Graphic */}
-                  {paymentSettings.qrCode?.url ? (
-                    <div className="flex flex-col items-center gap-1.5 shrink-0">
-                      <div className="p-2 bg-white rounded-xl border border-gray-300 shadow-xs">
-                        <img
-                          src={paymentSettings.qrCode.url}
-                          alt="Raast Payment QR Code"
-                          className="w-36 h-36 object-contain rounded-lg"
-                        />
+            return (
+              <div className={`grid grid-cols-1 ${hasMethods ? 'lg:grid-cols-2' : ''} gap-5`}>
+                {/* Option A: Raast QR Code Card */}
+                <div className="bg-gray-50/80 rounded-2xl border border-gray-200/90 p-5 flex flex-col justify-between space-y-4">
+                  <div>
+                    <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+                        <h3 className="text-sm font-bold text-gray-900">Raast QR Payment</h3>
                       </div>
-                      <a
-                        href={paymentSettings.qrCode.url}
-                        download="raast-payment-qr.png"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 transition-colors"
-                      >
-                        <Download size={12} /> Save QR
-                      </a>
-                    </div>
-                  ) : (
-                    <div className="w-36 h-36 rounded-xl bg-white flex flex-col items-center justify-center p-2 border border-dashed border-gray-300 shrink-0 text-center">
-                      <QrCode size={32} className="text-gray-400 mb-1" />
-                      <p className="text-[11px] text-gray-400 font-medium">QR code not yet uploaded by Admin</p>
-                    </div>
-                  )}
-
-                  {/* Account Details & Steps */}
-                  <div className="flex-1 space-y-2.5 text-xs w-full">
-                    <div className="p-2.5 bg-white rounded-xl border border-gray-200">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
-                        Account Title
-                      </span>
-                      <span className="text-xs font-bold text-gray-900 block mt-0.5">
-                        {paymentSettings.accountTitle || 'BizPrimeHub'}
+                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                        Any Banking App
                       </span>
                     </div>
 
-                    {paymentSettings.raastId && (
-                      <div className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-gray-200">
-                        <div>
+                    <div className="flex flex-col sm:flex-row items-center gap-4 mt-4">
+                      {/* QR Graphic */}
+                      {paymentSettings.qrCode?.url ? (
+                        <div className="flex flex-col items-center gap-1.5 shrink-0">
+                          <div className="p-2 bg-white rounded-xl border border-gray-300 shadow-xs">
+                            <img
+                              src={paymentSettings.qrCode.url}
+                              alt="Raast Payment QR Code"
+                              className="w-36 h-36 object-contain rounded-lg"
+                            />
+                          </div>
+                          <a
+                            href={paymentSettings.qrCode.url}
+                            download="raast-payment-qr.png"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 transition-colors"
+                          >
+                            <Download size={12} /> Save QR
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="w-36 h-36 rounded-xl bg-white flex flex-col items-center justify-center p-2 border border-dashed border-gray-300 shrink-0 text-center">
+                          <QrCode size={32} className="text-gray-400 mb-1" />
+                          <p className="text-[11px] text-gray-400 font-medium">QR code not yet uploaded by Admin</p>
+                        </div>
+                      )}
+
+                      {/* Account Details & Steps */}
+                      <div className="flex-1 space-y-2.5 text-xs w-full">
+                        <div className="p-2.5 bg-white rounded-xl border border-gray-200">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
-                            Raast ID
+                            Account Title
                           </span>
-                          <span className="text-xs font-bold text-gray-900 font-mono">
-                            {paymentSettings.raastId}
+                          <span className="text-xs font-bold text-gray-900 block mt-0.5">
+                            {paymentSettings.accountTitle || 'BizPrimeHub'}
                           </span>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleCopyRaastId(paymentSettings.raastId)}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors cursor-pointer"
-                        >
-                          {copiedRaastId ? <Check size={12} /> : <Copy size={12} />}
-                          {copiedRaastId ? 'Copied' : 'Copy'}
-                        </button>
+
+                        {paymentSettings.raastId && (
+                          <div className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-gray-200">
+                            <div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
+                                Raast ID
+                              </span>
+                              <span className="text-xs font-bold text-gray-900 font-mono">
+                                {paymentSettings.raastId}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyRaastId(paymentSettings.raastId)}
+                              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors cursor-pointer"
+                            >
+                              {copiedRaastId ? <Check size={12} /> : <Copy size={12} />}
+                              {copiedRaastId ? 'Copied' : 'Copy'}
+                            </button>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Instructions steps */}
-              <div className="text-[11px] text-gray-600 bg-white p-3 rounded-xl border border-gray-200 space-y-1">
-                <p className="font-bold text-gray-800">📲 Raast Steps:</p>
-                <ol className="list-decimal pl-4 space-y-0.5">
-                  <li>Banking app (EasyPaisa, SadaPay, HBL, Meezan) open karein.</li>
-                  <li><strong>&ldquo;Scan QR&rdquo;</strong> se yeh code scan karein.</li>
-                  <li><strong>Rs. {paymentSettings.feeAmount}</strong> send kar ke screenshot save karein.</li>
-                </ol>
-              </div>
-            </div>
-
-            {/* Option B: NEW JazzCash Number Card (Only when jazzCashNumber is set) */}
-            {paymentSettings.jazzCashNumber?.trim() && (
-              <div className="rounded-2xl p-6 shadow-md border border-red-900/40 relative overflow-hidden flex flex-col justify-between group bg-gradient-to-br from-[#730014] via-[#4d000d] to-[#260006] text-white">
-                {/* Background decorative watermark */}
-                <div className="absolute -right-8 -bottom-8 w-44 h-44 rounded-full bg-red-500/10 blur-2xl pointer-events-none" />
-
-                {/* Top Badge & Label */}
-                <div>
-                  <div className="flex items-center justify-between gap-2 pb-4 border-b border-red-800/40">
-                    <span className="bg-[#ffbc00] text-[#1a0004] text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md shadow-xs">
-                      JAZZCASH ACCOUNT
-                    </span>
-                    <span className="text-[11px] font-semibold text-rose-200/90 bg-white/10 px-2.5 py-0.5 rounded-full">
-                      Direct Mobile Transfer
-                    </span>
-                  </div>
-
-                  {/* Middle: Big Phone Number & Copy Button */}
-                  <div className="my-6">
-                    <span className="text-[11px] font-semibold text-rose-200/80 uppercase tracking-widest block mb-1">
-                      JazzCash Mobile Number
-                    </span>
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <span className="text-2xl sm:text-3xl font-black font-mono tracking-wider text-white select-all">
-                        {paymentSettings.jazzCashNumber}
-                      </span>
-
-                      {/* Copy Number button with hover and Copied feedback */}
-                      <button
-                        type="button"
-                        onClick={() => handleCopyJazzCash(paymentSettings.jazzCashNumber)}
-                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-bold text-xs bg-white/20 hover:bg-white/30 active:bg-white/40 text-white backdrop-blur-sm transition-all shadow-sm border border-white/20 cursor-pointer"
-                        title="Copy JazzCash Number"
-                      >
-                        {copiedJazzCash ? <Check size={14} className="text-emerald-300" /> : <Copy size={14} />}
-                        <span>{copiedJazzCash ? 'Copied!' : 'Copy Number'}</span>
-                      </button>
                     </div>
                   </div>
+
+                  {/* Instructions steps */}
+                  <div className="text-[11px] text-gray-600 bg-white p-3 rounded-xl border border-gray-200 space-y-1">
+                    <p className="font-bold text-gray-800">📲 Raast Steps:</p>
+                    <ol className="list-decimal pl-4 space-y-0.5">
+                      <li>Banking app (EasyPaisa, SadaPay, HBL, Meezan) open karein.</li>
+                      <li><strong>&ldquo;Scan QR&rdquo;</strong> se yeh code scan karein.</li>
+                      <li><strong>Rs. {paymentSettings.feeAmount}</strong> send kar ke screenshot save karein.</li>
+                    </ol>
+                  </div>
                 </div>
 
-                {/* Bottom: Account Title */}
-                <div className="pt-3 border-t border-red-800/40 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="text-rose-200/70 text-[10px] uppercase font-bold block">
-                      Account Title
-                    </span>
-                    <span className="font-bold text-amber-300 text-sm">
-                      {paymentSettings.jazzCashTitle || paymentSettings.accountTitle || 'BizPrimeHub'}
-                    </span>
+                {/* Option B: Configurable Payment Method Cards (JazzCash, Easypaisa, Banks, IBANs) */}
+                {hasMethods && (
+                  <div className="space-y-4">
+                    {enabledMethods.map((method) => {
+                      const isCopied = copiedMethodId === method._id;
+                      return (
+                        <div
+                          key={method._id}
+                          className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-lg border border-black/15 group select-none transition-transform hover:-translate-y-0.5"
+                        >
+                          {/* Blank background card image uploaded by admin */}
+                          {method.cardImage?.url ? (
+                            <img
+                              src={method.cardImage.url}
+                              alt={method.name}
+                              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 pointer-events-none" />
+                          )}
+
+                          {/* Subtle dark gradient overlay for optimal legibility across any artwork */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/30 pointer-events-none" />
+
+                          {/* Dynamic Overlaid Content - Percentage-based positioning */}
+                          <div className="absolute inset-0 p-[5%] flex flex-col justify-between text-white z-10">
+                            {/* Card Header (top ~5%) */}
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
+                                <span className="font-black text-sm sm:text-base tracking-wide text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+                                  {method.name}
+                                </span>
+                              </div>
+                              <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-white/20 backdrop-blur-md border border-white/25 text-white shadow-sm">
+                                {method.kind === 'iban' ? 'IBAN' : 'Account No.'}
+                              </span>
+                            </div>
+
+                            {/* Card Middle (value + hover copy button) */}
+                            <div className="my-auto py-1">
+                              <span className="text-[10px] sm:text-[11px] font-semibold text-white/80 uppercase tracking-widest block mb-1 drop-shadow">
+                                {method.kind === 'iban' ? 'Bank IBAN' : 'Account Number'}
+                              </span>
+                              <div className="flex items-center justify-between gap-2">
+                                <span className="font-mono font-black text-sm sm:text-lg md:text-xl tracking-wider select-all text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] break-all">
+                                  {method.accountValue}
+                                </span>
+
+                                {/* Hover / Tap Copy Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopyMethodValue(method._id, method.accountValue, method.name, method.kind)}
+                                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md backdrop-blur-md border cursor-pointer ${
+                                    isCopied
+                                      ? 'bg-emerald-600 text-white border-emerald-400'
+                                      : 'bg-white/20 hover:bg-white/35 active:bg-white/40 text-white border-white/30 group-hover:scale-105'
+                                  }`}
+                                  title={`Copy ${method.name} ${method.kind === 'iban' ? 'IBAN' : 'number'}`}
+                                >
+                                  {isCopied ? <Check size={13} className="text-white" /> : <Copy size={13} />}
+                                  <span>{isCopied ? 'Copied!' : 'Copy'}</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Card Footer (bottom ~5%) */}
+                            <div className="pt-2 border-t border-white/20 flex items-end justify-between gap-2 text-xs">
+                              <div>
+                                <span className="text-[9px] sm:text-[10px] text-white/70 uppercase font-bold tracking-wider block">
+                                  Account Title
+                                </span>
+                                <span className="font-bold text-amber-300 text-xs sm:text-sm drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+                                  {method.accountTitle}
+                                </span>
+                              </div>
+                              {method.details ? (
+                                <span className="text-[10px] sm:text-[11px] text-white/85 font-medium text-right drop-shadow max-w-[55%] truncate" title={method.details}>
+                                  {method.details}
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-white/70 font-medium">
+                                  Fee: Rs. {paymentSettings.feeAmount}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <span className="text-[11px] text-rose-200/80 font-medium">
-                    Send exact Rs. {paymentSettings.feeAmount}
-                  </span>
-                </div>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })()}
 
           {/* Payment Instructions Note if specified */}
           {paymentSettings.instructions && (

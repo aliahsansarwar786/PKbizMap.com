@@ -12,7 +12,7 @@ import {
   Check, X, Trash2, ChevronLeft, ChevronRight, Shield, Edit3,
   CreditCard, Eye, Image as ImageIcon, Save, ExternalLink,
   DollarSign, CheckCircle, AlertCircle, Phone, ArrowUpRight,
-  QrCode, Upload, MessageSquare, Search, Filter
+  QrCode, Upload, MessageSquare, Search, Filter, Plus
 } from 'lucide-react';
 import BusinessForm from '@/components/business/BusinessForm';
 
@@ -43,7 +43,7 @@ export default function AdminDashboardClient() {
   const [loading, setLoading] = useState(false);
   const [statsLoading, setStatsLoading] = useState(true);
 
-  // Raast QR Payment Gateway Settings
+  // Raast QR Payment Gateway Settings & Payment Methods
   const [paymentConfig, setPaymentConfig] = useState({
     isEnabled: false,
     feeAmount: 500,
@@ -52,8 +52,7 @@ export default function AdminDashboardClient() {
     accountTitle: 'BizPrimeHub',
     bankName: 'Raast Instant Payment',
     instructions: 'Scan this Raast QR code with any banking or wallet app (JazzCash, EasyPaisa, SadaPay, NayaPay, HBL, Meezan, etc.), complete payment, and upload the transaction screenshot below.',
-    jazzCashNumber: '',
-    jazzCashTitle: '',
+    paymentMethods: [],
   });
   const [qrCodeFile, setQrCodeFile] = useState(null);
   const [qrCodePreview, setQrCodePreview] = useState(null);
@@ -62,6 +61,22 @@ export default function AdminDashboardClient() {
   const [savingPaymentConfig, setSavingPaymentConfig] = useState(false);
   const [selectedReceiptBiz, setSelectedReceiptBiz] = useState(null);
   const [deletingReceipt, setDeletingReceipt] = useState(false);
+
+  // Configurable Payment Methods State
+  const [methodModalOpen, setMethodModalOpen] = useState(false);
+  const [editingMethod, setEditingMethod] = useState(null);
+  const [methodForm, setMethodForm] = useState({
+    name: '',
+    kind: 'number',
+    accountTitle: '',
+    accountValue: '',
+    details: '',
+  });
+  const [methodCardFile, setMethodCardFile] = useState(null);
+  const [methodCardPreview, setMethodCardPreview] = useState(null);
+  const [savingMethod, setSavingMethod] = useState(false);
+  const [togglingMethodId, setTogglingMethodId] = useState(null);
+  const [deletingMethodId, setDeletingMethodId] = useState(null);
 
   // Reviews Moderation State
   const [reviews, setReviews] = useState([]);
@@ -288,8 +303,6 @@ export default function AdminDashboardClient() {
       formData.append('accountTitle', paymentConfig.accountTitle || '');
       formData.append('bankName', paymentConfig.bankName || '');
       formData.append('instructions', paymentConfig.instructions || '');
-      formData.append('jazzCashNumber', paymentConfig.jazzCashNumber || '');
-      formData.append('jazzCashTitle', paymentConfig.jazzCashTitle || '');
       if (qrCodeFile) {
         formData.append('qrCode', qrCodeFile);
       }
@@ -304,7 +317,7 @@ export default function AdminDashboardClient() {
         setQrCodePreview(null);
       }
       setQrCodeFile(null);
-      toast.success('Raast payment settings updated successfully!');
+      toast.success('Payment settings updated successfully!');
     } catch (err) {
       toast.error(err.message || 'Failed to update payment settings.');
     } finally {
@@ -320,12 +333,173 @@ export default function AdminDashboardClient() {
       await adminAPI.updatePaymentSettings({ isEnabled: nextState });
       toast.success(
         nextState
-          ? 'Raast QR payment requirement ENABLED for all new listings!'
+          ? 'Payment requirement ENABLED for all new listings!'
           : 'Payment requirement DISABLED — Business listings are now FREE!'
       );
     } catch (err) {
       setPaymentConfig(paymentConfig);
       toast.error(err.message || 'Failed to update status.');
+    }
+  };
+
+  // Payment Methods Handlers
+  const handleOpenAddMethod = () => {
+    setEditingMethod(null);
+    setMethodForm({
+      name: '',
+      kind: 'number',
+      accountTitle: '',
+      accountValue: '',
+      details: '',
+    });
+    setMethodCardFile(null);
+    if (methodCardPreview && methodCardPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(methodCardPreview);
+    }
+    setMethodCardPreview(null);
+    setMethodModalOpen(true);
+  };
+
+  const handleOpenEditMethod = (method) => {
+    setEditingMethod(method);
+    setMethodForm({
+      name: method.name || '',
+      kind: method.kind || 'number',
+      accountTitle: method.accountTitle || '',
+      accountValue: method.accountValue || '',
+      details: method.details || '',
+    });
+    setMethodCardFile(null);
+    if (methodCardPreview && methodCardPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(methodCardPreview);
+    }
+    setMethodCardPreview(method.cardImage?.url || null);
+    setMethodModalOpen(true);
+  };
+
+  const handleMethodCardFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Card background image must be under 5MB.');
+      return;
+    }
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      toast.error('Only JPG, JPEG, PNG, and WebP images are allowed.');
+      return;
+    }
+    setMethodCardFile(file);
+    if (methodCardPreview && methodCardPreview.startsWith('blob:')) {
+      URL.revokeObjectURL(methodCardPreview);
+    }
+    setMethodCardPreview(URL.createObjectURL(file));
+  };
+
+  const handleSaveMethod = async (e) => {
+    e?.preventDefault();
+    if (!methodForm.name?.trim()) {
+      toast.error('Method name is required (e.g. JazzCash, Easypaisa, HBL).');
+      return;
+    }
+    if (!methodForm.accountTitle?.trim()) {
+      toast.error('Account title is required.');
+      return;
+    }
+    if (!methodForm.accountValue?.trim()) {
+      toast.error(methodForm.kind === 'iban' ? 'IBAN is required.' : 'Account number is required.');
+      return;
+    }
+
+    if (methodForm.kind === 'iban') {
+      const cleanIban = methodForm.accountValue.replace(/\s+/g, '').toUpperCase();
+      if (!/^PK[0-9A-Z]{22}$/i.test(cleanIban)) {
+        toast.error('Pakistani IBAN must start with "PK" and be exactly 24 characters long.');
+        return;
+      }
+    }
+
+    if (!editingMethod && !methodCardFile) {
+      toast.error('Please upload a blank card background image.');
+      return;
+    }
+
+    setSavingMethod(true);
+    try {
+      const fd = new FormData();
+      fd.append('name', methodForm.name.trim());
+      fd.append('kind', methodForm.kind);
+      fd.append('accountTitle', methodForm.accountTitle.trim());
+      fd.append('accountValue', methodForm.kind === 'iban' ? methodForm.accountValue.replace(/\s+/g, '').toUpperCase() : methodForm.accountValue.trim());
+      fd.append('details', methodForm.details?.trim() || '');
+      if (methodCardFile) {
+        fd.append('cardImage', methodCardFile);
+      }
+
+      let res;
+      if (editingMethod) {
+        res = await adminAPI.updatePaymentMethod(editingMethod._id, fd);
+        toast.success(`Payment method "${methodForm.name}" updated!`);
+      } else {
+        res = await adminAPI.addPaymentMethod(fd);
+        toast.success(`Payment method "${methodForm.name}" added!`);
+      }
+
+      const updatedSettings = res.data?.settings;
+      if (updatedSettings) {
+        setPaymentConfig(updatedSettings);
+      } else if (res.data?.paymentMethods) {
+        setPaymentConfig((prev) => ({ ...prev, paymentMethods: res.data.paymentMethods }));
+      }
+
+      setMethodModalOpen(false);
+      setEditingMethod(null);
+      setMethodCardFile(null);
+      if (methodCardPreview && methodCardPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(methodCardPreview);
+      }
+      setMethodCardPreview(null);
+    } catch (err) {
+      toast.error(err.message || 'Failed to save payment method.');
+    } finally {
+      setSavingMethod(false);
+    }
+  };
+
+  const handleToggleMethod = async (methodId) => {
+    setTogglingMethodId(methodId);
+    try {
+      const res = await adminAPI.togglePaymentMethod(methodId);
+      const updatedSettings = res.data?.settings;
+      if (updatedSettings) {
+        setPaymentConfig(updatedSettings);
+      } else if (res.data?.paymentMethods) {
+        setPaymentConfig((prev) => ({ ...prev, paymentMethods: res.data.paymentMethods }));
+      }
+      toast.success(res.data?.message || 'Payment method status updated.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to toggle payment method.');
+    } finally {
+      setTogglingMethodId(null);
+    }
+  };
+
+  const handleDeleteMethod = async (methodId, methodName) => {
+    if (!confirm(`Are you sure you want to permanently delete the "${methodName || 'this'}" payment method card?`)) return;
+    setDeletingMethodId(methodId);
+    try {
+      const res = await adminAPI.deletePaymentMethod(methodId);
+      const updatedSettings = res.data?.settings;
+      if (updatedSettings) {
+        setPaymentConfig(updatedSettings);
+      } else if (res.data?.paymentMethods) {
+        setPaymentConfig((prev) => ({ ...prev, paymentMethods: res.data.paymentMethods }));
+      }
+      toast.success('Payment method card deleted successfully.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to delete payment method.');
+    } finally {
+      setDeletingMethodId(null);
     }
   };
 
@@ -1237,49 +1411,154 @@ export default function AdminDashboardClient() {
                       </div>
                     </div>
 
-                    {/* JazzCash Number Card Settings */}
-                    <div className="p-4 rounded-xl border border-red-200 bg-red-50/40 space-y-3">
-                      <div className="flex items-center justify-between">
+                    {/* Configurable Payment Methods Section */}
+                    <div className="p-5 rounded-xl border border-gray-200 bg-white shadow-xs space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-gray-100">
                         <div>
-                          <h4 className="text-sm font-bold text-red-950 flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block"></span>
-                            JazzCash Number Card (Optional)
-                          </h4>
-                          <p className="text-xs text-gray-600 mt-0.5">
-                            Yahan JazzCash number dene se user ko Add Business form par dark red JazzCash card dikhega. Khali chhorne par card hidden rahega.
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-base font-bold text-gray-900">
+                              Payment Method Cards
+                            </h4>
+                            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
+                              {paymentConfig.paymentMethods?.length || 0}
+                            </span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            Add unlimited custom bank, wallet, or IBAN cards with blank background artwork. Details are dynamically overlaid on cards.
                           </p>
                         </div>
+
+                        <button
+                          type="button"
+                          onClick={handleOpenAddMethod}
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors shrink-0 cursor-pointer"
+                        >
+                          <Plus size={14} /> Add Payment Method
+                        </button>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                        <div>
-                          <label className="form-label flex items-center justify-between">
-                            <span>JazzCash Mobile Number</span>
-                            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Optional</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={paymentConfig.jazzCashNumber || ''}
-                            onChange={(e) => setPaymentConfig({ ...paymentConfig, jazzCashNumber: e.target.value })}
-                            className="form-input font-mono"
-                            placeholder="e.g. 03001234567"
-                          />
+                      {/* Methods List */}
+                      {(!paymentConfig.paymentMethods || paymentConfig.paymentMethods.length === 0) ? (
+                        <div className="py-8 text-center border border-dashed border-gray-200 rounded-xl bg-gray-50/60">
+                          <CreditCard size={32} className="mx-auto text-gray-400 mb-2" />
+                          <p className="text-sm font-semibold text-gray-700">No payment methods configured yet</p>
+                          <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
+                            Click &ldquo;Add Payment Method&rdquo; to add custom JazzCash, Easypaisa, HBL, or any bank cards.
+                          </p>
                         </div>
+                      ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                          {paymentConfig.paymentMethods.map((method) => {
+                            const isToggling = togglingMethodId === method._id;
+                            const isDeleting = deletingMethodId === method._id;
 
-                        <div>
-                          <label className="form-label flex items-center justify-between">
-                            <span>JazzCash Account Title</span>
-                            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Optional</span>
-                          </label>
-                          <input
-                            type="text"
-                            value={paymentConfig.jazzCashTitle || ''}
-                            onChange={(e) => setPaymentConfig({ ...paymentConfig, jazzCashTitle: e.target.value })}
-                            className="form-input"
-                            placeholder="e.g. Ahsan Ali"
-                          />
+                            return (
+                              <div
+                                key={method._id}
+                                className={`rounded-xl border p-3 flex flex-col justify-between transition-all ${
+                                  method.isEnabled
+                                    ? 'border-gray-200 bg-gray-50/50 shadow-xs'
+                                    : 'border-gray-200 bg-gray-100/60 opacity-75'
+                                }`}
+                              >
+                                {/* Top: Realistic Card Preview with dynamic overlay */}
+                                <div className="relative aspect-[1.586/1] w-full rounded-xl overflow-hidden shadow-sm border border-black/10 select-none bg-slate-900">
+                                  {method.cardImage?.url ? (
+                                    <img
+                                      src={method.cardImage.url}
+                                      alt={method.name}
+                                      className="absolute inset-0 w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950" />
+                                  )}
+                                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/30 pointer-events-none" />
+
+                                  <div className="absolute inset-0 p-[5%] flex flex-col justify-between text-white z-10">
+                                    <div className="flex items-center justify-between gap-1">
+                                      <span className="font-black text-xs sm:text-sm tracking-wide text-white drop-shadow">
+                                        {method.name}
+                                      </span>
+                                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-white/20 backdrop-blur-md border border-white/20 text-white">
+                                        {method.kind === 'iban' ? 'IBAN' : 'NUMBER'}
+                                      </span>
+                                    </div>
+
+                                    <div className="my-auto py-0.5">
+                                      <div className="text-[9px] uppercase font-semibold text-white/70">
+                                        {method.kind === 'iban' ? 'IBAN' : 'Account Number'}
+                                      </div>
+                                      <div className="font-mono font-black text-xs sm:text-sm text-white drop-shadow break-all">
+                                        {method.accountValue}
+                                      </div>
+                                    </div>
+
+                                    <div className="pt-1 border-t border-white/20 flex items-end justify-between text-[10px]">
+                                      <div>
+                                        <span className="text-white/70 uppercase text-[8px] font-bold block">
+                                          Account Title
+                                        </span>
+                                        <span className="font-bold text-amber-300 drop-shadow">
+                                          {method.accountTitle}
+                                        </span>
+                                      </div>
+                                      {method.details && (
+                                        <span className="text-white/80 truncate max-w-[50%]" title={method.details}>
+                                          {method.details}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Bottom Info & Actions */}
+                                <div className="mt-3 pt-3 border-t border-gray-200/80 flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleMethod(method._id)}
+                                      disabled={isToggling}
+                                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                                        method.isEnabled ? 'bg-emerald-600' : 'bg-gray-300'
+                                      }`}
+                                      title={method.isEnabled ? 'Click to disable method' : 'Click to enable method'}
+                                    >
+                                      <span
+                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                                          method.isEnabled ? 'translate-x-5' : 'translate-x-0'
+                                        }`}
+                                      />
+                                    </button>
+                                    <span className="text-xs font-semibold text-gray-700">
+                                      {method.isEnabled ? 'Enabled' : 'Disabled'}
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenEditMethod(method)}
+                                      className="p-1.5 text-xs font-semibold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                                      title="Edit Method"
+                                    >
+                                      <Edit3 size={14} /> Edit
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteMethod(method._id, method.name)}
+                                      disabled={isDeleting}
+                                      className="p-1.5 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                                      title="Delete Method"
+                                    >
+                                      <Trash2 size={14} /> Delete
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* Instructions */}
@@ -1526,6 +1805,203 @@ export default function AdminDashboardClient() {
                 onCancel={() => setEditingBusiness(null)}
               />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add / Edit Payment Method Modal */}
+      {methodModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
+          onClick={() => {
+            setMethodModalOpen(false);
+            setEditingMethod(null);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Payment Method Modal"
+        >
+          <div
+            className="relative bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 my-8 animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 mb-4">
+              <div className="flex items-center gap-2">
+                <CreditCard size={18} className="text-blue-600" />
+                <h3 className="text-lg font-bold text-gray-900">
+                  {editingMethod ? 'Edit Payment Method Card' : 'Add Payment Method Card'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setMethodModalOpen(false);
+                  setEditingMethod(null);
+                }}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors cursor-pointer"
+                aria-label="Close modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveMethod} className="space-y-4 text-left">
+              <div>
+                <label className="form-label flex items-center justify-between">
+                  <span>Method Name <span className="text-red-600">*</span></span>
+                  <span className="text-[11px] text-gray-500">e.g. JazzCash, Easypaisa, HBL</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={methodForm.name}
+                  onChange={(e) => setMethodForm({ ...methodForm, name: e.target.value })}
+                  className="form-input"
+                  placeholder="e.g. JazzCash or HBL Bank"
+                />
+              </div>
+
+              <div>
+                <label className="form-label">
+                  Method Kind <span className="text-red-600">*</span>
+                </label>
+                <select
+                  value={methodForm.kind}
+                  onChange={(e) => setMethodForm({ ...methodForm, kind: e.target.value })}
+                  className="form-input"
+                >
+                  <option value="number">Account Number / Mobile Wallet (e.g. 03001234567)</option>
+                  <option value="iban">Bank IBAN (24 Characters starting with PK)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label flex items-center justify-between">
+                  <span>
+                    {methodForm.kind === 'iban' ? 'Bank IBAN' : 'Account / Mobile Number'}{' '}
+                    <span className="text-red-600">*</span>
+                  </span>
+                  {methodForm.kind === 'iban' && (
+                    <span className="text-[11px] text-purple-700 font-semibold">24 chars, starts with PK</span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={methodForm.accountValue}
+                  onChange={(e) => setMethodForm({ ...methodForm, accountValue: e.target.value })}
+                  className="form-input font-mono uppercase"
+                  placeholder={
+                    methodForm.kind === 'iban'
+                      ? 'PK36SCBL0000001123456701'
+                      : '03001234567'
+                  }
+                />
+                {methodForm.kind === 'iban' && (
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Must start with &ldquo;PK&rdquo; and contain 24 alphanumeric characters.
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label className="form-label">
+                  Account Title <span className="text-red-600">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={methodForm.accountTitle}
+                  onChange={(e) => setMethodForm({ ...methodForm, accountTitle: e.target.value })}
+                  className="form-input"
+                  placeholder="e.g. Ahsan Ali"
+                />
+              </div>
+
+              <div>
+                <label className="form-label flex items-center justify-between">
+                  <span>Blank Card Background Image <span className="text-red-600">*</span></span>
+                  <span className="text-[11px] text-gray-500">JPG, PNG, WebP &le; 5MB</span>
+                </label>
+
+                {methodCardPreview ? (
+                  <div className="space-y-2">
+                    <div className="relative aspect-[1.586/1] w-full rounded-xl overflow-hidden border border-gray-300 shadow-inner bg-slate-900">
+                      <img
+                        src={methodCardPreview}
+                        alt="Card Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        <Upload size={14} /> Change Image
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          onChange={handleMethodCardFileChange}
+                          className="hidden"
+                        />
+                      </label>
+                      <span className="text-[11px] text-gray-500 truncate">
+                        {methodCardFile?.name || 'Current card image'}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 hover:border-blue-500 rounded-xl cursor-pointer bg-gray-50/50 hover:bg-blue-50/20 transition-all text-center">
+                    <ImageIcon size={28} className="text-gray-400 mb-2" />
+                    <span className="text-xs font-semibold text-gray-700">
+                      Click to upload blank card artwork
+                    </span>
+                    <span className="text-[11px] text-gray-500 mt-0.5">
+                      Card image without numbers or text on it
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      onChange={handleMethodCardFileChange}
+                      className="hidden"
+                    />
+                  </label>
+                )}
+              </div>
+
+              <div>
+                <label className="form-label flex items-center justify-between">
+                  <span>Additional Details (Optional)</span>
+                  <span className="text-[11px] text-gray-500">Optional</span>
+                </label>
+                <input
+                  type="text"
+                  value={methodForm.details}
+                  onChange={(e) => setMethodForm({ ...methodForm, details: e.target.value })}
+                  className="form-input"
+                  placeholder="e.g. Branch code: 0142 or Transfer via Raast/1Link"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMethodModalOpen(false);
+                    setEditingMethod(null);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingMethod}
+                  className="inline-flex items-center gap-1.5 px-5 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                >
+                  <Save size={14} />
+                  {savingMethod ? 'Saving Card...' : editingMethod ? 'Update Card' : 'Save Card'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

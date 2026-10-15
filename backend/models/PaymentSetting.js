@@ -1,5 +1,59 @@
 const mongoose = require('mongoose');
 
+const paymentMethodSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: [true, 'Payment method name is required'],
+      trim: true,
+      maxlength: [100, 'Name cannot exceed 100 characters'],
+    },
+    kind: {
+      type: String,
+      required: [true, 'Method kind is required'],
+      enum: {
+        values: ['iban', 'number'],
+        message: 'Kind must be either "iban" or "number"',
+      },
+    },
+    accountTitle: {
+      type: String,
+      required: [true, 'Account title is required'],
+      trim: true,
+      maxlength: [100, 'Account title cannot exceed 100 characters'],
+    },
+    accountValue: {
+      type: String,
+      required: [true, 'Account number or IBAN is required'],
+      trim: true,
+      maxlength: [50, 'Account value cannot exceed 50 characters'],
+    },
+    details: {
+      type: String,
+      default: '',
+      trim: true,
+      maxlength: [500, 'Details cannot exceed 500 characters'],
+    },
+    cardImage: {
+      url: {
+        type: String,
+        default: '',
+        trim: true,
+      },
+      publicId: {
+        type: String,
+        default: '',
+        trim: true,
+      },
+    },
+    isEnabled: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { timestamps: true }
+);
+
 const paymentSettingSchema = new mongoose.Schema(
   {
     isEnabled: {
@@ -44,6 +98,8 @@ const paymentSettingSchema = new mongoose.Schema(
       trim: true,
       maxlength: 500,
     },
+    paymentMethods: [paymentMethodSchema],
+    // Legacy single JazzCash fields (migrated into paymentMethods array)
     jazzCashNumber: {
       type: String,
       default: '',
@@ -66,6 +122,31 @@ paymentSettingSchema.statics.getSettings = async function () {
   if (!settings) {
     settings = await this.create({});
   }
+
+  // Automatic Migration: If legacy jazzCashNumber was set, migrate into paymentMethods
+  if (settings.jazzCashNumber && settings.jazzCashNumber.trim()) {
+    const rawVal = settings.jazzCashNumber.trim();
+    if (!settings.paymentMethods) settings.paymentMethods = [];
+    const alreadyExists = settings.paymentMethods.some(
+      (m) => m.accountValue === rawVal
+    );
+    if (!alreadyExists) {
+      settings.paymentMethods.push({
+        name: 'JazzCash',
+        kind: 'number',
+        accountTitle: settings.jazzCashTitle?.trim() || settings.accountTitle || 'BizPrimeHub',
+        accountValue: rawVal,
+        details: 'JazzCash Mobile Account',
+        cardImage: { url: '', publicId: '' },
+        isEnabled: true,
+      });
+      // Clear legacy fields
+      settings.jazzCashNumber = '';
+      settings.jazzCashTitle = '';
+      await settings.save();
+    }
+  }
+
   return settings;
 };
 

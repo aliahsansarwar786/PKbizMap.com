@@ -140,4 +140,43 @@ const handleQrCodeUpload = (req, res, next) => {
   });
 };
 
-module.exports = { handleAvatarUpload, handleBusinessImageUpload, handleQrCodeUpload };
+// ─── Cloudinary Storage: Payment Method Card Image ──────────────────────────
+const paymentCardStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'business-directory/payment-cards',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+    transformation: [{ width: 1200, height: 800, crop: 'limit', quality: 'auto' }],
+  },
+});
+
+const uploadPaymentCard = multer({
+  storage: paymentCardStorage,
+  fileFilter,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB
+    files: 1,
+  },
+}).single('cardImage');
+
+const handlePaymentCardImageUpload = (req, res, next) => {
+  uploadPaymentCard(req, res, (err) => {
+    if (err instanceof multer.MulterError) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({ success: false, message: 'Card background image must be under 5MB.' });
+      }
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    if (err) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    next();
+  });
+};
+
+module.exports = {
+  handleAvatarUpload,
+  handleBusinessImageUpload,
+  handleQrCodeUpload,
+  handlePaymentCardImageUpload,
+};
