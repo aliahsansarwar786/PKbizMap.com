@@ -176,11 +176,11 @@ export default function BusinessDirectory() {
     return () => clearTimeout(timer);
   }, [keywordInput]);
 
-  // Category count for currently selected country (or aggregate if all countries)
+  // Category count for currently selected country / city (or aggregate if all)
   const getCategoryCount = useCallback(
     (cat) => {
       if (!summary?.categories) return 0;
-      if (country && summary.categories[country]) {
+      if (country && country !== 'All' && summary.categories[country]) {
         return summary.categories[country][cat] || 0;
       }
       return (
@@ -192,14 +192,17 @@ export default function BusinessDirectory() {
     [summary, country]
   );
 
-  // Total count for All Categories in currently selected country (or all countries)
+  // Total count for All Categories in currently selected country / city (matches filtered total)
   const getAllCategoriesCount = useCallback(() => {
     if (!summary) return 0;
-    if (country && summary.countries) {
-      return summary.countries[country] || 0;
+    if (city && city !== 'All') {
+      return summary.total ?? 0;
     }
-    return summary.total || 0;
-  }, [summary, country]);
+    if (country && country !== 'All' && summary.countries) {
+      return summary.countries[country] ?? (summary.total ?? 0);
+    }
+    return summary.total ?? 0;
+  }, [summary, country, city]);
 
   const handleCategoryChange = (newCat) => {
     setCategory(newCat);
@@ -234,16 +237,25 @@ export default function BusinessDirectory() {
     fetchBusinesses();
   }, [fetchBusinesses]);
 
-  // Fetch summary counts for Country / City / Category cards
+  // Fetch summary counts for Country / City / Category (re-fetch whenever country or city changes)
   useEffect(() => {
-    businessAPI.getSummary()
+    let canceled = false;
+    const params = {};
+    if (country && country !== 'All') params.country = country;
+    if (city && city !== 'All') params.city = city;
+
+    businessAPI.getSummary(params)
       .then((res) => {
-        if (res.data) setSummary(res.data);
+        if (!canceled && res.data) setSummary(res.data);
       })
       .catch((err) => {
-        console.error('Failed to load summary counts:', err);
+        if (!canceled) console.error('Failed to load summary counts:', err);
       });
-  }, []);
+
+    return () => {
+      canceled = true;
+    };
+  }, [country, city]);
 
   // Sync state to URL without full page reload (only when on /businesses)
   useEffect(() => {
@@ -365,9 +377,9 @@ export default function BusinessDirectory() {
                 <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">
                   Popular Categories
                 </p>
-                {country && (
+                {(city || country) && (
                   <p className="text-[11px] text-gray-500 mb-2">
-                    Counts for <span className="font-semibold text-gray-700">{country}</span>
+                    Counts for <span className="font-semibold text-gray-700">{city && country ? `${city}, ${country}` : (city || country)}</span>
                   </p>
                 )}
               </div>
@@ -416,9 +428,9 @@ export default function BusinessDirectory() {
                     <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 mt-1">
                       Popular Categories
                     </p>
-                    {country && (
+                    {(city || country) && (
                       <p className="text-[11px] text-gray-500 mb-2">
-                        Counts for <span className="font-semibold text-gray-700">{country}</span>
+                        Counts for <span className="font-semibold text-gray-700">{city && country ? `${city}, ${country}` : (city || country)}</span>
                       </p>
                     )}
                   </div>

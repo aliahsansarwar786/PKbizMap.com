@@ -564,9 +564,41 @@ const getMyBusinesses = asyncHandler(async (req, res) => {
 
 // ─── GET /api/businesses/summary ──────────────────────────────────────────────
 // Public: Returns listing counts grouped by country, city, and category
+// Optional query params: country, city (for city-level and country-level filtering)
 const getBusinessSummary = asyncHandler(async (req, res) => {
+  const { country, city } = req.query;
+
+  const andConditions = [{ isApproved: true }];
+
+  const hasCountry = country && country.trim() && country.trim().toLowerCase() !== 'all';
+  const hasCity = city && city.trim() && city.trim().toLowerCase() !== 'all';
+
+  if (hasCountry) {
+    const c = country.trim();
+    if (c.toLowerCase() === 'pakistan') {
+      andConditions.push({
+        $or: [
+          { 'address.country': 'Pakistan' },
+          { 'address.country': { $exists: false } },
+          { 'address.country': null },
+          { 'address.country': '' },
+        ],
+      });
+    } else {
+      andConditions.push({ 'address.country': c });
+    }
+  }
+
+  if (hasCity) {
+    andConditions.push({
+      'address.city': { $regex: `^${escapeRegex(city.trim())}$`, $options: 'i' },
+    });
+  }
+
+  const queryObj = andConditions.length === 1 ? andConditions[0] : { $and: andConditions };
+
   const businesses = await Business.find(
-    { isApproved: true },
+    queryObj,
     'address.country address.city category'
   ).lean();
 
@@ -575,24 +607,24 @@ const getBusinessSummary = asyncHandler(async (req, res) => {
   const categories = { Pakistan: {}, UAE: {}, USA: {} };
 
   for (const b of businesses) {
-    let country = (b.address?.country || '').trim();
+    let bCountry = (b.address?.country || '').trim();
     // Backward-compat fallback: if country is missing or invalid, treat as Pakistan
-    if (!country || !['Pakistan', 'UAE', 'USA'].includes(country)) {
-      country = 'Pakistan';
+    if (!bCountry || !['Pakistan', 'UAE', 'USA'].includes(bCountry)) {
+      bCountry = 'Pakistan';
     }
 
-    countries[country] = (countries[country] || 0) + 1;
+    countries[bCountry] = (countries[bCountry] || 0) + 1;
 
     const rawCity = (b.address?.city || '').trim();
     if (rawCity) {
-      if (!cities[country]) cities[country] = {};
-      cities[country][rawCity] = (cities[country][rawCity] || 0) + 1;
+      if (!cities[bCountry]) cities[bCountry] = {};
+      cities[bCountry][rawCity] = (cities[bCountry][rawCity] || 0) + 1;
     }
 
     const cat = (b.category || '').trim();
     if (cat) {
-      if (!categories[country]) categories[country] = {};
-      categories[country][cat] = (categories[country][cat] || 0) + 1;
+      if (!categories[bCountry]) categories[bCountry] = {};
+      categories[bCountry][cat] = (categories[bCountry][cat] || 0) + 1;
     }
   }
 

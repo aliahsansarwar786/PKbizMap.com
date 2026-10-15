@@ -104,7 +104,12 @@ export const businessAPI = {
     ).toString();
     return api.get(`/businesses${qs ? `?${qs}` : ''}`);
   },
-  getSummary: () => api.get('/businesses/summary'),
+  getSummary: (params = {}) => {
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v !== '' && v != null))
+    ).toString();
+    return api.get(`/businesses/summary${qs ? `?${qs}` : ''}`);
+  },
   getById: (id) => api.get(`/businesses/${id}`),
   getMyBusinesses: (params = {}) => {
     const qs = new URLSearchParams(
