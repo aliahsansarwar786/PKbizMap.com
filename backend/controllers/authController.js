@@ -4,7 +4,8 @@ const asyncHandler = require('../utils/asyncHandler');
 const generateTokenAndSend = require('../utils/generateToken');
 const cloudinary = require('../config/cloudinary');
 const sendEmail = require('../utils/sendEmail');
-const { getWelcomeEmailHtml, getPasswordResetEmailHtml } = require('../utils/emailTemplates');
+const { getWelcomeEmailHtml, getPasswordResetEmailHtml, getNewUserNotificationHtml } = require('../utils/emailTemplates');
+const PaymentSetting = require('../models/PaymentSetting');
 const {
   validate,
   registerValidator,
@@ -70,6 +71,30 @@ const register = [
       });
     } catch (e) {
       console.error('⚠️ [Auth:Register] Unexpected error setting up welcome email:', e.message);
+    }
+
+    // Owner Notification: New user registered alert
+    // Awaited before responding so Vercel serverless functions do not freeze SMTP delivery.
+    try {
+      const settings = await PaymentSetting.getSettings();
+      const ownerEmail = settings?.ownerNotificationEmail?.trim();
+      const isOwnerNotificationsEnabled = settings?.ownerNotificationsEnabled !== false;
+
+      if (isOwnerNotificationsEnabled && ownerEmail) {
+        await sendEmail({
+          to: ownerEmail,
+          subject: `New user registered: ${user.name}`,
+          html: getNewUserNotificationHtml({
+            name: user.name,
+            email: user.email,
+            date: new Date().toUTCString(),
+          }),
+        }).catch((err) => {
+          console.error('⚠️ [Auth:Register] Non-fatal error sending owner alert:', err.message);
+        });
+      }
+    } catch (e) {
+      console.error('⚠️ [Auth:Register] Unexpected error setting up owner alert:', e.message);
     }
 
     // Send token in cookie

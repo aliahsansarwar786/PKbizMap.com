@@ -39,6 +39,8 @@ const validatePaymentMethodData = ({ name, kind, accountTitle, accountValue }) =
 const getPaymentSettings = asyncHandler(async (req, res) => {
   const settings = await PaymentSetting.getSettings();
 
+  const isAdmin = req.user && req.user.role === 'admin';
+
   res.status(200).json({
     success: true,
     message: 'Payment settings retrieved successfully.',
@@ -55,6 +57,10 @@ const getPaymentSettings = asyncHandler(async (req, res) => {
         bankName: settings.bankName || 'Raast Instant Payment',
         instructions: settings.instructions,
         paymentMethods: settings.paymentMethods || [],
+        ...(isAdmin ? {
+          ownerNotificationEmail: settings.ownerNotificationEmail || 'ahsanalisarwar555@gmail.com',
+          ownerNotificationsEnabled: settings.ownerNotificationsEnabled !== false,
+        } : {}),
       },
     },
   });
@@ -74,6 +80,8 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
     bankName,
     instructions,
     removeQrCode,
+    ownerNotificationsEnabled,
+    ownerNotificationEmail,
   } = req.body;
 
   const settings = await PaymentSetting.getSettings();
@@ -158,6 +166,15 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
     settings.instructions = instructions.trim();
   }
 
+  // Handle owner notification settings
+  if (ownerNotificationsEnabled !== undefined) {
+    settings.ownerNotificationsEnabled = ownerNotificationsEnabled === true || ownerNotificationsEnabled === 'true';
+  }
+
+  if (ownerNotificationEmail !== undefined) {
+    settings.ownerNotificationEmail = String(ownerNotificationEmail).trim().toLowerCase();
+  }
+
   // Handle QR Code deletion if requested
   if (removeQrCode === true || removeQrCode === 'true') {
     if (settings.qrCode?.publicId) {
@@ -199,6 +216,8 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
         bankName: settings.bankName,
         instructions: settings.instructions,
         paymentMethods: settings.paymentMethods || [],
+        ownerNotificationEmail: settings.ownerNotificationEmail || 'ahsanalisarwar555@gmail.com',
+        ownerNotificationsEnabled: settings.ownerNotificationsEnabled !== false,
       },
     },
   });

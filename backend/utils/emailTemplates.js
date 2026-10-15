@@ -173,7 +173,224 @@ const getPasswordResetEmailHtml = ({ name, resetUrl }) => {
   `.trim();
 };
 
+/**
+ * Generates the Owner Notification Email HTML for a new listing submission
+ * @param {Object} params
+ * @param {string} params.businessTitle
+ * @param {string} params.category
+ * @param {string} params.city
+ * @param {string} params.country
+ * @param {string} params.submittedByName
+ * @param {string} params.submittedByEmail
+ * @param {string} params.pendingUrl
+ * @returns {string} HTML string
+ */
+const getNewListingNotificationHtml = ({
+  businessTitle,
+  category,
+  city,
+  country,
+  submittedByName,
+  submittedByEmail,
+  pendingUrl,
+}) => {
+  const safeTitle = businessTitle || 'Untitled Business';
+  const safeCategory = category || 'General';
+  const safeCity = city || 'N/A';
+  const safeCountry = country || 'Pakistan';
+  const safeSubmitterName = submittedByName || 'Registered User';
+  const safeSubmitterEmail = submittedByEmail || 'N/A';
+  const safeUrl = pendingUrl || 'https://bizprimehub.vercel.app/folder/new/admin';
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Listing Submitted: ${safeTitle}</title>
+</head>
+<body style="${getBaseStyles()} padding: 32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">
+          BizPrimeHub
+        </h1>
+        <p style="color: #bfdbfe; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+          Owner Notification • New Business Listing
+        </p>
+      </td>
+    </tr>
+
+    <!-- Content -->
+    <tr>
+      <td style="padding: 32px 28px;">
+        <div style="display: inline-block; background-color: #ecfdf5; color: #047857; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; border: 1px solid #a7f3d0;">
+          🔔 New Listing Submission
+        </div>
+
+        <h2 style="margin: 0 0 12px 0; font-size: 20px; font-weight: 700; color: #111827;">
+          A new business has been submitted for review
+        </h2>
+        <p style="margin: 0 0 24px 0; font-size: 15px; color: #4b5563;">
+          A user has submitted a new business listing on <strong>BizPrimeHub</strong>. Below are the submission details:
+        </p>
+
+        <!-- Business Details Card -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 24px; overflow: hidden;">
+          <tr>
+            <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #6b7280; border-bottom: 1px solid #e5e7eb; width: 35%;">Business Name</td>
+            <td style="padding: 12px 16px; font-size: 14px; font-weight: 700; color: #111827; border-bottom: 1px solid #e5e7eb;">${safeTitle}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Category</td>
+            <td style="padding: 12px 16px; font-size: 14px; color: #1f2937; border-bottom: 1px solid #e5e7eb;">${safeCategory}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Location</td>
+            <td style="padding: 12px 16px; font-size: 14px; color: #1f2937; border-bottom: 1px solid #e5e7eb;">${safeCity}, ${safeCountry}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Submitted By</td>
+            <td style="padding: 12px 16px; font-size: 14px; color: #1f2937; border-bottom: 1px solid #e5e7eb;">${safeSubmitterName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #6b7280;">Submitter Email</td>
+            <td style="padding: 12px 16px; font-size: 14px; color: #2563eb;">${safeSubmitterEmail}</td>
+          </tr>
+        </table>
+
+        <!-- CTA Button -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 28px 0 16px 0;">
+          <tr>
+            <td align="center">
+              <a href="${safeUrl}" target="_blank" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 15px; box-shadow: 0 2px 6px rgba(37,99,235,0.35);">
+                Review Listing in Admin Panel &rarr;
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <p style="margin: 16px 0 0 0; font-size: 12px; color: #9ca3af; text-align: center; word-break: break-all;">
+          Direct Link: <a href="${safeUrl}" style="color: #2563eb;">${safeUrl}</a>
+        </p>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f9fafb; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+          This automated alert was sent to the platform owner. You can configure notification settings in the Admin Panel.
+        </p>
+        <p style="margin: 4px 0 0 0; font-size: 11px; color: #d1d5db;">
+          &copy; ${new Date().getFullYear()} BizPrimeHub. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+};
+
+/**
+ * Generates the Owner Notification Email HTML for a new user registration
+ * @param {Object} params
+ * @param {string} params.name
+ * @param {string} params.email
+ * @param {string} params.date
+ * @returns {string} HTML string
+ */
+const getNewUserNotificationHtml = ({ name, email, date }) => {
+  const safeName = name || 'New User';
+  const safeEmail = email || 'N/A';
+  const safeDate = date || new Date().toUTCString();
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New User Registered: ${safeName}</title>
+</head>
+<body style="${getBaseStyles()} padding: 32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">
+          BizPrimeHub
+        </h1>
+        <p style="color: #bfdbfe; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+          Owner Notification • New User Registration
+        </p>
+      </td>
+    </tr>
+
+    <!-- Content -->
+    <tr>
+      <td style="padding: 32px 28px;">
+        <div style="display: inline-block; background-color: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; border: 1px solid #bfdbfe;">
+          👤 New User Registration
+        </div>
+
+        <h2 style="margin: 0 0 12px 0; font-size: 20px; font-weight: 700; color: #111827;">
+          A new user has registered on BizPrimeHub
+        </h2>
+        <p style="margin: 0 0 24px 0; font-size: 15px; color: #4b5563;">
+          A new user account has been successfully created. Here are the registration details:
+        </p>
+
+        <!-- User Details Card -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 24px; overflow: hidden;">
+          <tr>
+            <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #6b7280; border-bottom: 1px solid #e5e7eb; width: 35%;">User Name</td>
+            <td style="padding: 12px 16px; font-size: 14px; font-weight: 700; color: #111827; border-bottom: 1px solid #e5e7eb;">${safeName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Email Address</td>
+            <td style="padding: 12px 16px; font-size: 14px; color: #2563eb; border-bottom: 1px solid #e5e7eb;">${safeEmail}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Registration Date</td>
+            <td style="padding: 12px 16px; font-size: 14px; color: #1f2937; border-bottom: 1px solid #e5e7eb;">${safeDate}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #6b7280;">Account Status</td>
+            <td style="padding: 12px 16px; font-size: 14px; color: #059669; font-weight: 600;">Active Member</td>
+          </tr>
+        </table>
+
+        <p style="margin: 0; font-size: 13px; color: #6b7280;">
+          The user has received their welcome email and can now log in and manage listings.
+        </p>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f9fafb; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+          This automated alert was sent to the platform owner. You can configure notification settings in the Admin Panel.
+        </p>
+        <p style="margin: 4px 0 0 0; font-size: 11px; color: #d1d5db;">
+          &copy; ${new Date().getFullYear()} BizPrimeHub. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+};
+
 module.exports = {
   getWelcomeEmailHtml,
   getPasswordResetEmailHtml,
+  getNewListingNotificationHtml,
+  getNewUserNotificationHtml,
 };

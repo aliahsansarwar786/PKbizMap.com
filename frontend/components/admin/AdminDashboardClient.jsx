@@ -12,7 +12,7 @@ import {
   Check, X, Trash2, ChevronLeft, ChevronRight, Shield, Edit3,
   CreditCard, Eye, Image as ImageIcon, Save, ExternalLink,
   DollarSign, CheckCircle, AlertCircle, Phone, ArrowUpRight,
-  QrCode, Upload, MessageSquare, Search, Filter, Plus
+  QrCode, Upload, MessageSquare, Search, Filter, Plus, Mail, Bell
 } from 'lucide-react';
 import BusinessForm from '@/components/business/BusinessForm';
 
@@ -35,6 +35,8 @@ const normalizePaymentConfig = (s) => {
   const legacyPakistanFee = s.fees?.Pakistan?.amount ?? s.feeAmount ?? 50;
   return {
     ...s,
+    ownerNotificationEmail: s.ownerNotificationEmail ?? 'ahsanalisarwar555@gmail.com',
+    ownerNotificationsEnabled: s.ownerNotificationsEnabled !== false,
     feeAmount: legacyPakistanFee,
     fees: {
       Pakistan: {
@@ -90,6 +92,8 @@ export default function AdminDashboardClient() {
   // Raast QR Payment Gateway Settings & Payment Methods
   const [paymentConfig, setPaymentConfig] = useState({
     isEnabled: false,
+    ownerNotificationEmail: 'ahsanalisarwar555@gmail.com',
+    ownerNotificationsEnabled: true,
     feeAmount: 50,
     fees: {
       Pakistan: { amount: 50, currency: 'PKR', symbol: 'Rs.' },
@@ -491,6 +495,8 @@ export default function AdminDashboardClient() {
       formData.append('accountTitle', paymentConfig.accountTitle || '');
       formData.append('bankName', paymentConfig.bankName || '');
       formData.append('instructions', paymentConfig.instructions || '');
+      formData.append('ownerNotificationsEnabled', paymentConfig.ownerNotificationsEnabled !== false);
+      formData.append('ownerNotificationEmail', (paymentConfig.ownerNotificationEmail || '').trim().toLowerCase());
       if (qrCodeFile) {
         formData.append('qrCode', qrCodeFile);
       }
@@ -527,6 +533,22 @@ export default function AdminDashboardClient() {
     } catch (err) {
       setPaymentConfig(paymentConfig);
       toast.error(err.message || 'Failed to update status.');
+    }
+  };
+
+  const handleToggleOwnerNotifications = async () => {
+    const nextState = !paymentConfig.ownerNotificationsEnabled;
+    setPaymentConfig((prev) => ({ ...prev, ownerNotificationsEnabled: nextState }));
+    try {
+      await adminAPI.updatePaymentSettings({ ownerNotificationsEnabled: nextState });
+      toast.success(
+        nextState
+          ? 'Owner email notifications ENABLED!'
+          : 'Owner email notifications PAUSED.'
+      );
+    } catch (err) {
+      setPaymentConfig((prev) => ({ ...prev, ownerNotificationsEnabled: !nextState }));
+      toast.error(err.message || 'Failed to update notification settings.');
     }
   };
 
@@ -1971,6 +1993,96 @@ export default function AdminDashboardClient() {
                         className="form-input"
                         placeholder="e.g. Scan the Raast QR Code with any banking app, send the exact fee amount, and upload the transaction screenshot."
                       />
+                    </div>
+                  </div>
+
+                  {/* Owner Email Notifications Section */}
+                  <div className="card p-5 space-y-4">
+                    <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-gray-100">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Mail size={18} className="text-blue-600" />
+                          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+                            Owner Email Notifications
+                          </h3>
+                          <span
+                            className={`badge ${paymentConfig.ownerNotificationsEnabled ? 'badge-blue' : 'badge-gray'}`}
+                            style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px' }}
+                          >
+                            {paymentConfig.ownerNotificationsEnabled ? 'ACTIVE / ON' : 'PAUSED / OFF'}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '2px' }}>
+                          Receive automated email alerts whenever a new business listing is submitted or a new user registers.
+                        </p>
+                      </div>
+
+                      {/* Quick ON / OFF toggle button */}
+                      <button
+                        type="button"
+                        onClick={handleToggleOwnerNotifications}
+                        className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer"
+                        style={{
+                          background: paymentConfig.ownerNotificationsEnabled ? '#eff6ff' : '#f3f4f6',
+                          color: paymentConfig.ownerNotificationsEnabled ? '#1d4ed8' : '#4b5563',
+                          borderColor: paymentConfig.ownerNotificationsEnabled ? '#bfdbfe' : '#d1d5db',
+                        }}
+                      >
+                        <span
+                          className={`w-2 h-2 rounded-full ${paymentConfig.ownerNotificationsEnabled ? 'bg-blue-600 animate-pulse' : 'bg-gray-400'}`}
+                        />
+                        {paymentConfig.ownerNotificationsEnabled ? 'Notifications Active' : 'Notifications Paused'}
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                      {/* Toggle Option */}
+                      <div className="flex items-start gap-3 p-3.5 bg-gray-50/80 rounded-xl border border-gray-200">
+                        <input
+                          id="ownerNotificationsEnabled"
+                          type="checkbox"
+                          checked={paymentConfig.ownerNotificationsEnabled !== false}
+                          onChange={(e) =>
+                            setPaymentConfig((prev) => ({
+                              ...prev,
+                              ownerNotificationsEnabled: e.target.checked,
+                            }))
+                          }
+                          className="w-4 h-4 mt-0.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <label htmlFor="ownerNotificationsEnabled" className="cursor-pointer select-none">
+                          <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1f2937' }}>
+                            Send Alerts on New Listings &amp; Users
+                          </p>
+                          <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '2px' }}>
+                            Uncheck to mute email alerts without clearing your recipient address.
+                          </p>
+                        </label>
+                      </div>
+
+                      {/* Recipient Email Input */}
+                      <div>
+                        <label htmlFor="ownerNotificationEmail" className="form-label flex items-center justify-between">
+                          <span>Owner Notification Email</span>
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Default: ahsanalisarwar555@gmail.com</span>
+                        </label>
+                        <input
+                          id="ownerNotificationEmail"
+                          type="email"
+                          value={paymentConfig.ownerNotificationEmail || ''}
+                          onChange={(e) =>
+                            setPaymentConfig({
+                              ...paymentConfig,
+                              ownerNotificationEmail: e.target.value,
+                            })
+                          }
+                          className="form-input"
+                          placeholder="e.g. ahsanalisarwar555@gmail.com"
+                        />
+                        <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
+                          If left blank or disabled, notification emails will be skipped.
+                        </p>
+                      </div>
                     </div>
                   </div>
 

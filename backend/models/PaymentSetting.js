@@ -146,6 +146,17 @@ const paymentSettingSchema = new mongoose.Schema(
       default: '',
       trim: true,
     },
+    // Owner Email Notifications
+    ownerNotificationEmail: {
+      type: String,
+      default: 'ahsanalisarwar555@gmail.com',
+      trim: true,
+      lowercase: true,
+    },
+    ownerNotificationsEnabled: {
+      type: Boolean,
+      default: true,
+    },
   },
   {
     timestamps: true,
@@ -245,6 +256,16 @@ paymentSettingSchema.statics.getSettings = async function () {
         modified = true;
       }
     });
+  }
+
+  // Ensure owner notification settings are initialized
+  if (settings.ownerNotificationEmail === undefined || settings.ownerNotificationEmail === null) {
+    settings.ownerNotificationEmail = 'ahsanalisarwar555@gmail.com';
+    modified = true;
+  }
+  if (settings.ownerNotificationsEnabled === undefined || settings.ownerNotificationsEnabled === null) {
+    settings.ownerNotificationsEnabled = true;
+    modified = true;
   }
 
   if (modified) {

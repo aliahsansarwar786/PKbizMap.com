@@ -4,6 +4,10 @@ const Review = require('../models/Review');
 const asyncHandler = require('../utils/asyncHandler');
 const cloudinary = require('../config/cloudinary');
 const escapeRegex = require('../utils/escapeRegex');
+const sendEmail = require('../utils/sendEmail');
+const { getNewListingNotificationHtml } = require('../utils/emailTemplates');
+const getFrontendUrl = require('../utils/getFrontendUrl');
+const PaymentSetting = require('../models/PaymentSetting');
 const { validate, businessValidator, updateBusinessValidator, objectIdValidator } = require('../utils/validators');
 
 // ─── GET /api/businesses ──────────────────────────────────────────────────────
@@ -197,7 +201,6 @@ const createBusiness = [
     }
 
     // Check payment system settings (Multi-country fee support)
-    const PaymentSetting = require('../models/PaymentSetting');
     const paymentSetting = await PaymentSetting.getSettings();
     if (paymentSetting && paymentSetting.isEnabled) {
       const targetCountry = address?.country || req.body?.country || req.body?.['address[country]'] || 'Pakistan';
@@ -300,6 +303,37 @@ const createBusiness = [
       owner: req.user._id, // Server-side only
       isApproved: req.user.role === 'admin', // Auto-approve if Admin
     });
+
+    // Owner Notification: New listing submitted alert
+    // Awaited before responding so Vercel serverless functions do not freeze SMTP delivery.
+    try {
+      const activeSettings = await PaymentSetting.getSettings();
+      const ownerEmail = activeSettings?.ownerNotificationEmail?.trim();
+      const isOwnerNotificationsEnabled = activeSettings?.ownerNotificationsEnabled !== false;
+
+      if (isOwnerNotificationsEnabled && ownerEmail) {
+        const frontendUrl = getFrontendUrl(req);
+        const pendingUrl = `${frontendUrl}/folder/new/admin`;
+
+        await sendEmail({
+          to: ownerEmail,
+          subject: `New listing submitted: ${business.title}`,
+          html: getNewListingNotificationHtml({
+            businessTitle: business.title,
+            category: business.category,
+            city: business.address?.city,
+            country: business.address?.country,
+            submittedByName: req.user?.name,
+            submittedByEmail: req.user?.email,
+            pendingUrl,
+          }),
+        }).catch((err) => {
+          console.error('⚠️ [Business:Create] Non-fatal error sending owner alert:', err.message);
+        });
+      }
+    } catch (e) {
+      console.error('⚠️ [Business:Create] Unexpected error setting up owner alert:', e.message);
+    }
 
     res.status(201).json({
       success: true,
