@@ -125,7 +125,7 @@ function UrlParamsListener({ onParamsChange }) {
 }
 
 export default function Navbar() {
-  const { user, isAuthenticated, isAdmin, logout } = useAuth();
+  const { user, isAuthenticated, isAdmin, hasAdminAccess, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [directoriesOpen, setDirectoriesOpen] = useState(false);
@@ -497,7 +497,7 @@ export default function Navbar() {
                       >
                         <User size={15} /> Profile
                       </Link>
-                      {isAdmin && (
+                      {(hasAdminAccess || isAdmin) && (
                         <Link
                           href="/folder/new/admin"
                           role="menuitem"
@@ -726,7 +726,7 @@ export default function Navbar() {
                     >
                       <LayoutDashboard size={15} /> Dashboard
                     </Link>
-                    {isAdmin && (
+                    {(hasAdminAccess || isAdmin) && (
                       <Link
                         href="/folder/new/admin"
                         onClick={() => setMobileOpen(false)}

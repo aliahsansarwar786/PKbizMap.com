@@ -30,8 +30,22 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ['user', 'admin'],
+      enum: ['user', 'admin', 'subadmin'],
       default: 'user',
+    },
+    permissions: {
+      canApproveListings: {
+        type: Boolean,
+        default: false,
+      },
+      canDeleteListings: {
+        type: Boolean,
+        default: false,
+      },
+      canModerateReviews: {
+        type: Boolean,
+        default: false,
+      },
     },
     avatar: {
       url: { type: String, default: '' },

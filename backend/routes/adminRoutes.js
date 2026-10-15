@@ -10,6 +10,7 @@ const {
   rejectBusiness,
   adminDeleteBusiness,
   updateUserRole,
+  updateUserPermissions,
   deleteUser,
   getAllReviews,
   adminDeleteReview,
@@ -19,6 +20,7 @@ const {
   migrateLocations,
 } = require('../controllers/adminController');
 const {
+  getPaymentSettings,
   updatePaymentSettings,
   deletePaymentQrCode,
   createPaymentMethod,
@@ -28,48 +30,47 @@ const {
 } = require('../controllers/settingController');
 const { handleQrCodeUpload, handlePaymentCardImageUpload } = require('../middlewares/upload');
 const { protect } = require('../middlewares/auth');
-const { authorize } = require('../middlewares/authorize');
+const { authorize, checkPermission } = require('../middlewares/authorize');
 
-// All admin routes require authentication AND admin role
-// protect: verifies JWT from cookie
-// authorize('admin'): verifies role from DB, never from body
+// Protect all admin routes: requires authenticated admin or subadmin
 router.use(protect);
-router.use(authorize('admin'));
+router.use(authorize('admin', 'subadmin'));
 
-// Dashboard
+// ─── Dashboard ────────────────────────────────────────────────────────────────
 router.get('/dashboard', getDashboard);
 
-// Payment Settings (Raast QR Code & Gateway)
-router.patch('/settings/payment', handleQrCodeUpload, updatePaymentSettings);
-router.delete('/settings/payment/qr', deletePaymentQrCode);
+// ─── Payment Settings & Methods (Main Admin ONLY) ────────────────────────────
+router.get('/settings/payment', authorize('admin'), getPaymentSettings);
+router.patch('/settings/payment', authorize('admin'), handleQrCodeUpload, updatePaymentSettings);
+router.delete('/settings/payment/qr', authorize('admin'), deletePaymentQrCode);
 
-// Configurable Payment Method Cards (Admin only)
-router.post('/settings/payment/methods', handlePaymentCardImageUpload, createPaymentMethod);
-router.patch('/settings/payment/methods/:methodId', handlePaymentCardImageUpload, updatePaymentMethod);
-router.delete('/settings/payment/methods/:methodId', deletePaymentMethod);
-router.patch('/settings/payment/methods/:methodId/toggle', togglePaymentMethod);
+router.post('/settings/payment/methods', authorize('admin'), handlePaymentCardImageUpload, createPaymentMethod);
+router.patch('/settings/payment/methods/:methodId', authorize('admin'), handlePaymentCardImageUpload, updatePaymentMethod);
+router.delete('/settings/payment/methods/:methodId', authorize('admin'), deletePaymentMethod);
+router.patch('/settings/payment/methods/:methodId/toggle', authorize('admin'), togglePaymentMethod);
 
-// Payments History
-router.get('/payments', getPaymentHistory);
+// ─── Payments History (Main Admin ONLY) ──────────────────────────────────────
+router.get('/payments', authorize('admin'), getPaymentHistory);
 
-// Users
-router.get('/users', getUsers);
-router.patch('/users/:id/role', updateUserRole);
-router.delete('/users/:id', deleteUser);
+// ─── User Management & Permissions (Main Admin ONLY) ─────────────────────────
+router.get('/users', authorize('admin'), getUsers);
+router.patch('/users/:id/role', authorize('admin'), updateUserRole);
+router.patch('/users/:id/permissions', authorize('admin'), updateUserPermissions);
+router.delete('/users/:id', authorize('admin'), deleteUser);
 
-// Businesses - specific before parameterized
-router.get('/businesses/pending', getPendingBusinesses);
+// ─── Businesses Management (Permission controlled) ────────────────────────────
+router.get('/businesses/pending', checkPermission('canApproveListings'), getPendingBusinesses);
 router.get('/businesses', getAllBusinesses);
 router.get('/businesses/:id', getAdminBusinessById);
-router.patch('/businesses/:id', adminUpdateBusiness);
-router.patch('/businesses/:id/approve', approveBusiness);
-router.patch('/businesses/:id/reject', rejectBusiness);
-router.delete('/businesses/:id', adminDeleteBusiness);
-router.delete('/businesses/:id/receipt', deleteBusinessReceipt);
-router.post('/migrate-locations', migrateLocations);
+router.patch('/businesses/:id', checkPermission('canApproveListings'), adminUpdateBusiness);
+router.patch('/businesses/:id/approve', checkPermission('canApproveListings'), approveBusiness);
+router.patch('/businesses/:id/reject', checkPermission('canApproveListings'), rejectBusiness);
+router.delete('/businesses/:id', checkPermission('canDeleteListings'), adminDeleteBusiness);
+router.delete('/businesses/:id/receipt', checkPermission('canDeleteListings'), deleteBusinessReceipt);
+router.post('/migrate-locations', authorize('admin'), migrateLocations);
 
-// Reviews
-router.get('/reviews', getAllReviews);
-router.delete('/reviews/:id', adminDeleteReview);
+// ─── Reviews Management (Permission controlled) ──────────────────────────────
+router.get('/reviews', checkPermission('canModerateReviews'), getAllReviews);
+router.delete('/reviews/:id', checkPermission('canModerateReviews'), adminDeleteReview);
 
 module.exports = router;

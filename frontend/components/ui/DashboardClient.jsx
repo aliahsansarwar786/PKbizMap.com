@@ -119,19 +119,30 @@ export default function DashboardClient() {
           <StatCard label="My Listed Businesses" value={businesses.length} icon={LayoutGrid} color="#2563eb" />
           <StatCard label="Approved" value={approved} icon={CheckCircle2} color="#059669" />
           <StatCard label="Pending Review" value={pending} icon={Clock} color="#d97706" />
-          <StatCard label="Account Type" value={user?.role === 'admin' ? 'Admin' : 'Member'} icon={Shield} color="#7c3aed" />
+          <StatCard
+            label="Account Type"
+            value={user?.role === 'admin' ? 'Admin' : user?.role === 'subadmin' ? 'Sub-Admin' : 'Member'}
+            icon={Shield}
+            color="#7c3aed"
+          />
         </div>
 
         {/* Admin shortcut */}
-        {user?.role === 'admin' && (
+        {(user?.role === 'admin' || user?.role === 'subadmin') && (
           <div
             className="card p-4 mb-6 flex items-center gap-3"
             style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}
           >
             <Shield size={20} style={{ color: '#2563eb', flexShrink: 0 }} />
             <div className="flex-1">
-              <p style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1d4ed8' }}>Admin Access</p>
-              <p style={{ fontSize: '0.8125rem', color: '#3b82f6' }}>You have full admin privileges.</p>
+              <p style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1d4ed8' }}>
+                {user?.role === 'admin' ? 'Admin Access' : 'Sub-Admin Access'}
+              </p>
+              <p style={{ fontSize: '0.8125rem', color: '#3b82f6' }}>
+                {user?.role === 'admin'
+                  ? 'You have full admin privileges.'
+                  : 'You have limited administrative permissions.'}
+              </p>
             </div>
             <Link href="/folder/new/admin" className="btn-primary" style={{ fontSize: '0.8125rem', padding: '0.5rem 1rem', flexShrink: 0 }}>
               Admin Panel

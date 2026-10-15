@@ -166,8 +166,8 @@ export const adminAPI = {
   },
   approveBusiness: (id) => api.patch(`/admin/businesses/${id}/approve`),
   rejectBusiness: (id) => api.patch(`/admin/businesses/${id}/reject`),
-  deleteBusiness: (id) => api.delete(`/admin/businesses/${id}`),
-  updateUserRole: (id, role) => api.patch(`/admin/users/${id}/role`, { role }),
+  updateUserRole: (id, role, permissions) => api.patch(`/admin/users/${id}/role`, { role, permissions }),
+  updateUserPermissions: (id, permissions) => api.patch(`/admin/users/${id}/permissions`, { permissions }),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
   getAllReviews: (params = {}) => {
     const qs = new URLSearchParams(
@@ -184,7 +184,7 @@ export const adminAPI = {
     return api.get(`/admin/payments${qs ? `?${qs}` : ''}`);
   },
   getBusinessById: (id) => api.get(`/admin/businesses/${id}`),
-  getPaymentSettings: () => api.get('/settings/payment'),
+  getPaymentSettings: () => api.get('/admin/settings/payment'),
   updatePaymentSettings: (data) => api.patch('/admin/settings/payment', data),
   deletePaymentQrCode: () => api.delete('/admin/settings/payment/qr'),
   deleteReceipt: (businessId) => api.delete(`/admin/businesses/${businessId}/receipt`),

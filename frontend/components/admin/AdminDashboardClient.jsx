@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -65,8 +65,18 @@ const normalizePaymentConfig = (s) => {
 };
 
 export default function AdminDashboardClient() {
-  const { user, isAuthenticated, isAdmin, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, isAdmin, hasAdminAccess, loading: authLoading } = useAuth();
   const router = useRouter();
+
+  const isSuperAdmin = user?.role === 'admin';
+  const isSubAdmin = user?.role === 'subadmin';
+  const perms = useMemo(() => {
+    return {
+      canApproveListings: Boolean(user?.permissions?.canApproveListings),
+      canDeleteListings: Boolean(user?.permissions?.canDeleteListings),
+      canModerateReviews: Boolean(user?.permissions?.canModerateReviews),
+    };
+  }, [user?.permissions]);
 
   const [tab, setTab] = useState('pending');
   const [dashStats, setDashStats] = useState(null);
@@ -135,48 +145,97 @@ export default function AdminDashboardClient() {
   // Bank App Verification Checkbox
   const [verifiedInBankApp, setVerifiedInBankApp] = useState(false);
 
+  // Dynamic tabs based on user role & permissions
+  const tabs = useMemo(() => {
+    const list = [];
+    if (isSuperAdmin || perms.canApproveListings) {
+      list.push({ id: 'pending', label: 'Pending', badge: dashStats?.pendingBusinesses });
+    }
+    if (isSuperAdmin || perms.canApproveListings || perms.canDeleteListings) {
+      list.push({ id: 'all-businesses', label: 'All Businesses' });
+    }
+    if (isSuperAdmin) {
+      list.push({ id: 'payments', label: 'Payments' });
+    }
+    if (isSuperAdmin || perms.canModerateReviews) {
+      list.push({ id: 'reviews', label: 'Reviews', badge: dashStats?.totalReviews });
+    }
+    if (isSuperAdmin) {
+      list.push({ id: 'users', label: 'Users' });
+      list.push({
+        id: 'payment-settings',
+        label: 'Raast QR Settings',
+        badge: paymentConfig.isEnabled ? 'ON' : 'OFF',
+        badgeClass: paymentConfig.isEnabled ? 'badge-green' : 'badge-gray',
+      });
+    }
+    return list;
+  }, [
+    isSuperAdmin,
+    perms.canApproveListings,
+    perms.canDeleteListings,
+    perms.canModerateReviews,
+    dashStats?.pendingBusinesses,
+    dashStats?.totalReviews,
+    paymentConfig.isEnabled,
+  ]);
+
   // Auth guard
   useEffect(() => {
     if (!authLoading) {
       if (!isAuthenticated) router.push('/login');
-      else if (!isAdmin) router.push('/dashboard');
+      else if (!isSuperAdmin && !isSubAdmin) router.push('/dashboard');
     }
-  }, [authLoading, isAuthenticated, isAdmin, router]);
+  }, [authLoading, isAuthenticated, isSuperAdmin, isSubAdmin, router]);
+
+  // Ensure active tab is valid for current user's permissions
+  useEffect(() => {
+    if (tabs.length > 0 && !tabs.some((t) => t.id === tab)) {
+      setTab(tabs[0].id);
+      setPage(1);
+    }
+  }, [tabs, tab]);
 
   // Load stats & initial payment settings
   useEffect(() => {
-    if (!isAdmin) return;
+    if (!isSuperAdmin && !isSubAdmin) return;
     adminAPI.getDashboard()
       .then((res) => setDashStats(res.data.stats))
       .catch(() => toast.error('Failed to load stats.'))
       .finally(() => setStatsLoading(false));
 
-    adminAPI.getPaymentSettings()
-      .then((res) => {
-        const s = res.data?.settings || res.data?.paymentSetting;
-        if (s) setPaymentConfig(normalizePaymentConfig(s) || s);
-      })
-      .catch(() => {});
-  }, [isAdmin]);
+    if (isSuperAdmin) {
+      adminAPI.getPaymentSettings()
+        .then((res) => {
+          const s = res.data?.settings || res.data?.paymentSetting;
+          if (s) setPaymentConfig(normalizePaymentConfig(s) || s);
+        })
+        .catch(() => {});
+    }
+  }, [isSuperAdmin, isSubAdmin]);
 
   // Load tab data
   const loadTabData = useCallback(async () => {
-    if (!isAdmin) return;
+    if (!isAuthenticated || (!isSuperAdmin && !isSubAdmin)) return;
     setLoading(true);
     try {
       if (tab === 'pending') {
+        if (!isSuperAdmin && !perms.canApproveListings) return;
         const res = await adminAPI.getPendingBusinesses({ page, limit: 10 });
         setBusinesses(res.data.businesses);
         setPagination(res.data.pagination);
       } else if (tab === 'all-businesses') {
+        if (!isSuperAdmin && !perms.canApproveListings && !perms.canDeleteListings) return;
         const res = await adminAPI.getAllBusinesses({ page, limit: 10 });
         setBusinesses(res.data.businesses);
         setPagination(res.data.pagination);
       } else if (tab === 'users') {
+        if (!isSuperAdmin) return;
         const res = await adminAPI.getUsers({ page, limit: 10 });
         setUsers(res.data.users);
         setPagination(res.data.pagination);
       } else if (tab === 'payments') {
+        if (!isSuperAdmin) return;
         const res = await adminAPI.getPaymentHistory({
           page,
           limit: 10,
@@ -186,6 +245,7 @@ export default function AdminDashboardClient() {
         setPayments(res.data.payments || []);
         setPagination(res.data.pagination);
       } else if (tab === 'reviews') {
+        if (!isSuperAdmin && !perms.canModerateReviews) return;
         const res = await adminAPI.getAllReviews({
           page,
           limit: 10,
@@ -194,6 +254,7 @@ export default function AdminDashboardClient() {
         setReviews(res.data.reviews || []);
         setPagination(res.data.pagination);
       } else if (tab === 'payment-settings') {
+        if (!isSuperAdmin) return;
         setLoadingPaymentConfig(true);
         try {
           const res = await adminAPI.getPaymentSettings();
@@ -213,7 +274,19 @@ export default function AdminDashboardClient() {
     } finally {
       setLoading(false);
     }
-  }, [tab, page, isAdmin, reviewSearch, paymentStatusFilter, paymentSearch]);
+  }, [
+    tab,
+    page,
+    isAuthenticated,
+    isSuperAdmin,
+    isSubAdmin,
+    perms.canApproveListings,
+    perms.canDeleteListings,
+    perms.canModerateReviews,
+    reviewSearch,
+    paymentStatusFilter,
+    paymentSearch,
+  ]);
 
   useEffect(() => {
     loadTabData();
@@ -277,15 +350,71 @@ export default function AdminDashboardClient() {
     }
   };
 
-  const handleUpdateRole = async (userId, currentRole) => {
-    const newRole = currentRole === 'admin' ? 'user' : 'admin';
-    if (!confirm(`Change this user's role to "${newRole}"?`)) return;
+  const handleSetRole = async (userId, newRole) => {
+    if (!confirm(`Are you sure you want to change this user's role to "${newRole}"?`)) return;
     try {
-      await adminAPI.updateUserRole(userId, newRole);
-      setUsers((prev) => prev.map((u) => u._id === userId ? { ...u, role: newRole } : u));
+      const res = await adminAPI.updateUserRole(userId, newRole);
+      const updatedUser = res.data?.user;
+      setUsers((prev) =>
+        prev.map((u) =>
+          u._id === userId
+            ? {
+                ...u,
+                role: newRole,
+                permissions: updatedUser?.permissions || {
+                  canApproveListings: false,
+                  canDeleteListings: false,
+                  canModerateReviews: false,
+                },
+              }
+            : u
+        )
+      );
       toast.success(`Role updated to "${newRole}".`);
     } catch (err) {
-      toast.error(err.message || 'Failed to update role.');
+      toast.error(err.message || 'Failed to update user role.');
+    }
+  };
+
+  const handleUpdateRole = async (userId, currentRole) => {
+    const newRole = currentRole === 'admin' ? 'user' : 'admin';
+    await handleSetRole(userId, newRole);
+  };
+
+  const handleTogglePermission = async (userId, permKey, checked) => {
+    const targetUser = users.find((u) => u._id === userId);
+    if (!targetUser) return;
+    const currentPerms = targetUser.permissions || {
+      canApproveListings: false,
+      canDeleteListings: false,
+      canModerateReviews: false,
+    };
+    const newPerms = {
+      canApproveListings: Boolean(currentPerms.canApproveListings),
+      canDeleteListings: Boolean(currentPerms.canDeleteListings),
+      canModerateReviews: Boolean(currentPerms.canModerateReviews),
+      [permKey]: checked,
+    };
+
+    // Optimistic UI update
+    setUsers((prev) =>
+      prev.map((u) => (u._id === userId ? { ...u, permissions: newPerms } : u))
+    );
+
+    try {
+      const res = await adminAPI.updateUserPermissions(userId, newPerms);
+      if (res.data?.user?.permissions) {
+        setUsers((prev) =>
+          prev.map((u) => (u._id === userId ? { ...u, permissions: res.data.user.permissions } : u))
+        );
+      }
+      toast.success('Permission updated.');
+    } catch (err) {
+      // Rollback on failure
+      setUsers((prev) =>
+        prev.map((u) => (u._id === userId ? { ...u, permissions: currentPerms } : u))
+      );
+      toast.error(err.message || 'Failed to update permission.');
     }
   };
 
@@ -595,35 +724,37 @@ export default function AdminDashboardClient() {
     }
   };
 
-  if (authLoading || (!isAdmin && !authLoading)) {
+  if (authLoading || (!isSuperAdmin && !isSubAdmin && !authLoading)) {
     return <div className="section container-max text-center"><p style={{ color: '#6b7280' }}>Loading...</p></div>;
   }
-
-  const tabs = [
-    { id: 'pending', label: 'Pending', badge: dashStats?.pendingBusinesses },
-    { id: 'all-businesses', label: 'All Businesses' },
-    { id: 'payments', label: 'Payments' },
-    { id: 'reviews', label: 'Reviews', badge: dashStats?.totalReviews },
-    { id: 'users', label: 'Users' },
-    {
-      id: 'payment-settings',
-      label: 'Raast QR Settings',
-      badge: paymentConfig.isEnabled ? 'ON' : 'OFF',
-      badgeClass: paymentConfig.isEnabled ? 'badge-green' : 'badge-gray',
-    },
-  ];
 
   return (
     <div className="section-sm">
       <div className="container-max">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#eff6ff' }}>
-            <Shield size={22} style={{ color: '#2563eb' }} />
-          </div>
-          <div>
-            <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#1f2937' }}>Admin Dashboard</h1>
-            <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>Manage businesses, users, and Raast QR payment gateway</p>
+        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#eff6ff' }}>
+              <Shield size={22} style={{ color: '#2563eb' }} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#1f2937' }}>
+                  {isSuperAdmin ? 'Admin Dashboard' : 'Sub-Admin Dashboard'}
+                </h1>
+                <span
+                  className={`badge ${isSuperAdmin ? 'badge-blue' : 'badge-purple'}`}
+                  style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+                >
+                  {isSuperAdmin ? 'Full Admin' : 'Sub-Admin'}
+                </span>
+              </div>
+              <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                {isSuperAdmin
+                  ? 'Manage businesses, users, payment gateways, and moderation'
+                  : 'Manage businesses and reviews according to your assigned permissions'}
+              </p>
+            </div>
           </div>
         </div>
 
@@ -687,9 +818,18 @@ export default function AdminDashboardClient() {
           )}
         </div>
 
-        {/* Tabs Bar */}
-        <div className="card overflow-hidden">
-          <div className="flex border-b overflow-x-auto" style={{ borderColor: '#e5e7eb' }}>
+        {/* Tabs Bar or Empty State */}
+        {tabs.length === 0 ? (
+          <div className="card p-12 text-center my-6">
+            <Shield size={48} className="mx-auto text-amber-500 mb-3" />
+            <h3 className="text-lg font-bold text-gray-800 mb-1">Sub-Admin (No Permissions Assigned)</h3>
+            <p className="text-sm text-gray-600 max-w-md mx-auto">
+              You are logged in as a Sub-Admin, but no permissions (Approve Listings, Delete Listings, Moderate Reviews) have been assigned to your account yet. Please contact the main administrator.
+            </p>
+          </div>
+        ) : (
+          <div className="card overflow-hidden">
+            <div className="flex border-b overflow-x-auto" style={{ borderColor: '#e5e7eb' }}>
             {tabs.map(({ id, label, badge, badgeClass }) => (
               <button
                 key={id}
@@ -821,7 +961,7 @@ export default function AdminDashboardClient() {
                             </button>
                           )}
 
-                          {!biz.isApproved && (() => {
+                          {!biz.isApproved && (isSuperAdmin || perms.canApproveListings) && (() => {
                             const isPaidBiz = paymentConfig.isEnabled && (biz.paymentAmount === undefined || Number(biz.paymentAmount) > 0);
                             const receiptMissing = isPaidBiz && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url);
 
@@ -852,7 +992,7 @@ export default function AdminDashboardClient() {
                               </button>
                             );
                           })()}
-                          {!biz.isApproved && (
+                          {!biz.isApproved && (isSuperAdmin || perms.canApproveListings) && (
                             <button
                               onClick={() => handleReject(biz._id)}
                               className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
@@ -862,15 +1002,17 @@ export default function AdminDashboardClient() {
                               <X size={13} /> Reject
                             </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => setEditingBusiness(biz)}
-                            className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200 cursor-pointer"
-                            aria-label={`Edit ${biz.title}`}
-                            title="Edit Business Details (Admin)"
-                          >
-                            <Edit3 size={13} /> Edit
-                          </button>
+                          {(isSuperAdmin || perms.canApproveListings) && (
+                            <button
+                              type="button"
+                              onClick={() => setEditingBusiness(biz)}
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200 cursor-pointer"
+                              aria-label={`Edit ${biz.title}`}
+                              title="Edit Business Details (Admin)"
+                            >
+                              <Edit3 size={13} /> Edit
+                            </button>
+                          )}
                           <Link
                             href={biz.isApproved ? `/businesses/${biz._id}` : '#'}
                             className={`p-2 rounded-lg transition-colors ${!biz.isApproved ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-200'}`}
@@ -880,14 +1022,16 @@ export default function AdminDashboardClient() {
                           >
                             <CheckCircle2 size={15} />
                           </Link>
-                          <button
-                            onClick={() => handleDeleteBusiness(biz._id, biz.title)}
-                            className="p-2 rounded-lg hover:bg-red-50 transition-colors"
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}
-                            aria-label={`Delete ${biz.title}`}
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          {(isSuperAdmin || perms.canDeleteListings) && (
+                            <button
+                              onClick={() => handleDeleteBusiness(biz._id, biz.title)}
+                              className="p-2 rounded-lg hover:bg-red-50 transition-colors"
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}
+                              aria-label={`Delete ${biz.title}`}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -1106,14 +1250,16 @@ export default function AdminDashboardClient() {
                             &ldquo;{r.comment}&rdquo;
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteReview(r._id, r.business?.title)}
-                          className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors border border-red-200 self-end sm:self-start cursor-pointer font-medium"
-                          title="Delete this review permanently"
-                        >
-                          <Trash2 size={13} /> Delete Review
-                        </button>
+                        {(isSuperAdmin || perms.canModerateReviews) && (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteReview(r._id, r.business?.title)}
+                            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors border border-red-200 self-end sm:self-start cursor-pointer font-medium"
+                            title="Delete this review permanently"
+                          >
+                            <Trash2 size={13} /> Delete Review
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1130,49 +1276,167 @@ export default function AdminDashboardClient() {
                     {users.map((u) => (
                       <div
                         key={u._id}
-                        className="flex items-center gap-4 p-4 rounded-xl"
+                        className="p-4 rounded-xl flex flex-col gap-3"
                         style={{ background: '#f9fafb', border: '1px solid #f3f4f6' }}
                       >
-                        <div className="flex-1 min-w-0">
-                          <p style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1f2937' }} className="truncate">
-                            {u.name}
-                          </p>
-                          <div className="flex flex-wrap items-center gap-2 mt-0.5">
-                            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{u.email}</span>
-                            <span className={`badge ${u.role === 'admin' ? 'badge-blue' : 'badge-gray'}`} style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
-                              {u.role}
-                            </span>
-                            <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                              {new Date(u.createdAt).toLocaleDateString()}
-                            </span>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1f2937' }} className="truncate">
+                                {u.name}
+                              </p>
+                              <span
+                                className={`badge ${
+                                  u.role === 'admin'
+                                    ? 'badge-blue'
+                                    : u.role === 'subadmin'
+                                    ? 'badge-purple'
+                                    : 'badge-gray'
+                                }`}
+                                style={{ fontSize: '0.7rem', padding: '2px 6px' }}
+                              >
+                                {u.role === 'subadmin' ? 'Sub-Admin' : u.role}
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 mt-0.5">
+                              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{u.email}</span>
+                              <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                                Joined: {new Date(u.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+                            {u._id !== user?._id && (
+                              <>
+                                {u.role === 'user' && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetRole(u._id, 'admin')}
+                                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                      style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer' }}
+                                      title="Grant full admin privileges"
+                                    >
+                                      Make Admin
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetRole(u._id, 'subadmin')}
+                                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                      style={{ background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe', cursor: 'pointer' }}
+                                      title="Grant sub-admin role with custom permissions"
+                                    >
+                                      Make Sub-Admin
+                                    </button>
+                                  </>
+                                )}
+
+                                {u.role === 'subadmin' && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetRole(u._id, 'admin')}
+                                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                      style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer' }}
+                                      title="Promote to full admin"
+                                    >
+                                      Make Admin
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetRole(u._id, 'user')}
+                                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                      style={{ background: '#f3f4f6', color: '#4b5563', border: '1px solid #e5e7eb', cursor: 'pointer' }}
+                                      title="Demote to regular user"
+                                    >
+                                      Make User
+                                    </button>
+                                  </>
+                                )}
+
+                                {u.role === 'admin' && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetRole(u._id, 'subadmin')}
+                                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                      style={{ background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe', cursor: 'pointer' }}
+                                      title="Change to sub-admin"
+                                    >
+                                      Make Sub-Admin
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetRole(u._id, 'user')}
+                                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                      style={{ background: '#f3f4f6', color: '#4b5563', border: '1px solid #e5e7eb', cursor: 'pointer' }}
+                                      title="Demote to regular user"
+                                    >
+                                      Make User
+                                    </button>
+                                  </>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteUser(u._id, u.name)}
+                                  className="p-2 rounded-lg hover:bg-red-50 transition-colors"
+                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}
+                                  aria-label={`Delete user ${u.name}`}
+                                  title="Delete user"
+                                >
+                                  <Trash2 size={15} />
+                                </button>
+                              </>
+                            )}
+                            {u._id === user?._id && (
+                              <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>You (Main Admin)</span>
+                            )}
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          {u._id !== user?._id && (
-                            <>
-                              <button
-                                onClick={() => handleUpdateRole(u._id, u.role)}
-                                className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
-                                style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer' }}
-                                aria-label={`Toggle role for ${u.name}`}
-                              >
-                                {u.role === 'admin' ? 'Make User' : 'Make Admin'}
-                              </button>
-                              <button
-                                onClick={() => handleDeleteUser(u._id, u.name)}
-                                className="p-2 rounded-lg hover:bg-red-50 transition-colors"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}
-                                aria-label={`Delete user ${u.name}`}
-                              >
-                                <Trash2 size={15} />
-                              </button>
-                            </>
-                          )}
-                          {u._id === user?._id && (
-                            <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>You</span>
-                          )}
-                        </div>
+                        {/* Sub-admin Permissions Checkboxes (Main Admin Only) */}
+                        {u.role === 'subadmin' && (
+                          <div
+                            className="p-3 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-1"
+                            style={{ background: '#ffffff', border: '1px solid #e5e7eb' }}
+                          >
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-700">
+                              <Shield size={14} className="text-purple-600" />
+                              <span>Sub-Admin Permissions:</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-4">
+                              <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(u.permissions?.canApproveListings)}
+                                  onChange={(e) => handleTogglePermission(u._id, 'canApproveListings', e.target.checked)}
+                                  className="rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5 cursor-pointer"
+                                />
+                                Approve Listings
+                              </label>
+                              <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(u.permissions?.canDeleteListings)}
+                                  onChange={(e) => handleTogglePermission(u._id, 'canDeleteListings', e.target.checked)}
+                                  className="rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5 cursor-pointer"
+                                />
+                                Delete Listings
+                              </label>
+                              <label className="flex items-center gap-1.5 text-xs text-gray-700 cursor-pointer select-none">
+                                <input
+                                  type="checkbox"
+                                  checked={Boolean(u.permissions?.canModerateReviews)}
+                                  onChange={(e) => handleTogglePermission(u._id, 'canModerateReviews', e.target.checked)}
+                                  className="rounded text-blue-600 focus:ring-blue-500 w-3.5 h-3.5 cursor-pointer"
+                                />
+                                Moderate Reviews
+                              </label>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1753,6 +2017,7 @@ export default function AdminDashboardClient() {
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* Modal Dialog: View & Delete Payment Screenshot */}
@@ -1848,7 +2113,7 @@ export default function AdminDashboardClient() {
                     <ExternalLink size={13} /> Open Full Size
                   </a>
                 )}
-                {selectedReceiptBiz.paymentReceipt?.url && (
+                {selectedReceiptBiz.paymentReceipt?.url && (isSuperAdmin || perms.canDeleteListings) && (
                   <button
                     type="button"
                     disabled={deletingReceipt}
@@ -1864,7 +2129,7 @@ export default function AdminDashboardClient() {
               </div>
 
               <div className="flex items-center gap-2">
-                {!selectedReceiptBiz.isApproved && (
+                {!selectedReceiptBiz.isApproved && (isSuperAdmin || perms.canApproveListings) && (
                   <button
                     type="button"
                     disabled={((selectedReceiptBiz.paymentAmount > 0) || selectedReceiptBiz.paymentReceipt?.url) && !verifiedInBankApp}

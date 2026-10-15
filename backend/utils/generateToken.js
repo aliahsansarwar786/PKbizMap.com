@@ -35,6 +35,7 @@ const generateTokenAndSend = (user, statusCode, res, message) => {
     name: user.name,
     email: user.email,
     role: user.role,
+    permissions: user.permissions,
     avatar: user.avatar,
     createdAt: user.createdAt,
   };

@@ -94,7 +94,7 @@ const getUsers = asyncHandler(async (req, res) => {
   const skip = (pageNum - 1) * limitNum;
 
   const queryObj = {};
-  if (role && ['user', 'admin'].includes(role)) {
+  if (role && ['user', 'admin', 'subadmin'].includes(role)) {
     queryObj.role = role;
   }
   if (search && search.trim()) {
@@ -322,15 +322,15 @@ const updateUserRole = [
   asyncHandler(async (req, res) => {
     validate(req);
 
-    const { role } = req.body;
-    if (!role || !['user', 'admin'].includes(role)) {
+    const { role, permissions } = req.body;
+    if (!role || !['user', 'admin', 'subadmin'].includes(role)) {
       return res.status(400).json({
         success: false,
-        message: 'Role must be either "user" or "admin".',
+        message: 'Role must be "user", "admin", or "subadmin".',
       });
     }
 
-    // Prevent admin from demoting themselves
+    // Prevent admin from changing their own role
     if (req.params.id === req.user._id.toString()) {
       return res.status(400).json({
         success: false,
@@ -338,9 +338,24 @@ const updateUserRole = [
       });
     }
 
+    const updateData = { role };
+    if (role === 'subadmin') {
+      updateData.permissions = {
+        canApproveListings: Boolean(permissions?.canApproveListings),
+        canDeleteListings: Boolean(permissions?.canDeleteListings),
+        canModerateReviews: Boolean(permissions?.canModerateReviews),
+      };
+    } else {
+      updateData.permissions = {
+        canApproveListings: false,
+        canDeleteListings: false,
+        canModerateReviews: false,
+      };
+    }
+
     const user = await User.findByIdAndUpdate(
       req.params.id,
-      { role },
+      updateData,
       { new: true, runValidators: true }
     );
 
@@ -352,6 +367,57 @@ const updateUserRole = [
       success: true,
       message: `User role updated to "${role}" successfully.`,
       data: { user },
+    });
+  }),
+];
+
+// ─── PATCH /api/admin/users/:id/permissions ──────────────────────────────────
+// Admin: Update permissions for a subadmin user
+const updateUserPermissions = [
+  ...objectIdValidator('id'),
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    const { permissions } = req.body;
+    if (!permissions || typeof permissions !== 'object') {
+      return res.status(400).json({
+        success: false,
+        message: 'Permissions object is required.',
+      });
+    }
+
+    // Prevent editing own permissions
+    if (req.params.id === req.user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot edit your own permissions.',
+      });
+    }
+
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    if (targetUser.role !== 'subadmin') {
+      return res.status(400).json({
+        success: false,
+        message: 'Permissions can only be updated for subadmin accounts.',
+      });
+    }
+
+    targetUser.permissions = {
+      canApproveListings: Boolean(permissions.canApproveListings),
+      canDeleteListings: Boolean(permissions.canDeleteListings),
+      canModerateReviews: Boolean(permissions.canModerateReviews),
+    };
+
+    await targetUser.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Sub-admin permissions updated successfully.',
+      data: { user: targetUser },
     });
   }),
 ];
@@ -704,6 +770,7 @@ module.exports = {
   rejectBusiness,
   adminDeleteBusiness,
   updateUserRole,
+  updateUserPermissions,
   deleteUser,
   getAllReviews,
   adminDeleteReview,

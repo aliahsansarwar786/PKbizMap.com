@@ -158,7 +158,9 @@ const deleteReview = [
     }
 
     const isAuthor = review.user.toString() === req.user._id.toString();
-    const isAdmin = req.user.role === 'admin';
+    const isAdmin =
+      req.user.role === 'admin' ||
+      (req.user.role === 'subadmin' && req.user.permissions?.canModerateReviews === true);
 
     if (!isAuthor && !isAdmin) {
       return res.status(403).json({

@@ -54,6 +54,13 @@ export function AuthProvider({ children }) {
     initialized,
     isAuthenticated: !!user,
     isAdmin: user?.role === 'admin',
+    isSubAdmin: user?.role === 'subadmin',
+    hasAdminAccess: user?.role === 'admin' || user?.role === 'subadmin',
+    permissions: user?.permissions || {
+      canApproveListings: false,
+      canDeleteListings: false,
+      canModerateReviews: false,
+    },
     login,
     register,
     logout,

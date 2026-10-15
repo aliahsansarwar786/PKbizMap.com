@@ -17,7 +17,7 @@ export default function LoginForm() {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      if (user?.role === 'admin') {
+      if (user?.role === 'admin' || user?.role === 'subadmin') {
         router.push('/folder/new/admin');
       } else {
         router.push('/dashboard');
@@ -42,7 +42,8 @@ export default function LoginForm() {
     try {
       const res = await login({ email: form.email.toLowerCase(), password: form.password });
       toast.success('Welcome back!');
-      if (res?.data?.user?.role === 'admin') {
+      const role = res?.data?.user?.role;
+      if (role === 'admin' || role === 'subadmin') {
         router.push('/folder/new/admin');
       } else {
         router.push('/dashboard');
