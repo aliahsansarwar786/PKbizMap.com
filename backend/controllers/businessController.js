@@ -196,24 +196,37 @@ const createBusiness = [
       paymentStatus = 'pending';
     }
 
-    // Check payment system settings
+    // Check payment system settings (Multi-country fee support)
     const PaymentSetting = require('../models/PaymentSetting');
     const paymentSetting = await PaymentSetting.getSettings();
     if (paymentSetting && paymentSetting.isEnabled) {
-      if (!receiptFile) {
-        // Clean up any uploaded business images to avoid orphaned files in Cloudinary
-        if (images.length > 0) {
-          await Promise.all(
-            images.map((img) => cloudinary.uploader.destroy(img.publicId).catch(() => {}))
-          );
+      const targetCountry = address?.country || req.body?.country || req.body?.['address[country]'] || 'Pakistan';
+      const feeInfo = paymentSetting.getFeeForCountry
+        ? paymentSetting.getFeeForCountry(targetCountry)
+        : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount || 0 });
+
+      const effectiveFee = Number(feeInfo.amount) || 0;
+
+      if (effectiveFee > 0) {
+        if (!receiptFile) {
+          // Clean up any uploaded business images to avoid orphaned files in Cloudinary
+          if (images.length > 0) {
+            await Promise.all(
+              images.map((img) => cloudinary.uploader.destroy(img.publicId).catch(() => {}))
+            );
+          }
+          return res.status(400).json({
+            success: false,
+            message: `Payment screenshot is required for ${targetCountry} (${feeInfo.symbol || ''}${effectiveFee})`,
+          });
         }
-        return res.status(400).json({
-          success: false,
-          message: 'Payment screenshot is required to complete submission',
-        });
+        paymentAmount = effectiveFee;
+        paymentStatus = 'pending';
+      } else {
+        // Free listing for countries with fee = 0
+        paymentAmount = 0;
+        paymentStatus = 'none';
       }
-      paymentAmount = paymentSetting.feeAmount;
-      paymentStatus = 'pending';
     }
 
     // --- PRO TIER LIMIT CHECK ---

@@ -30,6 +30,40 @@ function StatCard({ label, value, icon: Icon, color = '#2563eb' }) {
   );
 }
 
+const normalizePaymentConfig = (s) => {
+  if (!s) return null;
+  const legacyPakistanFee = s.fees?.Pakistan?.amount ?? s.feeAmount ?? 50;
+  return {
+    ...s,
+    feeAmount: legacyPakistanFee,
+    fees: {
+      Pakistan: {
+        amount: Number(s.fees?.Pakistan?.amount ?? legacyPakistanFee) || 0,
+        currency: 'PKR',
+        symbol: 'Rs.',
+      },
+      UAE: {
+        amount: Number(s.fees?.UAE?.amount ?? 0) || 0,
+        currency: 'AED',
+        symbol: 'AED ',
+      },
+      USA: {
+        amount: Number(s.fees?.USA?.amount ?? 0) || 0,
+        currency: 'USD',
+        symbol: '$',
+      },
+    },
+    qrEnabled: s.qrEnabled !== false,
+    qrCountries: Array.isArray(s.qrCountries) && s.qrCountries.length > 0 ? s.qrCountries : ['Pakistan'],
+    paymentMethods: Array.isArray(s.paymentMethods)
+      ? s.paymentMethods.map((m) => ({
+          ...m,
+          countries: Array.isArray(m.countries) && m.countries.length > 0 ? m.countries : ['Pakistan'],
+        }))
+      : [],
+  };
+};
+
 export default function AdminDashboardClient() {
   const { user, isAuthenticated, isAdmin, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -46,7 +80,14 @@ export default function AdminDashboardClient() {
   // Raast QR Payment Gateway Settings & Payment Methods
   const [paymentConfig, setPaymentConfig] = useState({
     isEnabled: false,
-    feeAmount: 500,
+    feeAmount: 50,
+    fees: {
+      Pakistan: { amount: 50, currency: 'PKR', symbol: 'Rs.' },
+      UAE: { amount: 0, currency: 'AED', symbol: 'AED ' },
+      USA: { amount: 0, currency: 'USD', symbol: '$' },
+    },
+    qrEnabled: true,
+    qrCountries: ['Pakistan'],
     qrCode: { url: '', publicId: '' },
     raastId: '',
     accountTitle: 'BizPrimeHub',
@@ -71,6 +112,7 @@ export default function AdminDashboardClient() {
     accountTitle: '',
     accountValue: '',
     details: '',
+    countries: ['Pakistan'],
   });
   const [methodCardFile, setMethodCardFile] = useState(null);
   const [methodCardPreview, setMethodCardPreview] = useState(null);
@@ -112,7 +154,7 @@ export default function AdminDashboardClient() {
     adminAPI.getPaymentSettings()
       .then((res) => {
         const s = res.data?.settings || res.data?.paymentSetting;
-        if (s) setPaymentConfig(s);
+        if (s) setPaymentConfig(normalizePaymentConfig(s) || s);
       })
       .catch(() => {});
   }, [isAdmin]);
@@ -157,7 +199,7 @@ export default function AdminDashboardClient() {
           const res = await adminAPI.getPaymentSettings();
           const s = res.data?.settings || res.data?.paymentSetting;
           if (s) {
-            setPaymentConfig(s);
+            setPaymentConfig(normalizePaymentConfig(s) || s);
           }
         } catch {
           toast.error('Failed to load payment settings.');
@@ -272,7 +314,7 @@ export default function AdminDashboardClient() {
       const res = await adminAPI.deletePaymentQrCode();
       const s = res.data?.settings;
       if (s) {
-        setPaymentConfig(s);
+        setPaymentConfig(normalizePaymentConfig(s) || s);
       } else {
         setPaymentConfig((prev) => ({ ...prev, qrCode: { url: '', publicId: '' } }));
       }
@@ -289,16 +331,33 @@ export default function AdminDashboardClient() {
 
   const handleSavePaymentSettings = async (e) => {
     e?.preventDefault();
-    const finalFee = Number(paymentConfig.feeAmount);
-    if (isNaN(finalFee) || finalFee < 0) {
-      toast.error('Listing fee amount cannot be negative.');
-      return;
-    }
     setSavingPaymentConfig(true);
     try {
       const formData = new FormData();
       formData.append('isEnabled', paymentConfig.isEnabled);
-      formData.append('feeAmount', finalFee);
+
+      const feesPayload = {
+        Pakistan: {
+          amount: Math.max(0, Number(paymentConfig.fees?.Pakistan?.amount) || 0),
+          currency: 'PKR',
+          symbol: 'Rs.',
+        },
+        UAE: {
+          amount: Math.max(0, Number(paymentConfig.fees?.UAE?.amount) || 0),
+          currency: 'AED',
+          symbol: 'AED ',
+        },
+        USA: {
+          amount: Math.max(0, Number(paymentConfig.fees?.USA?.amount) || 0),
+          currency: 'USD',
+          symbol: '$',
+        },
+      };
+
+      formData.append('fees', JSON.stringify(feesPayload));
+      formData.append('feeAmount', feesPayload.Pakistan.amount);
+      formData.append('qrEnabled', paymentConfig.qrEnabled !== false);
+      formData.append('qrCountries', JSON.stringify(paymentConfig.qrCountries || ['Pakistan']));
       formData.append('raastId', paymentConfig.raastId || '');
       formData.append('accountTitle', paymentConfig.accountTitle || '');
       formData.append('bankName', paymentConfig.bankName || '');
@@ -310,7 +369,7 @@ export default function AdminDashboardClient() {
       const res = await adminAPI.updatePaymentSettings(formData);
       const s = res.data?.settings || res.data?.paymentSetting;
       if (s) {
-        setPaymentConfig(s);
+        setPaymentConfig(normalizePaymentConfig(s) || s);
       }
       if (qrCodePreview) {
         URL.revokeObjectURL(qrCodePreview);
@@ -351,6 +410,7 @@ export default function AdminDashboardClient() {
       accountTitle: '',
       accountValue: '',
       details: '',
+      countries: ['Pakistan'],
     });
     setMethodCardFile(null);
     if (methodCardPreview && methodCardPreview.startsWith('blob:')) {
@@ -368,6 +428,9 @@ export default function AdminDashboardClient() {
       accountTitle: method.accountTitle || '',
       accountValue: method.accountValue || '',
       details: method.details || '',
+      countries: Array.isArray(method.countries) && method.countries.length > 0
+        ? method.countries
+        : ['Pakistan'],
     });
     setMethodCardFile(null);
     if (methodCardPreview && methodCardPreview.startsWith('blob:')) {
@@ -419,6 +482,11 @@ export default function AdminDashboardClient() {
       }
     }
 
+    if (!methodForm.countries || methodForm.countries.length === 0) {
+      toast.error('Please select at least one country where this method is available.');
+      return;
+    }
+
     if (!editingMethod && !methodCardFile) {
       toast.error('Please upload a blank card background image.');
       return;
@@ -432,6 +500,7 @@ export default function AdminDashboardClient() {
       fd.append('accountTitle', methodForm.accountTitle.trim());
       fd.append('accountValue', methodForm.kind === 'iban' ? methodForm.accountValue.replace(/\s+/g, '').toUpperCase() : methodForm.accountValue.trim());
       fd.append('details', methodForm.details?.trim() || '');
+      fd.append('countries', JSON.stringify(methodForm.countries));
       if (methodCardFile) {
         fd.append('cardImage', methodCardFile);
       }
@@ -447,7 +516,7 @@ export default function AdminDashboardClient() {
 
       const updatedSettings = res.data?.settings;
       if (updatedSettings) {
-        setPaymentConfig(updatedSettings);
+        setPaymentConfig(normalizePaymentConfig(updatedSettings) || updatedSettings);
       } else if (res.data?.paymentMethods) {
         setPaymentConfig((prev) => ({ ...prev, paymentMethods: res.data.paymentMethods }));
       }
@@ -472,7 +541,7 @@ export default function AdminDashboardClient() {
       const res = await adminAPI.togglePaymentMethod(methodId);
       const updatedSettings = res.data?.settings;
       if (updatedSettings) {
-        setPaymentConfig(updatedSettings);
+        setPaymentConfig(normalizePaymentConfig(updatedSettings) || updatedSettings);
       } else if (res.data?.paymentMethods) {
         setPaymentConfig((prev) => ({ ...prev, paymentMethods: res.data.paymentMethods }));
       }
@@ -491,7 +560,7 @@ export default function AdminDashboardClient() {
       const res = await adminAPI.deletePaymentMethod(methodId);
       const updatedSettings = res.data?.settings;
       if (updatedSettings) {
-        setPaymentConfig(updatedSettings);
+        setPaymentConfig(normalizePaymentConfig(updatedSettings) || updatedSettings);
       } else if (res.data?.paymentMethods) {
         setPaymentConfig((prev) => ({ ...prev, paymentMethods: res.data.paymentMethods }));
       }
@@ -711,14 +780,18 @@ export default function AdminDashboardClient() {
                                 <ImageIcon size={12} />
                                 Rs. {biz.paymentAmount || 'Paid'} (View Receipt)
                               </button>
-                            ) : biz.paymentAmount > 0 ? (
+                            ) : Number(biz.paymentAmount) > 0 ? (
                               <span className="badge badge-gray" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
                                 Fee: Rs. {biz.paymentAmount} (No Receipt)
                               </span>
-                            ) : null}
+                            ) : (
+                              <span className="badge badge-green" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
+                                Free Listing ({biz.address?.country || 'Free'})
+                              </span>
+                            )}
 
-                            {/* Warning Badge if Payment is ON and Receipt is Missing */}
-                            {paymentConfig.isEnabled && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url) && !biz.isApproved && (
+                            {/* Warning Badge if Payment is ON, Fee > 0, and Receipt is Missing */}
+                            {paymentConfig.isEnabled && (biz.paymentAmount === undefined || Number(biz.paymentAmount) > 0) && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url) && !biz.isApproved && (
                               <span
                                 className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold"
                                 style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}
@@ -748,32 +821,37 @@ export default function AdminDashboardClient() {
                             </button>
                           )}
 
-                          {!biz.isApproved && (
-                            <button
-                              onClick={() => {
-                                if (paymentConfig.isEnabled && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url)) {
-                                  toast.error('Cannot approve: Payment screenshot is missing!');
-                                  return;
+                          {!biz.isApproved && (() => {
+                            const isPaidBiz = paymentConfig.isEnabled && (biz.paymentAmount === undefined || Number(biz.paymentAmount) > 0);
+                            const receiptMissing = isPaidBiz && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url);
+
+                            return (
+                              <button
+                                onClick={() => {
+                                  if (receiptMissing) {
+                                    toast.error('Cannot approve: Payment screenshot is missing!');
+                                    return;
+                                  }
+                                  handleApprove(biz._id);
+                                }}
+                                disabled={receiptMissing}
+                                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                  receiptMissing
+                                    ? 'opacity-40 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200'
+                                    : 'bg-green-50 text-green-800 border-green-200 hover:bg-green-100 cursor-pointer'
+                                }`}
+                                style={{ border: '1px solid' }}
+                                aria-label={`Approve ${biz.title}`}
+                                title={
+                                  receiptMissing
+                                    ? 'Receipt Missing - Do NOT Approve'
+                                    : `Approve ${biz.title}`
                                 }
-                                handleApprove(biz._id);
-                              }}
-                              disabled={paymentConfig.isEnabled && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url)}
-                              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                paymentConfig.isEnabled && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url)
-                                  ? 'opacity-40 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200'
-                                  : 'bg-green-50 text-green-800 border-green-200 hover:bg-green-100 cursor-pointer'
-                              }`}
-                              style={{ border: '1px solid' }}
-                              aria-label={`Approve ${biz.title}`}
-                              title={
-                                paymentConfig.isEnabled && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url)
-                                  ? 'Receipt Missing - Do NOT Approve'
-                                  : `Approve ${biz.title}`
-                              }
-                            >
-                              <Check size={13} /> Approve
-                            </button>
-                          )}
+                              >
+                                <Check size={13} /> Approve
+                              </button>
+                            );
+                          })()}
                           {!biz.isApproved && (
                             <button
                               onClick={() => handleReject(biz._id)}
@@ -1157,119 +1235,119 @@ export default function AdminDashboardClient() {
 
                 {/* Detailed Settings Form */}
                 <form onSubmit={handleSavePaymentSettings} className="space-y-6">
-                  {/* Fee Amount Section */}
+                  {/* Multi-Country Listing Fees Section */}
                   <div className="card p-5 space-y-4">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div>
                         <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
-                          Listing Fee Amount (PKR)
+                          Listing Fee per Country
                         </h3>
                         <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                          Apni marzi ki custom amount (jaise 10, 70, 100, 500) likhein ya quick buttons se select karein
+                          Set the business listing fee for each country. Currencies are fixed. Amount 0 = <strong>FREE listing</strong> for that country.
                         </p>
                       </div>
-                      <div
-                        className="px-3.5 py-1.5 rounded-xl font-bold text-base shadow-sm"
-                        style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}
-                      >
-                        Rs. {paymentConfig.feeAmount !== '' && paymentConfig.feeAmount !== undefined ? paymentConfig.feeAmount : 0}
-                      </div>
                     </div>
 
-                    {/* Numeric Input & Step Controls */}
-                    <div className="space-y-2">
-                      <label className="block text-xs font-semibold text-gray-700">
-                        Type Custom Amount (e.g. 10, 70):
-                      </label>
-                      <div className="flex items-center gap-2">
-                        {/* - 100 button */}
-                        <button
-                          type="button"
-                          onClick={() => setPaymentConfig((p) => ({ ...p, feeAmount: Math.max(0, (Number(p.feeAmount) || 0) - 100) }))}
-                          className="btn-secondary px-2.5 py-2 text-xs font-bold"
-                          title="Decrease fee by Rs. 100"
-                        >
-                          -100
-                        </button>
-                        {/* - 10 button */}
-                        <button
-                          type="button"
-                          onClick={() => setPaymentConfig((p) => ({ ...p, feeAmount: Math.max(0, (Number(p.feeAmount) || 0) - 10) }))}
-                          className="btn-secondary px-2.5 py-2 text-xs font-bold"
-                          title="Decrease fee by Rs. 10"
-                        >
-                          -10
-                        </button>
+                    <div className="space-y-3 pt-1">
+                      {[
+                        { country: 'Pakistan', code: 'PK', currency: 'PKR', symbol: 'Rs.', flagColor: 'bg-emerald-600', placeholder: 'e.g. 50' },
+                        { country: 'UAE', code: 'AE', currency: 'AED', symbol: 'AED ', flagColor: 'bg-rose-600', placeholder: 'e.g. 0' },
+                        { country: 'USA', code: 'US', currency: 'USD', symbol: '$', flagColor: 'bg-blue-600', placeholder: 'e.g. 0' },
+                      ].map(({ country, code, currency, symbol, flagColor, placeholder }) => {
+                        const currentAmount = paymentConfig.fees?.[country]?.amount ?? 0;
+                        const isFree = Number(currentAmount) === 0;
 
-                        <div className="relative flex-1">
-                          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-semibold text-gray-500">
-                            Rs.
-                          </span>
-                          <input
-                            type="number"
-                            min="0"
-                            step="1"
-                            value={paymentConfig.feeAmount ?? ''}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setPaymentConfig({
-                                ...paymentConfig,
-                                feeAmount: val === '' ? '' : Math.max(0, Number(val)),
-                              });
-                            }}
-                            className="form-input pl-12 text-base font-bold"
-                            placeholder="Enter custom amount (e.g. 10, 70, 500)"
-                            required
-                          />
-                        </div>
-
-                        {/* + 10 button */}
-                        <button
-                          type="button"
-                          onClick={() => setPaymentConfig((p) => ({ ...p, feeAmount: (Number(p.feeAmount) || 0) + 10 }))}
-                          className="btn-secondary px-2.5 py-2 text-xs font-bold"
-                          title="Increase fee by Rs. 10"
-                        >
-                          +10
-                        </button>
-                        {/* + 100 button */}
-                        <button
-                          type="button"
-                          onClick={() => setPaymentConfig((p) => ({ ...p, feeAmount: (Number(p.feeAmount) || 0) + 100 }))}
-                          className="btn-secondary px-2.5 py-2 text-xs font-bold"
-                          title="Increase fee by Rs. 100"
-                        >
-                          +100
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Quick Amount Presets */}
-                    <div>
-                      <p style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6b7280', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
-                        Quick Select Presets:
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {[10, 20, 50, 70, 100, 200, 300, 500, 1000].map((amt) => (
-                          <button
-                            key={amt}
-                            type="button"
-                            onClick={() => setPaymentConfig((p) => ({ ...p, feeAmount: amt }))}
-                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                              Number(paymentConfig.feeAmount) === amt
-                                ? 'bg-blue-600 text-white shadow-xs'
-                                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
-                            style={{ cursor: 'pointer', border: 'none' }}
+                        return (
+                          <div
+                            key={country}
+                            className="p-4 rounded-xl border border-gray-200 bg-gray-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-gray-300 transition-colors"
                           >
-                            Rs. {amt}
-                          </button>
-                        ))}
-                      </div>
+                            <div className="flex items-center gap-3">
+                              <span className={`w-8 h-8 rounded-lg ${flagColor} text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs`}>
+                                {code}
+                              </span>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-sm text-gray-900">{country}</span>
+                                  {isFree ? (
+                                    <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                      FREE LISTING
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800">
+                                      {symbol}{currentAmount}
+                                    </span>
+                                  )}
+                                </div>
+                                <span className="text-xs text-gray-500">
+                                  Fixed Currency: <strong className="text-gray-700">{currency} ({symbol.trim()})</strong>
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 sm:w-72">
+                              <div className="relative flex-1">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500 select-none">
+                                  {symbol}
+                                </span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  value={paymentConfig.fees?.[country]?.amount ?? 0}
+                                  onChange={(e) => {
+                                    const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                                    setPaymentConfig((prev) => ({
+                                      ...prev,
+                                      fees: {
+                                        ...prev.fees,
+                                        [country]: {
+                                          amount: val,
+                                          currency,
+                                          symbol,
+                                        },
+                                      },
+                                      ...(country === 'Pakistan' ? { feeAmount: val === '' ? 0 : val } : {}),
+                                    }));
+                                  }}
+                                  className="form-input pl-12 pr-3 text-sm font-bold text-gray-900"
+                                  placeholder={placeholder}
+                                />
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPaymentConfig((prev) => ({
+                                    ...prev,
+                                    fees: {
+                                      ...prev.fees,
+                                      [country]: {
+                                        amount: 0,
+                                        currency,
+                                        symbol,
+                                      },
+                                    },
+                                    ...(country === 'Pakistan' ? { feeAmount: 0 } : {}),
+                                  }));
+                                }}
+                                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                                  isFree
+                                    ? 'bg-emerald-600 text-white shadow-xs'
+                                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+                                }`}
+                                title="Set to 0 (FREE)"
+                              >
+                                Set FREE
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
 
                     <p style={{ fontSize: '0.75rem', color: '#6b7280', background: '#f9fafb', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', border: '1px solid #f3f4f6' }}>
-                      💡 <strong>Custom Amount:</strong> Aap apni marzi se box me koi bhi number (jaise <strong>10</strong> ya <strong>70</strong>) likh sakte hain, aur neechay <strong>&ldquo;Save Payment Settings&rdquo;</strong> par click karein.
+                      💡 <strong>Multi-Country Pricing:</strong> Set fee to <strong>0</strong> for any country to make listings 100% FREE for that country. User form will automatically adapt based on selected country.
                     </p>
                   </div>
 
@@ -1411,6 +1489,52 @@ export default function AdminDashboardClient() {
                       </div>
                     </div>
 
+                    {/* Show QR in countries checkboxes */}
+                    <div className="p-3.5 rounded-xl border border-gray-200 bg-gray-50/70 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-bold text-gray-800 uppercase tracking-wider block">
+                          Show QR in Countries:
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={paymentConfig.qrEnabled !== false}
+                            onChange={(e) => setPaymentConfig((prev) => ({ ...prev, qrEnabled: e.target.checked }))}
+                            className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                          />
+                          <span className="text-xs font-bold text-gray-700">QR Enabled</span>
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        Select which country forms will display this QR Code payment card.
+                      </p>
+                      <div className="flex flex-wrap gap-4 pt-1">
+                        {['Pakistan', 'UAE', 'USA'].map((c) => {
+                          const isChecked = (paymentConfig.qrCountries || ['Pakistan']).includes(c);
+                          return (
+                            <label key={c} className="flex items-center gap-2 cursor-pointer select-none">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  const current = paymentConfig.qrCountries || ['Pakistan'];
+                                  const updated = e.target.checked
+                                    ? [...new Set([...current, c])]
+                                    : current.filter((item) => item !== c);
+                                  setPaymentConfig((prev) => ({
+                                    ...prev,
+                                    qrCountries: updated,
+                                  }));
+                                }}
+                                className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                              />
+                              <span className="text-xs sm:text-sm font-semibold text-gray-800">{c}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                     {/* Configurable Payment Methods Section */}
                     <div className="p-5 rounded-xl border border-gray-200 bg-white shadow-xs space-y-4">
                       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-gray-100">
@@ -1532,6 +1656,17 @@ export default function AdminDashboardClient() {
                                     <span className="text-xs font-semibold text-gray-700">
                                       {method.isEnabled ? 'Enabled' : 'Disabled'}
                                     </span>
+                                    <div className="flex items-center gap-1 ml-1">
+                                      {(method.countries || ['Pakistan']).map((c) => (
+                                        <span
+                                          key={c}
+                                          className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200"
+                                          title={`Available in ${c}`}
+                                        >
+                                          {c === 'Pakistan' ? 'PK' : c === 'UAE' ? 'AE' : 'US'}
+                                        </span>
+                                      ))}
+                                    </div>
                                   </div>
 
                                   <div className="flex items-center gap-1.5">
@@ -1873,6 +2008,37 @@ export default function AdminDashboardClient() {
                   <option value="number">Account Number / Mobile Wallet (e.g. 03001234567)</option>
                   <option value="iban">Bank IBAN (24 Characters starting with PK)</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="form-label block mb-1">
+                  Available in countries <span className="text-red-600">*</span>
+                </label>
+                <p className="text-[11px] text-gray-500 mb-1.5">
+                  Select which country forms will display this payment method card.
+                </p>
+                <div className="flex flex-wrap gap-4 pt-1">
+                  {['Pakistan', 'UAE', 'USA'].map((c) => {
+                    const isChecked = (methodForm.countries || []).includes(c);
+                    return (
+                      <label key={c} className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={(e) => {
+                            const current = methodForm.countries || [];
+                            const updated = e.target.checked
+                              ? [...new Set([...current, c])]
+                              : current.filter((item) => item !== c);
+                            setMethodForm((prev) => ({ ...prev, countries: updated }));
+                          }}
+                          className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
+                        />
+                        <span className="text-xs sm:text-sm font-semibold text-gray-800">{c}</span>
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
 
               <div>

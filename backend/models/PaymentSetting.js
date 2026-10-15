@@ -50,9 +50,19 @@ const paymentMethodSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    countries: {
+      type: [String],
+      default: ['Pakistan'],
+    },
   },
   { timestamps: true }
 );
+
+const DEFAULT_FEES = {
+  Pakistan: { amount: 50, currency: 'PKR', symbol: 'Rs.' },
+  UAE: { amount: 0, currency: 'AED', symbol: 'AED ' },
+  USA: { amount: 0, currency: 'USD', symbol: '$' },
+};
 
 const paymentSettingSchema = new mongoose.Schema(
   {
@@ -60,9 +70,27 @@ const paymentSettingSchema = new mongoose.Schema(
       type: Boolean,
       default: false, // Default is OFF so existing listings are not interrupted until Admin turns it on
     },
+    // Multi-country fee structure: Fixed currencies, amount editable by admin, 0 = FREE
+    fees: {
+      Pakistan: {
+        amount: { type: Number, default: 50, min: 0 },
+        currency: { type: String, default: 'PKR' },
+        symbol: { type: String, default: 'Rs.' },
+      },
+      UAE: {
+        amount: { type: Number, default: 0, min: 0 },
+        currency: { type: String, default: 'AED' },
+        symbol: { type: String, default: 'AED ' },
+      },
+      USA: {
+        amount: { type: Number, default: 0, min: 0 },
+        currency: { type: String, default: 'USD' },
+        symbol: { type: String, default: '$' },
+      },
+    },
     feeAmount: {
       type: Number,
-      default: 500, // PKR
+      default: 50, // Backward compatibility fallback (mirrors Pakistan fee)
       min: [0, 'Fee amount cannot be negative'],
     },
     qrCode: {
@@ -76,6 +104,14 @@ const paymentSettingSchema = new mongoose.Schema(
         default: '',
         trim: true,
       },
+    },
+    qrEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    qrCountries: {
+      type: [String],
+      default: ['Pakistan'],
     },
     raastId: {
       type: String,
@@ -116,11 +152,64 @@ const paymentSettingSchema = new mongoose.Schema(
   }
 );
 
+paymentSettingSchema.methods.getFeeForCountry = function (countryName) {
+  const c = countryName || 'Pakistan';
+  const fees = this.fees || {};
+  const matchedKey = Object.keys(fees).find(
+    (k) => k.toLowerCase() === c.toLowerCase()
+  );
+  if (matchedKey && fees[matchedKey]) {
+    return fees[matchedKey];
+  }
+  return {
+    amount: this.feeAmount || 0,
+    currency: 'PKR',
+    symbol: 'Rs.',
+  };
+};
+
 // Singleton helper: always fetch or initialize the single configuration document
 paymentSettingSchema.statics.getSettings = async function () {
   let settings = await this.findOne();
   if (!settings) {
     settings = await this.create({});
+  }
+
+  let modified = false;
+
+  // Initialize or repair fees structure
+  if (!settings.fees) {
+    settings.fees = { ...DEFAULT_FEES };
+    if (settings.feeAmount !== undefined && settings.feeAmount !== null) {
+      settings.fees.Pakistan.amount = settings.feeAmount;
+    }
+    modified = true;
+  } else {
+    ['Pakistan', 'UAE', 'USA'].forEach((c) => {
+      if (!settings.fees[c]) {
+        settings.fees[c] = { ...DEFAULT_FEES[c] };
+        modified = true;
+      } else {
+        // Enforce fixed currency & symbol per specification
+        if (settings.fees[c].currency !== DEFAULT_FEES[c].currency || settings.fees[c].symbol !== DEFAULT_FEES[c].symbol) {
+          settings.fees[c].currency = DEFAULT_FEES[c].currency;
+          settings.fees[c].symbol = DEFAULT_FEES[c].symbol;
+          modified = true;
+        }
+      }
+    });
+  }
+
+  // Sync feeAmount for backward compatibility
+  if (settings.fees?.Pakistan?.amount !== undefined && settings.feeAmount !== settings.fees.Pakistan.amount) {
+    settings.feeAmount = settings.fees.Pakistan.amount;
+    modified = true;
+  }
+
+  // Ensure qrCountries is initialized
+  if (!settings.qrCountries || !Array.isArray(settings.qrCountries) || settings.qrCountries.length === 0) {
+    settings.qrCountries = ['Pakistan'];
+    modified = true;
   }
 
   // Automatic Migration: If legacy jazzCashNumber was set, migrate into paymentMethods
@@ -139,12 +228,27 @@ paymentSettingSchema.statics.getSettings = async function () {
         details: 'JazzCash Mobile Account',
         cardImage: { url: '', publicId: '' },
         isEnabled: true,
+        countries: ['Pakistan'],
       });
       // Clear legacy fields
       settings.jazzCashNumber = '';
       settings.jazzCashTitle = '';
-      await settings.save();
+      modified = true;
     }
+  }
+
+  // Ensure all paymentMethods have countries array
+  if (settings.paymentMethods && settings.paymentMethods.length > 0) {
+    settings.paymentMethods.forEach((m) => {
+      if (!m.countries || !Array.isArray(m.countries) || m.countries.length === 0) {
+        m.countries = ['Pakistan'];
+        modified = true;
+      }
+    });
+  }
+
+  if (modified) {
+    await settings.save();
   }
 
   return settings;

@@ -45,8 +45,11 @@ const getPaymentSettings = asyncHandler(async (req, res) => {
     data: {
       settings: {
         isEnabled: settings.isEnabled,
-        feeAmount: settings.feeAmount,
+        fees: settings.fees,
+        feeAmount: settings.fees?.Pakistan?.amount ?? settings.feeAmount ?? 50,
         qrCode: settings.qrCode || { url: '', publicId: '' },
+        qrEnabled: settings.qrEnabled !== false,
+        qrCountries: settings.qrCountries || ['Pakistan'],
         raastId: settings.raastId || '',
         accountTitle: settings.accountTitle || 'BizPrimeHub',
         bankName: settings.bankName || 'Raast Instant Payment',
@@ -63,6 +66,9 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
   const {
     isEnabled,
     feeAmount,
+    fees,
+    qrEnabled,
+    qrCountries,
     raastId,
     accountTitle,
     bankName,
@@ -76,10 +82,63 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
     settings.isEnabled = isEnabled === true || isEnabled === 'true';
   }
 
-  if (feeAmount !== undefined && feeAmount !== null) {
+  // Handle multi-country fees
+  if (fees !== undefined && fees !== null) {
+    let parsedFees = fees;
+    if (typeof parsedFees === 'string') {
+      try {
+        parsedFees = JSON.parse(parsedFees);
+      } catch {}
+    }
+    if (typeof parsedFees === 'object' && parsedFees !== null) {
+      if (!settings.fees) settings.fees = {};
+      const countryConfig = {
+        Pakistan: { currency: 'PKR', symbol: 'Rs.' },
+        UAE: { currency: 'AED', symbol: 'AED ' },
+        USA: { currency: 'USD', symbol: '$' },
+      };
+      ['Pakistan', 'UAE', 'USA'].forEach((c) => {
+        if (parsedFees[c] && parsedFees[c].amount !== undefined) {
+          const parsedAmt = Math.max(0, Number(parsedFees[c].amount) || 0);
+          settings.fees[c] = {
+            amount: parsedAmt,
+            currency: countryConfig[c].currency,
+            symbol: countryConfig[c].symbol,
+          };
+        }
+      });
+      if (settings.fees.Pakistan) {
+        settings.feeAmount = settings.fees.Pakistan.amount;
+      }
+    }
+  } else if (feeAmount !== undefined && feeAmount !== null) {
     const parsedFee = Number(feeAmount);
     if (!isNaN(parsedFee) && parsedFee >= 0) {
       settings.feeAmount = parsedFee;
+      if (!settings.fees) settings.fees = {};
+      settings.fees.Pakistan = {
+        amount: parsedFee,
+        currency: 'PKR',
+        symbol: 'Rs.',
+      };
+    }
+  }
+
+  if (qrEnabled !== undefined) {
+    settings.qrEnabled = qrEnabled === true || qrEnabled === 'true';
+  }
+
+  if (qrCountries !== undefined) {
+    let parsedQc = qrCountries;
+    if (typeof parsedQc === 'string') {
+      try {
+        parsedQc = JSON.parse(parsedQc);
+      } catch {
+        parsedQc = parsedQc.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+    }
+    if (Array.isArray(parsedQc)) {
+      settings.qrCountries = parsedQc;
     }
   }
 
@@ -130,8 +189,11 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
     data: {
       settings: {
         isEnabled: settings.isEnabled,
-        feeAmount: settings.feeAmount,
+        fees: settings.fees,
+        feeAmount: settings.fees?.Pakistan?.amount ?? settings.feeAmount ?? 50,
         qrCode: settings.qrCode || { url: '', publicId: '' },
+        qrEnabled: settings.qrEnabled !== false,
+        qrCountries: settings.qrCountries || ['Pakistan'],
         raastId: settings.raastId,
         accountTitle: settings.accountTitle,
         bankName: settings.bankName,
@@ -162,8 +224,11 @@ const deletePaymentQrCode = asyncHandler(async (req, res) => {
     data: {
       settings: {
         isEnabled: settings.isEnabled,
-        feeAmount: settings.feeAmount,
+        fees: settings.fees,
+        feeAmount: settings.fees?.Pakistan?.amount ?? settings.feeAmount ?? 50,
         qrCode: { url: '', publicId: '' },
+        qrEnabled: settings.qrEnabled !== false,
+        qrCountries: settings.qrCountries || ['Pakistan'],
         raastId: settings.raastId,
         accountTitle: settings.accountTitle,
         bankName: settings.bankName,
@@ -177,7 +242,7 @@ const deletePaymentQrCode = asyncHandler(async (req, res) => {
 // ─── POST /api/admin/settings/payment/methods ─────────────────────────────────
 // Protected (Admin): Add a new payment method card
 const createPaymentMethod = asyncHandler(async (req, res) => {
-  const { name, kind, accountTitle, accountValue, details, isEnabled } = req.body;
+  const { name, kind, accountTitle, accountValue, details, isEnabled, countries } = req.body;
 
   const validationError = validatePaymentMethodData({ name, kind, accountTitle, accountValue });
   if (validationError) {
@@ -200,6 +265,18 @@ const createPaymentMethod = asyncHandler(async (req, res) => {
     ? accountValue.replace(/\s+/g, '').toUpperCase()
     : accountValue.trim();
 
+  let parsedCountries = countries;
+  if (typeof parsedCountries === 'string') {
+    try {
+      parsedCountries = JSON.parse(parsedCountries);
+    } catch {
+      parsedCountries = parsedCountries.split(',').map((s) => s.trim()).filter(Boolean);
+    }
+  }
+  if (!Array.isArray(parsedCountries) || parsedCountries.length === 0) {
+    parsedCountries = ['Pakistan'];
+  }
+
   const settings = await PaymentSetting.getSettings();
 
   const newMethod = {
@@ -213,6 +290,7 @@ const createPaymentMethod = asyncHandler(async (req, res) => {
       publicId: req.file.filename,
     },
     isEnabled: isEnabled === undefined ? true : (isEnabled === 'true' || isEnabled === true),
+    countries: parsedCountries,
   };
 
   settings.paymentMethods.push(newMethod);
@@ -234,7 +312,7 @@ const createPaymentMethod = asyncHandler(async (req, res) => {
 // Protected (Admin): Update an existing payment method
 const updatePaymentMethod = asyncHandler(async (req, res) => {
   const { methodId } = req.params;
-  const { name, kind, accountTitle, accountValue, details, isEnabled } = req.body;
+  const { name, kind, accountTitle, accountValue, details, isEnabled, countries } = req.body;
 
   const settings = await PaymentSetting.getSettings();
   const method = settings.paymentMethods.id(methodId);
@@ -278,6 +356,20 @@ const updatePaymentMethod = asyncHandler(async (req, res) => {
 
   if (isEnabled !== undefined) {
     method.isEnabled = isEnabled === 'true' || isEnabled === true;
+  }
+
+  if (countries !== undefined) {
+    let parsedCountries = countries;
+    if (typeof parsedCountries === 'string') {
+      try {
+        parsedCountries = JSON.parse(parsedCountries);
+      } catch {
+        parsedCountries = parsedCountries.split(',').map((s) => s.trim()).filter(Boolean);
+      }
+    }
+    if (Array.isArray(parsedCountries) && parsedCountries.length > 0) {
+      method.countries = parsedCountries;
+    }
   }
 
   // Handle replacing card image
