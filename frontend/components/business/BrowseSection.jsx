@@ -125,14 +125,79 @@ const COUNTRY_DETAILS = {
 // Exact 13 categories with exact requested descriptions and 100% unique verified Unsplash images
 const CATEGORIES_LIST = [
   {
-    name: 'IT',
-    description: 'Software, web development, IT services and tech companies',
-    image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80',
+    name: 'Bank',
+    description: 'Commercial banks, retail banking, branches, and financial services',
+    image: 'https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?w=400&q=80',
+  },
+  {
+    name: 'Laboratory',
+    description: 'Diagnostic labs, medical testing, clinical research, and pathology',
+    image: 'https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=400&q=80',
+  },
+  {
+    name: 'Bus Companies',
+    description: 'Intercity coaches, public transit, charter buses, and transportation',
+    image: 'https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=400&q=80',
+  },
+  {
+    name: 'Information Technology (IT) & Services',
+    description: 'IT consulting, software development, cloud computing, and tech solutions',
+    image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=400&q=80',
+  },
+  {
+    name: 'Hospital',
+    description: 'Emergency care, specialty hospitals, clinics, and surgical centers',
+    image: 'https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=400&q=80',
+  },
+  {
+    name: 'Local Shops & Traders',
+    description: 'Neighborhood markets, general stores, wholesale traders, and local shops',
+    image: 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=400&q=80',
+  },
+  {
+    name: 'Education',
+    description: 'Schools, tutoring, courses, and educational services',
+    image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400&q=80',
+  },
+  {
+    name: 'Shopping & Retail Chains',
+    description: 'Supermarkets, hypermarkets, departmental stores, and retail brands',
+    image: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=400&q=80',
   },
   {
     name: 'Real Estate',
     description: 'Property listings, agents, and real estate services',
     image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&q=80',
+  },
+  {
+    name: 'Restaurants & Food Chains',
+    description: 'Fine dining, fast food chains, cafes, bakeries, and eateries',
+    image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=80',
+  },
+  {
+    name: 'Importer and Exporter',
+    description: 'Global trade, shipping merchants, customs clearance, and import/export',
+    image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&q=80',
+  },
+  {
+    name: 'Courier & Cargo Companies',
+    description: 'Parcel delivery, freight forwarding, logistics, and express cargo',
+    image: 'https://images.unsplash.com/photo-1616401784845-180882ba9ba8?w=400&q=80',
+  },
+  {
+    name: 'Hotels & Guest Houses',
+    description: 'Luxury hotels, boutique stays, resorts, motels, and guest houses',
+    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&q=80',
+  },
+  {
+    name: 'Telecom Companies',
+    description: 'Mobile network operators, broadband internet, fiber optics, and telecom',
+    image: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&q=80',
+  },
+  {
+    name: 'IT',
+    description: 'Software, web development, IT services and tech companies',
+    image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80',
   },
   {
     name: 'Restaurant',
@@ -143,11 +208,6 @@ const CATEGORIES_LIST = [
     name: 'Healthcare',
     description: 'Clinics, hospitals, doctors, dentists, and wellness',
     image: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=400&q=80',
-  },
-  {
-    name: 'Education',
-    description: 'Schools, tutoring, courses, and educational services',
-    image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400&q=80',
   },
   {
     name: 'Automotive',

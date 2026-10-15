@@ -4,8 +4,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import BusinessCard from './BusinessCard';
 import { businessAPI } from '@/lib/api';
-import SearchableCombobox from '@/components/ui/SearchableCombobox';
-import { COUNTRIES, getCities } from '@/data/locations';
 import {
   Search,
   SlidersHorizontal,
@@ -13,20 +11,26 @@ import {
   ChevronRight,
   ChevronDown,
   X,
-  Globe,
-  MapPin,
-  Star,
-  RotateCcw,
-  Tag,
-  ArrowUpDown,
 } from 'lucide-react';
 
 const CATEGORIES = [
-  'IT',
+  'Bank',
+  'Laboratory',
+  'Bus Companies',
+  'Information Technology (IT) & Services',
+  'Hospital',
+  'Local Shops & Traders',
+  'Education',
+  'Shopping & Retail Chains',
   'Real Estate',
+  'Restaurants & Food Chains',
+  'Importer and Exporter',
+  'Courier & Cargo Companies',
+  'Hotels & Guest Houses',
+  'Telecom Companies',
+  'IT',
   'Restaurant',
   'Healthcare',
-  'Education',
   'Automotive',
   'Retail',
   'Construction',
@@ -35,20 +39,6 @@ const CATEGORIES = [
   'Travel',
   'Professional Services',
   'Other',
-];
-
-const RATING_OPTIONS = [
-  { value: '', label: 'All Ratings' },
-  { value: '5', label: '5★ Only' },
-  { value: '4+', label: '4★ & above' },
-  { value: '3+', label: '3★ & above' },
-];
-
-const SORT_OPTIONS = [
-  { value: '-createdAt', label: 'Newest First' },
-  { value: '-averageRating', label: 'Top Rated' },
-  { value: 'title', label: 'A-Z' },
-  { value: 'createdAt', label: 'Oldest First' },
 ];
 
 function SkeletonCard() {
@@ -177,11 +167,6 @@ export default function BusinessDirectory() {
     setPage((prev) => (prev !== urlPage ? urlPage : prev));
   }, [searchParams]);
 
-  // Cities options dependent on chosen country
-  const cityOptions = useMemo(() => {
-    return country ? getCities(country) : [];
-  }, [country]);
-
   // Debounce typing in keyword search
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -216,30 +201,8 @@ export default function BusinessDirectory() {
     return summary.total || 0;
   }, [summary, country]);
 
-  // Handle Country selection change (resets dependent City)
-  const handleCountryChange = (newCountry) => {
-    setCountry(newCountry);
-    setCity(''); // Clear dependent city selection
-    setPage(1);
-  };
-
-  const handleCityChange = (newCity) => {
-    setCity(newCity);
-    setPage(1);
-  };
-
   const handleCategoryChange = (newCat) => {
     setCategory(newCat);
-    setPage(1);
-  };
-
-  const handleRatingChange = (newRating) => {
-    setRating(newRating);
-    setPage(1);
-  };
-
-  const handleSortChange = (newSort) => {
-    setSort(newSort);
     setPage(1);
   };
 
@@ -320,330 +283,58 @@ export default function BusinessDirectory() {
     setPage(1);
   };
 
-  const hasActiveFilters =
-    Boolean(keyword) ||
-    Boolean(country) ||
-    Boolean(city) ||
-    Boolean(category) ||
-    Boolean(rating) ||
-    sort !== '-createdAt';
-
   return (
     <div className="section-sm">
       <div className="container-max">
-        {/* ── Filter Bar (Directory Controls) ─────────────────────────── */}
+        {/* ── Search Bar (Directory Search Only) ───────────────────────── */}
         <section
-          className="rounded-2xl p-5 sm:p-6 mb-8 shadow-xs transition-all bg-white border border-gray-200/90"
-          aria-label="Directory Filters"
+          className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-3.5 sm:p-5 mb-8"
+          aria-label="Directory Search"
         >
-          {/* Header Row: Title & Clear Filters button */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-4 mb-5 border-b border-gray-100">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                <SlidersHorizontal size={17} />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-gray-900 leading-none">Filter Businesses</h2>
-                <p className="text-xs text-gray-500 mt-1">Refine listings by keyword, country, city, category, rating, or sort</p>
-              </div>
-            </div>
-
-            {hasActiveFilters && (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/80 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
-                aria-label="Clear all filters"
-              >
-                <RotateCcw size={12} />
-                Clear All Filters
-              </button>
-            )}
-          </div>
-
-          {/* Controls Grid: Balanced 3 columns on desktop, 2 on tablet, 1 on mobile */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* 1. Keyword Search */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Keyword
-              </label>
-              <div className="relative">
-                <Search
-                  size={16}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-                />
-                <input
-                  type="text"
-                  value={keywordInput}
-                  onChange={(e) => setKeywordInput(e.target.value)}
-                  placeholder="Search by name, service..."
-                  className="w-full h-11 pl-10 pr-9 rounded-xl border border-gray-200 bg-gray-50/70 hover:bg-white focus:bg-white text-sm text-gray-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                  aria-label="Search by business name or keyword"
-                />
-                {keywordInput && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setKeywordInput('');
-                      setKeyword('');
-                      setPage(1);
-                    }}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600 rounded-lg"
-                    aria-label="Clear keyword"
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* 2. Country Dropdown */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Country
-              </label>
-              <div className="relative">
-                <Globe
-                  size={16}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10"
-                />
-                <select
-                  value={country}
-                  onChange={(e) => handleCountryChange(e.target.value)}
-                  className="w-full h-11 pl-10 pr-9 rounded-xl border border-gray-200 bg-gray-50/70 hover:bg-white focus:bg-white text-sm text-gray-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer appearance-none"
-                  style={{
-                    backgroundImage:
-                      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E\")",
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 0.85rem center',
-                  }}
-                  aria-label="Filter by Country"
-                >
-                  <option value="">All Countries</option>
-                  {COUNTRIES.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* 3. City Searchable Combobox */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                City
-              </label>
-              <SearchableCombobox
-                value={city}
-                onChange={handleCityChange}
-                options={cityOptions}
-                disabled={!country}
-                placeholder={country ? `All Cities in ${country}...` : "All Cities..."}
-                disabledPlaceholder="Select country first"
-                emptyMessage="No city found"
-                ariaLabel="Filter by City"
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setKeyword(keywordInput.trim());
+              setPage(1);
+            }}
+            className="flex items-center gap-2.5 sm:gap-3"
+          >
+            <div className="relative flex-1">
+              <Search
+                size={20}
+                className="absolute left-3.5 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
               />
-            </div>
-
-            {/* 4. Category Dropdown */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Category
-              </label>
-              <div className="relative">
-                <Tag
-                  size={16}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10"
-                />
-                <select
-                  value={category}
-                  onChange={(e) => handleCategoryChange(e.target.value)}
-                  className="w-full h-11 pl-10 pr-9 rounded-xl border border-gray-200 bg-gray-50/70 hover:bg-white focus:bg-white text-sm text-gray-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer appearance-none"
-                  style={{
-                    backgroundImage:
-                      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E\")",
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 0.85rem center',
+              <input
+                type="text"
+                value={keywordInput}
+                onChange={(e) => setKeywordInput(e.target.value)}
+                placeholder="Search businesses by name, service, or keyword..."
+                className="w-full h-12 sm:h-13 pl-11 sm:pl-12 pr-10 rounded-xl border border-gray-200 bg-gray-50/70 hover:bg-white focus:bg-white text-sm sm:text-base text-gray-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all placeholder:text-gray-400"
+                aria-label="Search businesses by keyword"
+              />
+              {keywordInput && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setKeywordInput('');
+                    setKeyword('');
+                    setPage(1);
                   }}
-                  aria-label="Filter by Category"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer"
+                  aria-label="Clear search keyword"
                 >
-                  <option value="">All Categories</option>
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  <X size={16} />
+                </button>
+              )}
             </div>
-
-            {/* 5. Rating Filter */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Rating
-              </label>
-              <div className="relative">
-                <Star
-                  size={16}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10"
-                />
-                <select
-                  value={rating}
-                  onChange={(e) => handleRatingChange(e.target.value)}
-                  className="w-full h-11 pl-10 pr-9 rounded-xl border border-gray-200 bg-gray-50/70 hover:bg-white focus:bg-white text-sm text-gray-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer appearance-none"
-                  style={{
-                    backgroundImage:
-                      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E\")",
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 0.85rem center',
-                  }}
-                  aria-label="Filter by Rating"
-                >
-                  {RATING_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* 6. Sort Dropdown */}
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1.5">
-                Sort By
-              </label>
-              <div className="relative">
-                <ArrowUpDown
-                  size={16}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none z-10"
-                />
-                <select
-                  value={sort}
-                  onChange={(e) => handleSortChange(e.target.value)}
-                  className="w-full h-11 pl-10 pr-9 rounded-xl border border-gray-200 bg-gray-50/70 hover:bg-white focus:bg-white text-sm text-gray-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all cursor-pointer appearance-none"
-                  style={{
-                    backgroundImage:
-                      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 8L1 3h10z'/%3E%3C/svg%3E\")",
-                    backgroundRepeat: 'no-repeat',
-                    backgroundPosition: 'right 0.85rem center',
-                  }}
-                  aria-label="Sort listings"
-                >
-                  {SORT_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Active Filter Chips */}
-          {hasActiveFilters && (
-            <div className="flex flex-wrap items-center gap-2 mt-5 pt-3.5 border-t border-gray-100">
-              <span className="text-xs font-semibold text-gray-500 mr-1">Active Filters:</span>
-
-              {keyword && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                  <span>Keyword: &ldquo;{keyword}&rdquo;</span>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setKeywordInput('');
-                      setKeyword('');
-                      setPage(1);
-                    }}
-                    className="hover:text-blue-900 p-0.5 rounded-full hover:bg-blue-100"
-                    aria-label="Remove keyword filter"
-                  >
-                    <X size={11} />
-                  </button>
-                </span>
-              )}
-
-              {country && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                  <span>Country: {country}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleCountryChange('')}
-                    className="hover:text-blue-900 p-0.5 rounded-full hover:bg-blue-100"
-                    aria-label="Remove country filter"
-                  >
-                    <X size={11} />
-                  </button>
-                </span>
-              )}
-
-              {city && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                  <span>City: {city}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleCityChange('')}
-                    className="hover:text-blue-900 p-0.5 rounded-full hover:bg-blue-100"
-                    aria-label="Remove city filter"
-                  >
-                    <X size={11} />
-                  </button>
-                </span>
-              )}
-
-              {category && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                  <span>Category: {category}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleCategoryChange('')}
-                    className="hover:text-blue-900 p-0.5 rounded-full hover:bg-blue-100"
-                    aria-label="Remove category filter"
-                  >
-                    <X size={11} />
-                  </button>
-                </span>
-              )}
-
-              {rating && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
-                  <span>Rating: {rating === '5' ? '5★ Only' : `${rating}★ & above`}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRatingChange('')}
-                    className="hover:text-amber-950 p-0.5 rounded-full hover:bg-amber-100"
-                    aria-label="Remove rating filter"
-                  >
-                    <X size={11} />
-                  </button>
-                </span>
-              )}
-
-              {sort !== '-createdAt' && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
-                  <span>Sort: {SORT_OPTIONS.find((s) => s.value === sort)?.label}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleSortChange('-createdAt')}
-                    className="hover:text-gray-950 p-0.5 rounded-full hover:bg-gray-200"
-                    aria-label="Reset sort"
-                  >
-                    <X size={11} />
-                  </button>
-                </span>
-              )}
-
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="text-xs font-semibold text-rose-600 hover:text-rose-800 underline ml-1 cursor-pointer"
-              >
-                Clear all
-              </button>
-            </div>
-          )}
+            <button
+              type="submit"
+              className="h-12 sm:h-13 px-5 sm:px-8 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm sm:text-base rounded-xl transition-all shadow-xs hover:shadow-sm flex items-center justify-center gap-2 shrink-0 cursor-pointer"
+            >
+              <Search size={18} className="shrink-0" />
+              <span>Search</span>
+            </button>
+          </form>
         </section>
 
         {/* ── Results Layout: Sticky Left Sidebar (Desktop lg+) + Results (Header + Cards) ── */}

@@ -11,9 +11,31 @@ import SearchableCombobox from '@/components/ui/SearchableCombobox';
 import { COUNTRIES, getCities, isValidCity } from '@/data/locations';
 
 const CATEGORIES = [
-  'IT', 'Real Estate', 'Restaurant', 'Healthcare', 'Education',
-  'Automotive', 'Retail', 'Construction', 'Finance', 'Beauty',
-  'Travel', 'Professional Services', 'Other',
+  'Bank',
+  'Laboratory',
+  'Bus Companies',
+  'Information Technology (IT) & Services',
+  'Hospital',
+  'Local Shops & Traders',
+  'Education',
+  'Shopping & Retail Chains',
+  'Real Estate',
+  'Restaurants & Food Chains',
+  'Importer and Exporter',
+  'Courier & Cargo Companies',
+  'Hotels & Guest Houses',
+  'Telecom Companies',
+  'IT',
+  'Restaurant',
+  'Healthcare',
+  'Automotive',
+  'Retail',
+  'Construction',
+  'Finance',
+  'Beauty',
+  'Travel',
+  'Professional Services',
+  'Other',
 ];
 
 const MAX_IMAGES = 5;
