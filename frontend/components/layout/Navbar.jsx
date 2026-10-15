@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { businessAPI } from '@/lib/api';
 import {
   Menu,
   X,
@@ -116,6 +117,27 @@ const COUNTRIES_DIRECTORIES = [
   },
 ];
 
+const CATEGORY_COUNTRY_GROUPS = [
+  {
+    code: 'PK',
+    name: 'Pakistan',
+    label: 'Pakistan',
+    Flag: PakistanFlagCircle,
+  },
+  {
+    code: 'AE',
+    name: 'UAE',
+    label: 'UAE',
+    Flag: UAEFlagCircle,
+  },
+  {
+    code: 'US',
+    name: 'USA',
+    label: 'United States',
+    Flag: USAFlagCircle,
+  },
+];
+
 const ALL_CATEGORIES = [
   'Bank',
   'Laboratory',
@@ -213,6 +235,17 @@ export default function Navbar() {
     setUserMenuOpen(false);
   };
 
+  // Summary counts for categories per country
+  const [summaryCounts, setSummaryCounts] = useState(null);
+
+  useEffect(() => {
+    businessAPI.getSummary()
+      .then((res) => {
+        if (res.data) setSummaryCounts(res.data);
+      })
+      .catch(() => {});
+  }, []);
+
   // Find active country details
   const activeCountryObj = COUNTRIES_DIRECTORIES.find(
     (c) => c.name.toLowerCase() === (currentCountry || '').toLowerCase()
@@ -220,7 +253,7 @@ export default function Navbar() {
   const ActiveCountryFlag = activeCountryObj ? activeCountryObj.Flag : null;
 
   // Nav active states
-  const isDirectoriesActive = pathname.startsWith('/businesses') && Boolean(currentCountry);
+  const isDirectoriesActive = Boolean(currentCountry) && (pathname.startsWith('/businesses') || pathname === '/');
   const isCategoriesActive = pathname === '/categories' || (pathname.startsWith('/businesses') && Boolean(currentCategory));
 
   const avatarUrl = user?.avatar?.url
@@ -351,7 +384,7 @@ export default function Navbar() {
                       return (
                         <Link
                           key={item.code}
-                          href={`/businesses?country=${encodeURIComponent(item.name)}`}
+                          href={`/?country=${encodeURIComponent(item.name)}`}
                           onClick={() => setDirectoriesOpen(false)}
                           className={`flex items-center gap-3 p-2.5 rounded-xl transition-all ${
                             isItemActive
@@ -382,25 +415,11 @@ export default function Navbar() {
                       );
                     })}
                   </div>
-
-                  <div className="pt-1.5 mt-1 border-t border-gray-100 px-1.5">
-                    <Link
-                      href="/businesses"
-                      onClick={() => setDirectoriesOpen(false)}
-                      className="flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-gray-600 hover:text-blue-600 hover:bg-gray-50 transition-colors"
-                    >
-                      <span className="flex items-center gap-2">
-                        <BookOpen size={14} className="text-gray-400" />
-                        <span>All Listings Directory</span>
-                      </span>
-                      <ArrowRight size={13} className="text-gray-400" />
-                    </Link>
-                  </div>
                 </div>
               )}
             </div>
 
-            {/* ── 2. Categories Dropdown (All 13 Categories) ── */}
+            {/* ── 2. Categories Dropdown (Grouped by Country with Flags & Counts) ── */}
             <div className="relative">
               <button
                 type="button"
@@ -434,49 +453,100 @@ export default function Navbar() {
 
               {categoriesOpen && (
                 <div
-                  className="absolute left-0 mt-2 w-[520px] rounded-2xl shadow-xl p-3 z-50 bg-white border border-gray-100 animate-in fade-in slide-in-from-top-1 duration-150"
+                  className="absolute left-0 mt-2 w-[800px] lg:w-[840px] max-w-[calc(100vw-2rem)] rounded-2xl shadow-xl p-4 z-50 bg-white border border-gray-100 animate-in fade-in slide-in-from-top-1 duration-150"
                   role="menu"
                   style={{
                     boxShadow:
                       '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
                   }}
                 >
-                  <div className="px-2 pt-1 pb-2 flex items-center justify-between border-b border-gray-100 mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                      ALL 13 BUSINESS CATEGORIES
-                    </span>
-                    {currentCountry && (
-                      <span className="text-[11px] font-semibold text-gray-600 flex items-center gap-1">
-                        <span>Filter in</span>
-                        <span className="text-blue-600 font-bold">{currentCountry}</span>
+                  <div className="px-3 pt-1 pb-2.5 flex items-center justify-between border-b border-gray-100 mb-3">
+                    <div>
+                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-gray-900 block">
+                        Browse Categories by Country
                       </span>
-                    )}
+                      <p className="text-[11px] text-gray-500 mt-0.5">
+                        Click a country header to explore its cities, or pick a category below to filter listings.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-200 px-2.5 py-0.5 rounded-full">
+                      3 Countries
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-1 max-h-[380px] overflow-y-auto pr-1">
-                    {ALL_CATEGORIES.map((cat) => {
-                      const isItemActive =
-                        currentCategory.toLowerCase() === cat.toLowerCase();
-                      const targetUrl = currentCountry
-                        ? `/businesses?country=${encodeURIComponent(currentCountry)}&category=${encodeURIComponent(cat)}`
-                        : `/businesses?category=${encodeURIComponent(cat)}`;
+                  {/* 3 Country Groups Side-by-Side */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 divide-y md:divide-y-0 md:divide-x divide-gray-100">
+                    {CATEGORY_COUNTRY_GROUPS.map((group, idx) => {
+                      const FlagComp = group.Flag;
+                      const isCountryActive =
+                        currentCountry.toLowerCase() === group.name.toLowerCase();
 
                       return (
-                        <Link
-                          key={cat}
-                          href={targetUrl}
-                          onClick={() => setCategoriesOpen(false)}
-                          className={`flex items-center justify-between px-2.5 py-2 rounded-xl text-xs font-semibold transition-all ${
-                            isItemActive
-                              ? 'bg-blue-50 text-blue-700 font-bold border border-blue-200'
-                              : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
-                          }`}
+                        <div
+                          key={group.code}
+                          className={`${idx > 0 ? 'md:pl-4 pt-3 md:pt-0' : ''} flex flex-col`}
                         >
-                          <span className="truncate">{cat}</span>
-                          {isItemActive && (
-                            <Check size={14} className="text-blue-600 shrink-0 ml-1" />
-                          )}
-                        </Link>
+                          {/* Country Name / Header -> /?country={Country} (Cities Page) */}
+                          <Link
+                            href={`/?country=${encodeURIComponent(group.name)}`}
+                            onClick={() => setCategoriesOpen(false)}
+                            className={`flex items-center justify-between p-2 rounded-xl transition-all group/hdr mb-2 border shadow-2xs ${
+                              isCountryActive
+                                ? 'bg-blue-50/90 border-blue-200'
+                                : 'bg-gray-50/80 hover:bg-blue-50 border-gray-200/90 hover:border-blue-200'
+                            }`}
+                            title={`Browse cities in ${group.label}`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <FlagComp size={18} />
+                              <span className="text-xs font-bold text-gray-900 group-hover/hdr:text-blue-700 truncate">
+                                {group.label}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold text-blue-600 group-hover/hdr:translate-x-0.5 transition-transform flex items-center gap-0.5 shrink-0 bg-white px-1.5 py-0.5 rounded border border-blue-100 shadow-2xs">
+                              Cities <ArrowRight size={10} />
+                            </span>
+                          </Link>
+
+                          {/* 13 Categories for this country */}
+                          <div className="space-y-0.5 max-h-[380px] overflow-y-auto pr-1">
+                            {ALL_CATEGORIES.map((cat) => {
+                              const count =
+                                summaryCounts?.categories?.[group.name]?.[cat] || 0;
+                              const isItemActive =
+                                currentCountry.toLowerCase() === group.name.toLowerCase() &&
+                                currentCategory.toLowerCase() === cat.toLowerCase();
+
+                              return (
+                                <Link
+                                  key={cat}
+                                  href={`/businesses?country=${encodeURIComponent(group.name)}&category=${encodeURIComponent(cat)}`}
+                                  onClick={() => setCategoriesOpen(false)}
+                                  className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
+                                    isItemActive
+                                      ? 'bg-blue-50 text-blue-700 font-bold border border-blue-200 shadow-2xs'
+                                      : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
+                                  }`}
+                                >
+                                  <span className="truncate pr-1.5">{cat}</span>
+                                  {count > 0 ? (
+                                    <span
+                                      className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+                                        isItemActive
+                                          ? 'bg-blue-200 text-blue-900'
+                                          : 'bg-gray-100 text-gray-600'
+                                      }`}
+                                    >
+                                      {count}
+                                    </span>
+                                  ) : isItemActive ? (
+                                    <Check size={12} className="text-blue-600 shrink-0" />
+                                  ) : null}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </div>
                       );
                     })}
                   </div>
@@ -754,7 +824,7 @@ export default function Navbar() {
                       return (
                         <Link
                           key={item.code}
-                          href={`/businesses?country=${encodeURIComponent(item.name)}`}
+                          href={`/?country=${encodeURIComponent(item.name)}`}
                           onClick={() => setMobileOpen(false)}
                           className={`flex items-center justify-between p-2 rounded-lg text-xs font-semibold transition-colors ${
                             isItemActive
@@ -775,19 +845,11 @@ export default function Navbar() {
                         </Link>
                       );
                     })}
-                    <Link
-                      href="/businesses"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-2 p-2 rounded-lg text-xs font-medium text-gray-500 hover:text-blue-600"
-                    >
-                      <BookOpen size={13} />
-                      <span>All Listings Directory</span>
-                    </Link>
                   </div>
                 )}
               </div>
 
-              {/* ── 4. Mobile Categories Accordion ── */}
+              {/* ── 4. Mobile Categories Accordion (Grouped by Country with Flags & Counts) ── */}
               <div>
                 <button
                   type="button"
@@ -812,39 +874,75 @@ export default function Navbar() {
                 </button>
 
                 {mobileCategoriesOpen && (
-                  <div className="pl-6 pr-3 py-1.5 space-y-1 bg-gray-50/70 rounded-xl my-1 border border-gray-100 max-h-64 overflow-y-auto">
-                    {ALL_CATEGORIES.map((cat) => {
-                      const isItemActive =
-                        currentCategory.toLowerCase() === cat.toLowerCase();
-                      const targetUrl = currentCountry
-                        ? `/businesses?country=${encodeURIComponent(currentCountry)}&category=${encodeURIComponent(cat)}`
-                        : `/businesses?category=${encodeURIComponent(cat)}`;
+                  <div className="pl-3 pr-2 py-2 space-y-3 bg-gray-50/70 rounded-xl my-1 border border-gray-100 max-h-[460px] overflow-y-auto">
+                    {CATEGORY_COUNTRY_GROUPS.map((group) => {
+                      const FlagComp = group.Flag;
+                      const isCountryActive =
+                        currentCountry.toLowerCase() === group.name.toLowerCase();
 
                       return (
-                        <Link
-                          key={cat}
-                          href={targetUrl}
-                          onClick={() => setMobileOpen(false)}
-                          className={`flex items-center justify-between p-2 rounded-lg text-xs font-semibold transition-colors ${
-                            isItemActive
-                              ? 'bg-blue-100/70 text-blue-700 font-bold'
-                              : 'text-gray-700 hover:bg-white'
-                          }`}
+                        <div
+                          key={group.code}
+                          className="bg-white rounded-xl border border-gray-200/80 p-2.5 shadow-2xs"
                         >
-                          <span className="truncate">{cat}</span>
-                          {isItemActive && (
-                            <Check size={14} className="text-blue-600 shrink-0" />
-                          )}
-                        </Link>
+                          {/* Country Name / Header -> /?country={Country} (Cities Page) */}
+                          <Link
+                            href={`/?country=${encodeURIComponent(group.name)}`}
+                            onClick={() => setMobileOpen(false)}
+                            className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100 group/hdr cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2">
+                              <FlagComp size={18} />
+                              <span className="text-xs font-bold text-gray-900 group-hover/hdr:text-blue-600">
+                                {group.label}
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold text-blue-600 flex items-center gap-0.5 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                              Cities <ArrowRight size={10} />
+                            </span>
+                          </Link>
+
+                          {/* 13 Categories for this country */}
+                          <div className="space-y-1">
+                            {ALL_CATEGORIES.map((cat) => {
+                              const count =
+                                summaryCounts?.categories?.[group.name]?.[cat] || 0;
+                              const isItemActive =
+                                isCountryActive &&
+                                currentCategory.toLowerCase() === cat.toLowerCase();
+
+                              return (
+                                <Link
+                                  key={cat}
+                                  href={`/businesses?country=${encodeURIComponent(group.name)}&category=${encodeURIComponent(cat)}`}
+                                  onClick={() => setMobileOpen(false)}
+                                  className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition-colors ${
+                                    isItemActive
+                                      ? 'bg-blue-100/80 text-blue-700 font-bold'
+                                      : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
+                                  }`}
+                                >
+                                  <span className="truncate pr-1">{cat}</span>
+                                  {count > 0 ? (
+                                    <span
+                                      className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                                        isItemActive
+                                          ? 'bg-blue-200 text-blue-900'
+                                          : 'bg-gray-100 text-gray-500'
+                                      }`}
+                                    >
+                                      {count}
+                                    </span>
+                                  ) : isItemActive ? (
+                                    <Check size={12} className="text-blue-600 shrink-0" />
+                                  ) : null}
+                                </Link>
+                              );
+                            })}
+                          </div>
+                        </div>
                       );
                     })}
-                    <Link
-                      href="/categories"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex items-center gap-1.5 p-2 rounded-lg text-xs font-bold text-blue-600 hover:underline pt-2 border-t border-gray-200/60"
-                    >
-                      <span>Explore Categories Page →</span>
-                    </Link>
                   </div>
                 )}
               </div>

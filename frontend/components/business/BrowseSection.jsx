@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { businessAPI } from '@/lib/api';
 import { COUNTRIES, getCities } from '@/data/locations';
 import {
@@ -316,15 +316,53 @@ export default function BrowseSection({
   summary = null,
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlCountry = searchParams?.get('country') || '';
 
-  // Selected Country & City state
-  const [localCountry, setLocalCountry] = useState(selectedCountry || '');
+  // Selected Country & City state (initialized with URL country if on homepage)
+  const [localCountry, setLocalCountry] = useState(() => {
+    if (isHomePage && urlCountry) {
+      const matched = COUNTRIES.find(
+        (c) => c.toLowerCase() === urlCountry.trim().toLowerCase()
+      );
+      if (matched) return matched;
+    }
+    return selectedCountry || '';
+  });
   const [localCity, setLocalCity] = useState(selectedCity || '');
   const [citySearch, setCitySearch] = useState('');
   const [categorySearch, setCategorySearch] = useState('');
   const [keywordSearch, setKeywordSearch] = useState('');
   const [showAllCities, setShowAllCities] = useState(false);
   const [internalSummary, setInternalSummary] = useState(summary || null);
+
+  // Sync with URL country param when on homepage (e.g. /?country=Pakistan)
+  useEffect(() => {
+    if (isHomePage) {
+      if (urlCountry) {
+        const matched = COUNTRIES.find(
+          (c) => c.toLowerCase() === urlCountry.trim().toLowerCase()
+        );
+        if (matched) {
+          setLocalCountry(matched);
+          setLocalCity('');
+          setCitySearch('');
+          setCategorySearch('');
+          setShowAllCities(false);
+          // Scroll to Browse section so user sees the cities grid immediately
+          setTimeout(() => {
+            const heading = document.getElementById('browse-directory-heading');
+            if (heading) {
+              heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }, 80);
+        }
+      } else {
+        setLocalCountry('');
+        setLocalCity('');
+      }
+    }
+  }, [isHomePage, urlCountry]);
 
   // Load summary if not provided from parent
   useEffect(() => {
@@ -422,6 +460,9 @@ export default function BrowseSection({
       setCategorySearch('');
       setKeywordSearch('');
       setShowAllCities(false);
+      if (urlCountry) {
+        router.push('/');
+      }
     } else {
       if (onSelectCountry) onSelectCountry('');
       if (onSelectCity) onSelectCity('');
