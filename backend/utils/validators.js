@@ -52,13 +52,30 @@ const forgotPasswordValidator = [
 ];
 
 const resetPasswordValidator = [
-  body('password')
-    .notEmpty().withMessage('Password is required')
-    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
-    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
-    .withMessage('Password must contain uppercase, lowercase, and a number'),
-  body('token')
-    .notEmpty().withMessage('Reset token is required'),
+  body('newPassword')
+    .custom((val, { req }) => {
+      const p = val || req.body?.password;
+      if (!p) {
+        throw new Error('Password is required');
+      }
+      if (typeof p !== 'string' || p.length < 6) {
+        throw new Error('Password must be at least 6 characters');
+      }
+      if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(p)) {
+        throw new Error('Password must contain uppercase, lowercase, and a number');
+      }
+      return true;
+    }),
+  (req, res, next) => {
+    const token = req.params?.token || req.body?.token;
+    if (!token || typeof token !== 'string' || !token.trim()) {
+      const err = new Error('Reset token is required');
+      err.statusCode = 422;
+      err.errors = ['Reset token is required'];
+      return next(err);
+    }
+    next();
+  },
 ];
 
 const changePasswordValidator = [

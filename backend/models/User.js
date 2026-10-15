@@ -80,8 +80,8 @@ userSchema.methods.generatePasswordResetToken = function () {
     .update(resetToken)
     .digest('hex');
 
-  // Set expiry: 15 minutes
-  this.resetPasswordExpire = Date.now() + 15 * 60 * 1000;
+  // Set expiry: 1 hour (60 minutes)
+  this.resetPasswordExpire = Date.now() + 60 * 60 * 1000;
 
   // Return the raw token (to send via email)
   return resetToken;

@@ -40,7 +40,7 @@ export default function ForgotPasswordForm() {
           Check your email
         </h1>
         <p style={{ fontSize: '0.875rem', color: '#6b7280', lineHeight: 1.7, marginBottom: '1.5rem' }}>
-          If an account exists for <strong>{email}</strong>, we&apos;ve sent a password reset link. Please check your inbox and spam folder.
+          If this email is registered, a reset link has been sent. Please check your inbox and spam folder.
         </p>
         <Link href="/login" className="btn-primary w-full justify-center">
           Back to Login

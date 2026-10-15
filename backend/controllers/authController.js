@@ -3,6 +3,8 @@ const User = require('../models/User');
 const asyncHandler = require('../utils/asyncHandler');
 const generateTokenAndSend = require('../utils/generateToken');
 const cloudinary = require('../config/cloudinary');
+const sendEmail = require('../utils/sendEmail');
+const { getWelcomeEmailHtml, getPasswordResetEmailHtml } = require('../utils/emailTemplates');
 const {
   validate,
   registerValidator,
@@ -32,6 +34,21 @@ const register = [
 
     // Create user - password hashed by pre-save hook
     const user = await User.create({ name, email, password });
+
+    // Fire-and-forget Welcome Email: errors are logged, signup is NEVER blocked or failed
+    try {
+      const frontendUrl = (process.env.FRONTEND_URL || 'https://bizprimehub.vercel.app').replace(/\/$/, '');
+      const loginUrl = `${frontendUrl}/login`;
+      sendEmail({
+        to: user.email,
+        subject: 'Welcome to BizPrimeHub!',
+        html: getWelcomeEmailHtml({ name: user.name, loginUrl }),
+      }).catch((err) => {
+        console.error('⚠️ [Auth:Register] Non-fatal error sending welcome email:', err.message);
+      });
+    } catch (e) {
+      console.error('⚠️ [Auth:Register] Unexpected error setting up welcome email:', e.message);
+    }
 
     // Send token in cookie
     generateTokenAndSend(user, 201, res, 'Account created successfully. Welcome!');
@@ -103,41 +120,55 @@ const forgotPassword = [
     const { email } = req.body;
     const user = await User.findOne({ email: email.toLowerCase() });
 
-    // Always return success to prevent email enumeration attacks
+    // Always return generic success response to prevent email enumeration attacks
+    const genericResponse = {
+      success: true,
+      message: 'If this email is registered, a reset link has been sent.',
+    };
+
     if (!user) {
-      return res.status(200).json({
-        success: true,
-        message: 'If an account with this email exists, a password reset link has been sent.',
-      });
+      return res.status(200).json(genericResponse);
     }
 
-    // Generate reset token (raw token returned, hashed token stored in DB)
+    // Generate reset token (raw token returned, hashed token + 1-hour expiry stored in DB)
     const resetToken = user.generatePasswordResetToken();
     await user.save({ validateBeforeSave: false });
 
-    // In a real app, you would send this token via email
-    // For now, we return it in development to enable testing
-    // In production, integrate a mail service like Nodemailer + Gmail/SendGrid
-    const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    const frontendUrl = (process.env.FRONTEND_URL || 'https://bizprimehub.vercel.app').replace(/\/$/, '');
+    const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
-    console.log('🔑 Password reset URL (dev only):', resetUrl);
+    // Send reset email (non-blocking, errors logged)
+    try {
+      sendEmail({
+        to: user.email,
+        subject: 'Reset Your BizPrimeHub Password',
+        html: getPasswordResetEmailHtml({ name: user.name, resetUrl }),
+      }).catch((err) => {
+        console.error('⚠️ [Auth:ForgotPassword] Error sending reset email:', err.message);
+      });
+    } catch (e) {
+      console.error('⚠️ [Auth:ForgotPassword] Unexpected error sending reset email:', e.message);
+    }
 
-    res.status(200).json({
-      success: true,
-      message: 'If an account with this email exists, a password reset link has been sent.',
-      // NEVER expose token in production - this is dev-only for testing
-      ...(process.env.NODE_ENV === 'development' && { devResetUrl: resetUrl }),
-    });
+    res.status(200).json(genericResponse);
   }),
 ];
 
-// ─── POST /api/auth/reset-password ───────────────────────────────────────────
+// ─── POST /api/auth/reset-password/:token (and POST /api/auth/reset-password) ─
 const resetPassword = [
   ...resetPasswordValidator,
   asyncHandler(async (req, res) => {
     validate(req);
 
-    const { token, password } = req.body;
+    const token = req.params?.token || req.body?.token;
+    const newPassword = req.body?.newPassword || req.body?.password;
+
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or missing reset token.',
+      });
+    }
 
     // Hash the incoming raw token to compare with stored hash
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
@@ -155,12 +186,15 @@ const resetPassword = [
     }
 
     // Set new password - hashing done by pre-save hook
-    user.password = password;
+    user.password = newPassword;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
     await user.save();
 
-    generateTokenAndSend(user, 200, res, 'Password reset successfully. You are now logged in.');
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully. You can now log in with your new password.',
+    });
   }),
 ];
 

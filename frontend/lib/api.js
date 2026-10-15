@@ -91,7 +91,18 @@ export const authAPI = {
   logout: () => api.post('/auth/logout'),
   getMe: () => api.get('/auth/me'),
   forgotPassword: (data) => api.post('/auth/forgot-password', data),
-  resetPassword: (data) => api.post('/auth/reset-password', data),
+  resetPassword: (tokenOrData, payload) => {
+    if (typeof tokenOrData === 'string') {
+      const newPassword = typeof payload === 'object' ? (payload?.newPassword || payload?.password) : payload;
+      return api.post(`/auth/reset-password/${tokenOrData}`, { newPassword, password: newPassword });
+    }
+    const token = tokenOrData?.token;
+    const newPassword = tokenOrData?.newPassword || tokenOrData?.password;
+    if (token) {
+      return api.post(`/auth/reset-password/${token}`, { newPassword, password: newPassword, token });
+    }
+    return api.post('/auth/reset-password', tokenOrData);
+  },
   changePassword: (data) => api.patch('/auth/change-password', data),
   updateProfile: (formData) => api.patch('/auth/update-profile', formData),
 };
