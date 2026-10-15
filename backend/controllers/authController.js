@@ -35,11 +35,13 @@ const register = [
     // Create user - password hashed by pre-save hook
     const user = await User.create({ name, email, password });
 
-    // Fire-and-forget Welcome Email: errors are logged, signup is NEVER blocked or failed
+    // Welcome Email: awaited before responding so serverless functions (Vercel)
+    // do not freeze execution before SMTP transmission finishes.
+    // sendEmail is safe and never throws, so signup will NEVER fail or block.
     try {
       const frontendUrl = (process.env.FRONTEND_URL || 'https://bizprimehub.vercel.app').replace(/\/$/, '');
       const loginUrl = `${frontendUrl}/login`;
-      sendEmail({
+      await sendEmail({
         to: user.email,
         subject: 'Welcome to BizPrimeHub!',
         html: getWelcomeEmailHtml({ name: user.name, loginUrl }),
@@ -137,9 +139,9 @@ const forgotPassword = [
     const frontendUrl = (process.env.FRONTEND_URL || 'https://bizprimehub.vercel.app').replace(/\/$/, '');
     const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
-    // Send reset email (non-blocking, errors logged)
+    // Send reset email: awaited before response so Vercel serverless environment does not freeze
     try {
-      sendEmail({
+      await sendEmail({
         to: user.email,
         subject: 'Reset Your BizPrimeHub Password',
         html: getPasswordResetEmailHtml({ name: user.name, resetUrl }),
