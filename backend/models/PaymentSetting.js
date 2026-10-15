@@ -44,6 +44,16 @@ const paymentSettingSchema = new mongoose.Schema(
       trim: true,
       maxlength: 500,
     },
+    jazzCashNumber: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    jazzCashTitle: {
+      type: String,
+      default: '',
+      trim: true,
+    },
   },
   {
     timestamps: true,

@@ -158,7 +158,20 @@ const createBusiness = [
   asyncHandler(async (req, res) => {
     validate(req);
 
-    const { title, description, category, email, phone, website, address } = req.body;
+    const {
+      title,
+      description,
+      category,
+      subcategory,
+      contactPerson,
+      email,
+      phone,
+      whatsapp,
+      website,
+      address,
+      openingHours,
+      socialLinks,
+    } = req.body;
 
     // Process uploaded business images
     const imageFiles = Array.isArray(req.files)
@@ -215,20 +228,57 @@ const createBusiness = [
     }
 
     const businessAddress = {
-      country: address?.country || req.body?.country || 'Pakistan',
-      city: address?.city || req.body?.city || '',
-      street: address?.street || req.body?.street || '',
-      zipCode: address?.zipCode || req.body?.zipCode || '',
+      country: address?.country || req.body?.country || req.body?.['address[country]'] || 'Pakistan',
+      city: address?.city || req.body?.city || req.body?.['address[city]'] || '',
+      street: address?.street || req.body?.street || req.body?.['address[street]'] || '',
+      area: address?.area || req.body?.area || req.body?.['address[area]'] || '',
+      zipCode: address?.zipCode || req.body?.zipCode || req.body?.['address[zipCode]'] || '',
     };
+
+    let parsedOpeningHours = null;
+    if (openingHours) {
+      if (typeof openingHours === 'string') {
+        try {
+          parsedOpeningHours = JSON.parse(openingHours);
+        } catch {}
+      } else if (typeof openingHours === 'object') {
+        parsedOpeningHours = openingHours;
+      }
+    }
+
+    let parsedSocialLinks = { facebook: '', youtube: '', googleBusiness: '' };
+    if (socialLinks) {
+      if (typeof socialLinks === 'string') {
+        try {
+          parsedSocialLinks = { ...parsedSocialLinks, ...JSON.parse(socialLinks) };
+        } catch {}
+      } else if (typeof socialLinks === 'object') {
+        parsedSocialLinks = { ...parsedSocialLinks, ...socialLinks };
+      }
+    }
+    if (req.body['socialLinks[facebook]'] || req.body.facebook) {
+      parsedSocialLinks.facebook = req.body['socialLinks[facebook]'] || req.body.facebook;
+    }
+    if (req.body['socialLinks[youtube]'] || req.body.youtube) {
+      parsedSocialLinks.youtube = req.body['socialLinks[youtube]'] || req.body.youtube;
+    }
+    if (req.body['socialLinks[googleBusiness]'] || req.body.googleBusiness) {
+      parsedSocialLinks.googleBusiness = req.body['socialLinks[googleBusiness]'] || req.body.googleBusiness;
+    }
 
     // NEVER trust owner from req.body - always use authenticated user
     const business = await Business.create({
       title,
       description,
       category,
+      subcategory: subcategory || '',
+      contactPerson: contactPerson || '',
       email,
       phone,
-      website,
+      whatsapp: whatsapp || '',
+      website: website || '',
+      socialLinks: parsedSocialLinks,
+      openingHours: parsedOpeningHours,
       address: businessAddress,
       images,
       paymentReceipt,
@@ -273,7 +323,17 @@ const updateBusiness = [
     }
 
     // Allowed update fields - NEVER allow owner, isApproved, role from body
-    const allowedFields = ['title', 'description', 'category', 'email', 'phone', 'website'];
+    const allowedFields = [
+      'title',
+      'description',
+      'category',
+      'subcategory',
+      'contactPerson',
+      'email',
+      'phone',
+      'whatsapp',
+      'website',
+    ];
     const updates = {};
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) {
@@ -281,12 +341,53 @@ const updateBusiness = [
       }
     });
 
-    if (req.body.address && typeof req.body.address === 'object') {
+    if (req.body.openingHours !== undefined) {
+      if (typeof req.body.openingHours === 'string') {
+        try {
+          updates.openingHours = JSON.parse(req.body.openingHours);
+        } catch {
+          updates.openingHours = null;
+        }
+      } else {
+        updates.openingHours = req.body.openingHours;
+      }
+    }
+
+    if (req.body.socialLinks !== undefined) {
+      if (typeof req.body.socialLinks === 'string') {
+        try {
+          updates.socialLinks = JSON.parse(req.body.socialLinks);
+        } catch {}
+      } else if (typeof req.body.socialLinks === 'object') {
+        updates.socialLinks = req.body.socialLinks;
+      }
+    }
+    if (req.body['socialLinks[facebook]'] !== undefined || req.body.facebook !== undefined) {
+      updates.socialLinks = { ...(updates.socialLinks || business.socialLinks?.toObject?.() || business.socialLinks || {}), facebook: req.body['socialLinks[facebook]'] ?? req.body.facebook };
+    }
+    if (req.body['socialLinks[youtube]'] !== undefined || req.body.youtube !== undefined) {
+      updates.socialLinks = { ...(updates.socialLinks || business.socialLinks?.toObject?.() || business.socialLinks || {}), youtube: req.body['socialLinks[youtube]'] ?? req.body.youtube };
+    }
+    if (req.body['socialLinks[googleBusiness]'] !== undefined || req.body.googleBusiness !== undefined) {
+      updates.socialLinks = { ...(updates.socialLinks || business.socialLinks?.toObject?.() || business.socialLinks || {}), googleBusiness: req.body['socialLinks[googleBusiness]'] ?? req.body.googleBusiness };
+    }
+
+    const hasAddressField = req.body.address || req.body['address[city]'] || req.body.city || req.body['address[country]'] || req.body.country || req.body['address[street]'] || req.body.street || req.body['address[area]'] || req.body.area || req.body['address[zipCode]'] || req.body.zipCode;
+
+    if (hasAddressField) {
+      const addrObj = typeof req.body.address === 'object' && req.body.address !== null ? req.body.address : {};
+      const countryVal = addrObj.country || req.body.country || req.body['address[country]'];
+      const cityVal = addrObj.city !== undefined ? addrObj.city : (req.body.city !== undefined ? req.body.city : req.body['address[city]']);
+      const streetVal = addrObj.street !== undefined ? addrObj.street : (req.body.street !== undefined ? req.body.street : req.body['address[street]']);
+      const areaVal = addrObj.area !== undefined ? addrObj.area : (req.body.area !== undefined ? req.body.area : req.body['address[area]']);
+      const zipCodeVal = addrObj.zipCode !== undefined ? addrObj.zipCode : (req.body.zipCode !== undefined ? req.body.zipCode : req.body['address[zipCode]']);
+
       updates.address = {
-        country: req.body.address.country || business.address?.country || 'Pakistan',
-        city: req.body.address.city !== undefined ? req.body.address.city : business.address?.city,
-        street: req.body.address.street !== undefined ? req.body.address.street : business.address?.street,
-        zipCode: req.body.address.zipCode !== undefined ? req.body.address.zipCode : business.address?.zipCode,
+        country: countryVal || business.address?.country || 'Pakistan',
+        city: cityVal !== undefined ? cityVal : business.address?.city,
+        street: streetVal !== undefined ? streetVal : business.address?.street,
+        area: areaVal !== undefined ? areaVal : (business.address?.area || ''),
+        zipCode: zipCodeVal !== undefined ? zipCodeVal : (business.address?.zipCode || ''),
       };
     }
 

@@ -19,6 +19,8 @@ const getPaymentSettings = asyncHandler(async (req, res) => {
         accountTitle: settings.accountTitle || 'BizPrimeHub',
         bankName: settings.bankName || 'Raast Instant Payment',
         instructions: settings.instructions,
+        jazzCashNumber: settings.jazzCashNumber || '',
+        jazzCashTitle: settings.jazzCashTitle || '',
       },
     },
   });
@@ -34,6 +36,8 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
     accountTitle,
     bankName,
     instructions,
+    jazzCashNumber,
+    jazzCashTitle,
     removeQrCode,
   } = req.body;
 
@@ -64,6 +68,14 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
 
   if (typeof instructions === 'string') {
     settings.instructions = instructions.trim();
+  }
+
+  if (typeof jazzCashNumber === 'string') {
+    settings.jazzCashNumber = jazzCashNumber.trim();
+  }
+
+  if (typeof jazzCashTitle === 'string') {
+    settings.jazzCashTitle = jazzCashTitle.trim();
   }
 
   // Handle QR Code deletion if requested
@@ -103,6 +115,8 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
         accountTitle: settings.accountTitle,
         bankName: settings.bankName,
         instructions: settings.instructions,
+        jazzCashNumber: settings.jazzCashNumber || '',
+        jazzCashTitle: settings.jazzCashTitle || '',
       },
     },
   });
@@ -134,6 +148,8 @@ const deletePaymentQrCode = asyncHandler(async (req, res) => {
         accountTitle: settings.accountTitle,
         bankName: settings.bankName,
         instructions: settings.instructions,
+        jazzCashNumber: settings.jazzCashNumber || '',
+        jazzCashTitle: settings.jazzCashTitle || '',
       },
     },
   });

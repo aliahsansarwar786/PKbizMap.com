@@ -52,6 +52,8 @@ export default function AdminDashboardClient() {
     accountTitle: 'BizPrimeHub',
     bankName: 'Raast Instant Payment',
     instructions: 'Scan this Raast QR code with any banking or wallet app (JazzCash, EasyPaisa, SadaPay, NayaPay, HBL, Meezan, etc.), complete payment, and upload the transaction screenshot below.',
+    jazzCashNumber: '',
+    jazzCashTitle: '',
   });
   const [qrCodeFile, setQrCodeFile] = useState(null);
   const [qrCodePreview, setQrCodePreview] = useState(null);
@@ -286,6 +288,8 @@ export default function AdminDashboardClient() {
       formData.append('accountTitle', paymentConfig.accountTitle || '');
       formData.append('bankName', paymentConfig.bankName || '');
       formData.append('instructions', paymentConfig.instructions || '');
+      formData.append('jazzCashNumber', paymentConfig.jazzCashNumber || '');
+      formData.append('jazzCashTitle', paymentConfig.jazzCashTitle || '');
       if (qrCodeFile) {
         formData.append('qrCode', qrCodeFile);
       }
@@ -1230,6 +1234,51 @@ export default function AdminDashboardClient() {
                         <p style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '0.25rem' }}>
                           Users can also copy this Raast ID if their camera fails.
                         </p>
+                      </div>
+                    </div>
+
+                    {/* JazzCash Number Card Settings */}
+                    <div className="p-4 rounded-xl border border-red-200 bg-red-50/40 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h4 className="text-sm font-bold text-red-950 flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-red-600 inline-block"></span>
+                            JazzCash Number Card (Optional)
+                          </h4>
+                          <p className="text-xs text-gray-600 mt-0.5">
+                            Yahan JazzCash number dene se user ko Add Business form par dark red JazzCash card dikhega. Khali chhorne par card hidden rahega.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                        <div>
+                          <label className="form-label flex items-center justify-between">
+                            <span>JazzCash Mobile Number</span>
+                            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Optional</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentConfig.jazzCashNumber || ''}
+                            onChange={(e) => setPaymentConfig({ ...paymentConfig, jazzCashNumber: e.target.value })}
+                            className="form-input font-mono"
+                            placeholder="e.g. 03001234567"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="form-label flex items-center justify-between">
+                            <span>JazzCash Account Title</span>
+                            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Optional</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={paymentConfig.jazzCashTitle || ''}
+                            onChange={(e) => setPaymentConfig({ ...paymentConfig, jazzCashTitle: e.target.value })}
+                            className="form-input"
+                            placeholder="e.g. Ahsan Ali"
+                          />
+                        </div>
                       </div>
                     </div>
 

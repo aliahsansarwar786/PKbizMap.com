@@ -476,22 +476,56 @@ const adminUpdateBusiness = [
       return res.status(404).json({ success: false, message: 'Business not found.' });
     }
 
-    // Allowed fields ONLY: title, description, category, email, phone, website, address
-    const allowedScalarFields = ['title', 'description', 'category', 'email', 'phone', 'website'];
+    // Allowed fields: title, description, category, subcategory, contactPerson, email, phone, whatsapp, website, address, openingHours, socialLinks
+    const allowedScalarFields = [
+      'title',
+      'description',
+      'category',
+      'subcategory',
+      'contactPerson',
+      'email',
+      'phone',
+      'whatsapp',
+      'website',
+    ];
     allowedScalarFields.forEach((field) => {
       if (req.body[field] !== undefined) {
         business[field] = req.body[field];
       }
     });
 
+    if (req.body.openingHours !== undefined) {
+      if (typeof req.body.openingHours === 'string') {
+        try {
+          business.openingHours = JSON.parse(req.body.openingHours);
+        } catch {
+          business.openingHours = null;
+        }
+      } else {
+        business.openingHours = req.body.openingHours;
+      }
+    }
+
+    if (req.body.socialLinks !== undefined) {
+      if (typeof req.body.socialLinks === 'string') {
+        try {
+          business.socialLinks = JSON.parse(req.body.socialLinks);
+        } catch {}
+      } else if (typeof req.body.socialLinks === 'object') {
+        business.socialLinks = req.body.socialLinks;
+      }
+    }
+
     if (req.body.address && typeof req.body.address === 'object') {
       if (req.body.address.country !== undefined) business.address.country = req.body.address.country;
       if (req.body.address.street !== undefined) business.address.street = req.body.address.street;
+      if (req.body.address.area !== undefined) business.address.area = req.body.address.area;
       if (req.body.address.city !== undefined) business.address.city = req.body.address.city;
       if (req.body.address.zipCode !== undefined) business.address.zipCode = req.body.address.zipCode;
     } else {
       if (req.body.country !== undefined) business.address.country = req.body.country;
       if (req.body.street !== undefined) business.address.street = req.body.street;
+      if (req.body.area !== undefined) business.address.area = req.body.area;
       if (req.body.city !== undefined) business.address.city = req.body.city;
       if (req.body.zipCode !== undefined) business.address.zipCode = req.body.zipCode;
     }

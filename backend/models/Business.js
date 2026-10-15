@@ -52,6 +52,18 @@ const businessSchema = new mongoose.Schema(
         message: `Category must be one of: ${CATEGORIES.join(', ')}`,
       },
     },
+    subcategory: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Subcategory cannot exceed 100 characters'],
+      default: '',
+    },
+    contactPerson: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Contact person name cannot exceed 100 characters'],
+      default: '',
+    },
     email: {
       type: String,
       trim: true,
@@ -64,18 +76,27 @@ const businessSchema = new mongoose.Schema(
     phone: {
       type: String,
       trim: true,
-      match: [/^[+\d\s\-().]{7,20}$/, 'Please provide a valid phone number'],
+      match: [/^[+\d\s\-().]{7,25}$/, 'Please provide a valid phone number'],
+    },
+    whatsapp: {
+      type: String,
+      trim: true,
+      match: [/^[+\d\s\-().]{7,25}$/, 'Please provide a valid WhatsApp number'],
+      default: '',
     },
     website: {
       type: String,
       trim: true,
-      match: [
-        /^(https?:\/\/)?([\w\-])+\.{1}([a-zA-Z]{2,63})([\w\-._~:/?#[\]@!$&'()*+,;=]*)?$/,
-        'Please provide a valid website URL',
-      ],
+      default: '',
+    },
+    socialLinks: {
+      facebook: { type: String, trim: true, default: '' },
+      youtube: { type: String, trim: true, default: '' },
+      googleBusiness: { type: String, trim: true, default: '' },
     },
     address: {
-      street: { type: String, trim: true, maxlength: 200 },
+      street: { type: String, trim: true, maxlength: 200, default: '' },
+      area: { type: String, trim: true, maxlength: 100, default: '' },
       city: {
         type: String,
         trim: true,
@@ -92,7 +113,11 @@ const businessSchema = new mongoose.Schema(
         },
         default: 'Pakistan',
       },
-      zipCode: { type: String, trim: true, maxlength: 20 },
+      zipCode: { type: String, trim: true, maxlength: 20, default: '' },
+    },
+    openingHours: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
     images: [
       {

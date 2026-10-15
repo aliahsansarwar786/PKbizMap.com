@@ -88,11 +88,43 @@ const updateProfileValidator = [
 const { CATEGORIES } = require('../models/Business');
 const { COUNTRIES, isValidCity } = require('./locations');
 
+const timeFormatRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
+
+const validateOpeningHours = (hours) => {
+  if (!hours) return true;
+  let parsed = hours;
+  if (typeof hours === 'string') {
+    try {
+      parsed = JSON.parse(hours);
+    } catch {
+      throw new Error('Invalid opening hours format.');
+    }
+  }
+  if (typeof parsed !== 'object' || parsed === null) return true;
+  const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+  for (const day of days) {
+    const dayData = parsed[day];
+    if (dayData && !dayData.closed) {
+      if (dayData.open && !timeFormatRegex.test(dayData.open)) {
+        throw new Error(`Invalid open time for ${day}. Expected HH:MM`);
+      }
+      if (dayData.close && !timeFormatRegex.test(dayData.close)) {
+        throw new Error(`Invalid close time for ${day}. Expected HH:MM`);
+      }
+    }
+  }
+  return true;
+};
+
 const businessValidator = [
   body('title')
     .trim()
     .notEmpty().withMessage('Business title is required')
     .isLength({ min: 2, max: 100 }).withMessage('Title must be 2-100 characters'),
+  body('contactPerson')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 100 }).withMessage('Contact person name cannot exceed 100 characters'),
   body('description')
     .trim()
     .notEmpty().withMessage('Description is required')
@@ -100,15 +132,31 @@ const businessValidator = [
   body('category')
     .notEmpty().withMessage('Category is required')
     .isIn(CATEGORIES).withMessage(`Category must be one of: ${CATEGORIES.join(', ')}`),
+  body('subcategory')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 100 }).withMessage('Subcategory cannot exceed 100 characters'),
   body('email')
     .optional({ checkFalsy: true })
     .isEmail().withMessage('Please provide a valid email'),
   body('phone')
     .optional({ checkFalsy: true })
-    .matches(/^[+\d\s\-().]{7,20}$/).withMessage('Please provide a valid phone number'),
+    .matches(/^[+\d\s\-().]{7,25}$/).withMessage('Please provide a valid phone number'),
+  body('whatsapp')
+    .optional({ checkFalsy: true })
+    .matches(/^[+\d\s\-().]{7,25}$/).withMessage('Please provide a valid WhatsApp number'),
   body('website')
     .optional({ checkFalsy: true })
     .isURL({ require_protocol: false }).withMessage('Please provide a valid website URL'),
+  body('socialLinks.facebook')
+    .optional({ checkFalsy: true })
+    .isURL({ require_protocol: false }).withMessage('Please provide a valid Facebook URL'),
+  body('socialLinks.youtube')
+    .optional({ checkFalsy: true })
+    .isURL({ require_protocol: false }).withMessage('Please provide a valid YouTube URL'),
+  body('socialLinks.googleBusiness')
+    .optional({ checkFalsy: true })
+    .isURL({ require_protocol: false }).withMessage('Please provide a valid Google Business profile URL'),
   body('address.country')
     .custom((val, { req }) => {
       const country = val || req.body?.country;
@@ -137,9 +185,15 @@ const businessValidator = [
   body('address.street')
     .optional({ checkFalsy: true })
     .isLength({ max: 200 }).withMessage('Street cannot exceed 200 characters'),
+  body('address.area')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 100 }).withMessage('Area cannot exceed 100 characters'),
   body('address.zipCode')
     .optional({ checkFalsy: true })
     .isLength({ max: 20 }).withMessage('ZIP code cannot exceed 20 characters'),
+  body('openingHours')
+    .optional({ checkFalsy: true })
+    .custom(validateOpeningHours),
 ];
 
 const updateBusinessValidator = [
@@ -156,15 +210,35 @@ const updateBusinessValidator = [
   body('category')
     .optional()
     .isIn(CATEGORIES).withMessage(`Category must be one of: ${CATEGORIES.join(', ')}`),
+  body('contactPerson')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 100 }).withMessage('Contact person name cannot exceed 100 characters'),
+  body('subcategory')
+    .optional({ checkFalsy: true })
+    .trim()
+    .isLength({ max: 100 }).withMessage('Subcategory cannot exceed 100 characters'),
   body('email')
     .optional({ checkFalsy: true })
     .isEmail().withMessage('Please provide a valid email'),
   body('phone')
     .optional({ checkFalsy: true })
-    .matches(/^[+\d\s\-().]{7,20}$/).withMessage('Please provide a valid phone number'),
+    .matches(/^[+\d\s\-().]{7,25}$/).withMessage('Please provide a valid phone number'),
+  body('whatsapp')
+    .optional({ checkFalsy: true })
+    .matches(/^[+\d\s\-().]{7,25}$/).withMessage('Please provide a valid WhatsApp number'),
   body('website')
     .optional({ checkFalsy: true })
     .isURL({ require_protocol: false }).withMessage('Please provide a valid website URL'),
+  body('socialLinks.facebook')
+    .optional({ checkFalsy: true })
+    .isURL({ require_protocol: false }).withMessage('Please provide a valid Facebook URL'),
+  body('socialLinks.youtube')
+    .optional({ checkFalsy: true })
+    .isURL({ require_protocol: false }).withMessage('Please provide a valid YouTube URL'),
+  body('socialLinks.googleBusiness')
+    .optional({ checkFalsy: true })
+    .isURL({ require_protocol: false }).withMessage('Please provide a valid Google Business profile URL'),
   body('address.country')
     .optional()
     .custom((val, { req }) => {
@@ -195,9 +269,15 @@ const updateBusinessValidator = [
   body('address.street')
     .optional({ checkFalsy: true })
     .isLength({ max: 200 }).withMessage('Street cannot exceed 200 characters'),
+  body('address.area')
+    .optional({ checkFalsy: true })
+    .isLength({ max: 100 }).withMessage('Area cannot exceed 100 characters'),
   body('address.zipCode')
     .optional({ checkFalsy: true })
     .isLength({ max: 20 }).withMessage('ZIP code cannot exceed 20 characters'),
+  body('openingHours')
+    .optional({ checkFalsy: true })
+    .custom(validateOpeningHours),
 ];
 
 // ─── Review Validators ────────────────────────────────────────────────────────
