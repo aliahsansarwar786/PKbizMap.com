@@ -6,7 +6,6 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { businessAPI } from '@/lib/api';
 import {
   Menu,
   X,
@@ -18,13 +17,11 @@ import {
   PlusCircle,
   Home,
   BookOpen,
-  LayoutGrid,
   Info,
   Mail,
   Newspaper,
   Globe,
   Check,
-  ArrowRight,
 } from 'lucide-react';
 
 // ── Lightweight, Self-Contained SVG Flag Badges (No external APIs, crisp on Windows) ──
@@ -117,51 +114,12 @@ const COUNTRIES_DIRECTORIES = [
   },
 ];
 
-const CATEGORY_COUNTRY_GROUPS = [
-  {
-    code: 'PK',
-    name: 'Pakistan',
-    label: 'Pakistan',
-    Flag: PakistanFlagCircle,
-  },
-  {
-    code: 'AE',
-    name: 'UAE',
-    label: 'UAE',
-    Flag: UAEFlagCircle,
-  },
-  {
-    code: 'US',
-    name: 'USA',
-    label: 'United States',
-    Flag: USAFlagCircle,
-  },
-];
-
-const ALL_CATEGORIES = [
-  'Bank',
-  'Laboratory',
-  'Bus Companies',
-  'Information Technology (IT) & Services',
-  'Hospital',
-  'Local Shops & Traders',
-  'Education',
-  'Shopping & Retail Chains',
-  'Real Estate',
-  'Restaurants & Food Chains',
-  'Importer and Exporter',
-  'Courier & Cargo Companies',
-  'Hotels & Guest Houses',
-  'Telecom Companies',
-];
-
 // Inner component wrapped in Suspense to safely read searchParams in Next.js
 function UrlParamsListener({ onParamsChange }) {
   const searchParams = useSearchParams();
   useEffect(() => {
     const c = searchParams?.get('country') || '';
-    const cat = searchParams?.get('category') || '';
-    onParamsChange(c, cat);
+    onParamsChange(c);
   }, [searchParams, onParamsChange]);
   return null;
 }
@@ -171,29 +129,24 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [directoriesOpen, setDirectoriesOpen] = useState(false);
-  const [categoriesOpen, setCategoriesOpen] = useState(false);
 
   // Mobile accordion states
   const [mobileDirectoriesOpen, setMobileDirectoriesOpen] = useState(false);
-  const [mobileCategoriesOpen, setMobileCategoriesOpen] = useState(false);
 
   // Active query parameters
   const [currentCountry, setCurrentCountry] = useState('');
-  const [currentCategory, setCurrentCategory] = useState('');
 
   const router = useRouter();
   const pathname = usePathname();
 
-  const handleParamsChange = useCallback((c, cat) => {
+  const handleParamsChange = useCallback((c) => {
     setCurrentCountry(c);
-    setCurrentCategory(cat);
   }, []);
 
   // Close menus on path change
   useEffect(() => {
     setMobileOpen(false);
     setDirectoriesOpen(false);
-    setCategoriesOpen(false);
     setUserMenuOpen(false);
   }, [pathname]);
 
@@ -202,7 +155,6 @@ export default function Navbar() {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setDirectoriesOpen(false);
-        setCategoriesOpen(false);
         setUserMenuOpen(false);
         setMobileOpen(false);
       }
@@ -225,26 +177,8 @@ export default function Navbar() {
 
   const toggleDirectories = () => {
     setDirectoriesOpen((prev) => !prev);
-    setCategoriesOpen(false);
     setUserMenuOpen(false);
   };
-
-  const toggleCategories = () => {
-    setCategoriesOpen((prev) => !prev);
-    setDirectoriesOpen(false);
-    setUserMenuOpen(false);
-  };
-
-  // Summary counts for categories per country
-  const [summaryCounts, setSummaryCounts] = useState(null);
-
-  useEffect(() => {
-    businessAPI.getSummary()
-      .then((res) => {
-        if (res.data) setSummaryCounts(res.data);
-      })
-      .catch(() => {});
-  }, []);
 
   // Find active country details
   const activeCountryObj = COUNTRIES_DIRECTORIES.find(
@@ -254,7 +188,6 @@ export default function Navbar() {
 
   // Nav active states
   const isDirectoriesActive = Boolean(currentCountry) && (pathname.startsWith('/businesses') || pathname === '/');
-  const isCategoriesActive = pathname === '/categories' || (pathname.startsWith('/businesses') && Boolean(currentCategory));
 
   const avatarUrl = user?.avatar?.url
     ? user.avatar.url
@@ -419,152 +352,6 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* ── 2. Categories Dropdown (Grouped by Country with Flags & Counts) ── */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={toggleCategories}
-                aria-expanded={categoriesOpen}
-                aria-haspopup="true"
-                style={{
-                  color: categoriesOpen || isCategoriesActive ? '#ffffff' : '#4b5563',
-                  fontSize: '0.84rem',
-                  fontWeight: 600,
-                }}
-                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all cursor-pointer ${
-                  categoriesOpen || isCategoriesActive
-                    ? 'bg-blue-600 hover:bg-blue-700 shadow-xs'
-                    : 'hover:bg-gray-100 hover:text-blue-600'
-                }`}
-              >
-                <LayoutGrid
-                  size={15}
-                  strokeWidth={categoriesOpen || isCategoriesActive ? 2.5 : 2}
-                  className="shrink-0"
-                />
-                <span>Categories</span>
-                <ChevronDown
-                  size={14}
-                  className={`shrink-0 transition-transform duration-200 ${
-                    categoriesOpen ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-
-              {categoriesOpen && (
-                <div
-                  className="absolute left-0 mt-2 w-[800px] lg:w-[840px] max-w-[calc(100vw-2rem)] rounded-2xl shadow-xl p-4 z-50 bg-white border border-gray-100 animate-in fade-in slide-in-from-top-1 duration-150"
-                  role="menu"
-                  style={{
-                    boxShadow:
-                      '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-                  }}
-                >
-                  <div className="px-3 pt-1 pb-2.5 flex items-center justify-between border-b border-gray-100 mb-3">
-                    <div>
-                      <span className="text-[11px] font-extrabold uppercase tracking-wider text-gray-900 block">
-                        Browse Categories by Country
-                      </span>
-                      <p className="text-[11px] text-gray-500 mt-0.5">
-                        Click a country header to explore its cities, or pick a category below to filter listings.
-                      </p>
-                    </div>
-                    <span className="text-[10px] font-bold text-gray-500 bg-gray-50 border border-gray-200 px-2.5 py-0.5 rounded-full">
-                      3 Countries
-                    </span>
-                  </div>
-
-                  {/* 3 Country Groups Side-by-Side */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 divide-y md:divide-y-0 md:divide-x divide-gray-100">
-                    {CATEGORY_COUNTRY_GROUPS.map((group, idx) => {
-                      const FlagComp = group.Flag;
-                      const isCountryActive =
-                        currentCountry.toLowerCase() === group.name.toLowerCase();
-
-                      return (
-                        <div
-                          key={group.code}
-                          className={`${idx > 0 ? 'md:pl-4 pt-3 md:pt-0' : ''} flex flex-col`}
-                        >
-                          {/* Country Name / Header -> /?country={Country} (Cities Page) */}
-                          <Link
-                            href={`/?country=${encodeURIComponent(group.name)}`}
-                            onClick={() => setCategoriesOpen(false)}
-                            className={`flex items-center justify-between p-2 rounded-xl transition-all group/hdr mb-2 border shadow-2xs ${
-                              isCountryActive
-                                ? 'bg-blue-50/90 border-blue-200'
-                                : 'bg-gray-50/80 hover:bg-blue-50 border-gray-200/90 hover:border-blue-200'
-                            }`}
-                            title={`Browse cities in ${group.label}`}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <FlagComp size={18} />
-                              <span className="text-xs font-bold text-gray-900 group-hover/hdr:text-blue-700 truncate">
-                                {group.label}
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-bold text-blue-600 group-hover/hdr:translate-x-0.5 transition-transform flex items-center gap-0.5 shrink-0 bg-white px-1.5 py-0.5 rounded border border-blue-100 shadow-2xs">
-                              Cities <ArrowRight size={10} />
-                            </span>
-                          </Link>
-
-                          {/* 13 Categories for this country */}
-                          <div className="space-y-0.5 max-h-[380px] overflow-y-auto pr-1">
-                            {ALL_CATEGORIES.map((cat) => {
-                              const count =
-                                summaryCounts?.categories?.[group.name]?.[cat] || 0;
-                              const isItemActive =
-                                currentCountry.toLowerCase() === group.name.toLowerCase() &&
-                                currentCategory.toLowerCase() === cat.toLowerCase();
-
-                              return (
-                                <Link
-                                  key={cat}
-                                  href={`/businesses?country=${encodeURIComponent(group.name)}&category=${encodeURIComponent(cat)}`}
-                                  onClick={() => setCategoriesOpen(false)}
-                                  className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors ${
-                                    isItemActive
-                                      ? 'bg-blue-50 text-blue-700 font-bold border border-blue-200 shadow-2xs'
-                                      : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
-                                  }`}
-                                >
-                                  <span className="truncate pr-1.5">{cat}</span>
-                                  {count > 0 ? (
-                                    <span
-                                      className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
-                                        isItemActive
-                                          ? 'bg-blue-200 text-blue-900'
-                                          : 'bg-gray-100 text-gray-600'
-                                      }`}
-                                    >
-                                      {count}
-                                    </span>
-                                  ) : isItemActive ? (
-                                    <Check size={12} className="text-blue-600 shrink-0" />
-                                  ) : null}
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="pt-2 mt-2 border-t border-gray-100 flex items-center justify-between px-2">
-                    <Link
-                      href="/categories"
-                      onClick={() => setCategoriesOpen(false)}
-                      className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1.5 transition-colors"
-                    >
-                      <span>Explore Categories Overview Page</span>
-                      <ArrowRight size={13} />
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </div>
-
             {/* Blog */}
             <Link
               href="/blog"
@@ -643,7 +430,6 @@ export default function Navbar() {
                     onClick={() => {
                       setUserMenuOpen(!userMenuOpen);
                       setDirectoriesOpen(false);
-                      setCategoriesOpen(false);
                     }}
                     className="flex items-center gap-2 rounded-lg px-2 py-1 hover:bg-gray-50 transition-colors"
                     aria-expanded={userMenuOpen}
@@ -849,104 +635,6 @@ export default function Navbar() {
                 )}
               </div>
 
-              {/* ── 4. Mobile Categories Accordion (Grouped by Country with Flags & Counts) ── */}
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setMobileCategoriesOpen(!mobileCategoriesOpen)}
-                  className="w-full flex items-center justify-between px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-50 text-[0.875rem] font-semibold cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <LayoutGrid size={16} className="text-blue-600" />
-                    <span>Categories</span>
-                    {currentCategory && (
-                      <span className="text-[10px] font-bold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full truncate max-w-[120px]">
-                        {currentCategory}
-                      </span>
-                    )}
-                  </div>
-                  <ChevronDown
-                    size={16}
-                    className={`text-gray-400 transition-transform duration-200 ${
-                      mobileCategoriesOpen ? 'rotate-180' : ''
-                    }`}
-                  />
-                </button>
-
-                {mobileCategoriesOpen && (
-                  <div className="pl-3 pr-2 py-2 space-y-3 bg-gray-50/70 rounded-xl my-1 border border-gray-100 max-h-[460px] overflow-y-auto">
-                    {CATEGORY_COUNTRY_GROUPS.map((group) => {
-                      const FlagComp = group.Flag;
-                      const isCountryActive =
-                        currentCountry.toLowerCase() === group.name.toLowerCase();
-
-                      return (
-                        <div
-                          key={group.code}
-                          className="bg-white rounded-xl border border-gray-200/80 p-2.5 shadow-2xs"
-                        >
-                          {/* Country Name / Header -> /?country={Country} (Cities Page) */}
-                          <Link
-                            href={`/?country=${encodeURIComponent(group.name)}`}
-                            onClick={() => setMobileOpen(false)}
-                            className="flex items-center justify-between pb-2 mb-2 border-b border-gray-100 group/hdr cursor-pointer"
-                          >
-                            <div className="flex items-center gap-2">
-                              <FlagComp size={18} />
-                              <span className="text-xs font-bold text-gray-900 group-hover/hdr:text-blue-600">
-                                {group.label}
-                              </span>
-                            </div>
-                            <span className="text-[10px] font-bold text-blue-600 flex items-center gap-0.5 bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                              Cities <ArrowRight size={10} />
-                            </span>
-                          </Link>
-
-                          {/* 13 Categories for this country */}
-                          <div className="space-y-1">
-                            {ALL_CATEGORIES.map((cat) => {
-                              const count =
-                                summaryCounts?.categories?.[group.name]?.[cat] || 0;
-                              const isItemActive =
-                                isCountryActive &&
-                                currentCategory.toLowerCase() === cat.toLowerCase();
-
-                              return (
-                                <Link
-                                  key={cat}
-                                  href={`/businesses?country=${encodeURIComponent(group.name)}&category=${encodeURIComponent(cat)}`}
-                                  onClick={() => setMobileOpen(false)}
-                                  className={`flex items-center justify-between px-2 py-1.5 rounded-lg text-xs transition-colors ${
-                                    isItemActive
-                                      ? 'bg-blue-100/80 text-blue-700 font-bold'
-                                      : 'text-gray-700 hover:bg-gray-50 hover:text-blue-600'
-                                  }`}
-                                >
-                                  <span className="truncate pr-1">{cat}</span>
-                                  {count > 0 ? (
-                                    <span
-                                      className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
-                                        isItemActive
-                                          ? 'bg-blue-200 text-blue-900'
-                                          : 'bg-gray-100 text-gray-500'
-                                      }`}
-                                    >
-                                      {count}
-                                    </span>
-                                  ) : isItemActive ? (
-                                    <Check size={12} className="text-blue-600 shrink-0" />
-                                  ) : null}
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-
               {/* Blog */}
               <Link
                 href="/blog"
@@ -1088,12 +776,11 @@ export default function Navbar() {
       </nav>
 
       {/* Backdrop overlay for closing dropdowns when clicking outside */}
-      {(directoriesOpen || categoriesOpen || userMenuOpen) && (
+      {(directoriesOpen || userMenuOpen) && (
         <div
           className="fixed inset-0 z-40 bg-transparent"
           onClick={() => {
             setDirectoriesOpen(false);
-            setCategoriesOpen(false);
             setUserMenuOpen(false);
           }}
           aria-hidden="true"
