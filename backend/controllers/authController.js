@@ -15,6 +15,26 @@ const {
   updateProfileValidator,
 } = require('../utils/validators');
 
+// ─── Resolve active frontend URL safely ───────────────────────────────────────
+const getFrontendUrl = (req) => {
+  // 1. Prefer request Origin header if provided by browser
+  try {
+    const origin = req?.headers?.origin || (req?.headers?.referer ? new URL(req.headers.referer).origin : null);
+    if (origin && !origin.includes('pkbizmap-com.vercel.app')) {
+      return origin.replace(/\/$/, '');
+    }
+  } catch (e) {}
+
+  // 2. Use FRONTEND_URL environment variable (ignore stale deleted deployment)
+  const envUrl = process.env.FRONTEND_URL;
+  if (envUrl && !envUrl.includes('pkbizmap-com.vercel.app')) {
+    return envUrl.replace(/\/$/, '');
+  }
+
+  // 3. Fallback to active live frontend
+  return 'https://bizprimehub.vercel.app';
+};
+
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
 const register = [
   ...registerValidator,
@@ -39,7 +59,7 @@ const register = [
     // do not freeze execution before SMTP transmission finishes.
     // sendEmail is safe and never throws, so signup will NEVER fail or block.
     try {
-      const frontendUrl = (process.env.FRONTEND_URL || 'https://bizprimehub.vercel.app').replace(/\/$/, '');
+      const frontendUrl = getFrontendUrl(req);
       const loginUrl = `${frontendUrl}/login`;
       await sendEmail({
         to: user.email,
@@ -136,7 +156,7 @@ const forgotPassword = [
     const resetToken = user.generatePasswordResetToken();
     await user.save({ validateBeforeSave: false });
 
-    const frontendUrl = (process.env.FRONTEND_URL || 'https://bizprimehub.vercel.app').replace(/\/$/, '');
+    const frontendUrl = getFrontendUrl(req);
     const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
     // Send reset email: awaited before response so Vercel serverless environment does not freeze
