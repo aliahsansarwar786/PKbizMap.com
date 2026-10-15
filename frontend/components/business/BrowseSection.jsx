@@ -245,6 +245,31 @@ const CATEGORIES_LIST = [
     image: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&q=80',
   },
   {
+    name: 'Hotels & Hospitality',
+    description: 'Hotels, resorts, luxury stays, guest houses, and hospitality services',
+    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&q=80',
+  },
+  {
+    name: 'Home Services',
+    description: 'Plumbing, electrical, cleaning, maintenance, and home repair services',
+    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80',
+  },
+  {
+    name: 'Fashion & Clothing',
+    description: 'Apparel, boutiques, footwear, fashion accessories, and clothing stores',
+    image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=400&q=80',
+  },
+  {
+    name: 'Electronics & Mobiles',
+    description: 'Smartphones, laptops, home electronics, gadgets, and repair accessories',
+    image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&q=80',
+  },
+  {
+    name: 'Sports & Fitness',
+    description: 'Gyms, fitness centers, sports gear, personal trainers, and athletics',
+    image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&q=80',
+  },
+  {
     name: 'Other',
     description: 'Other local businesses and services',
     image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=400&q=80',

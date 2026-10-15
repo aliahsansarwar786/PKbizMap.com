@@ -27,6 +27,11 @@ const CATEGORIES = [
   { name: 'Travel', image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=500&q=80', description: 'Travel agencies, hotels, and tourism services' },
   { name: 'Professional Services', image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=500&q=80', description: 'Lawyers, consultants, and professional services' },
   { name: 'Construction', image: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80', description: 'Contractors, builders, and construction companies' },
+  { name: 'Hotels & Hospitality', image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500&q=80', description: 'Hotels, resorts, luxury stays, guest houses, and hospitality services' },
+  { name: 'Home Services', image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500&q=80', description: 'Plumbing, electrical, cleaning, maintenance, and home repair services' },
+  { name: 'Fashion & Clothing', image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=500&q=80', description: 'Apparel, boutiques, footwear, fashion accessories, and clothing stores' },
+  { name: 'Electronics & Mobiles', image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&q=80', description: 'Smartphones, laptops, home electronics, gadgets, and repair accessories' },
+  { name: 'Sports & Fitness', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=500&q=80', description: 'Gyms, fitness centers, sports gear, personal trainers, and athletics' },
   { name: 'Other', image: 'https://images.unsplash.com/photo-1512314889357-e157c22f938d?w=500&q=80', description: 'All other business types not listed above' },
 ];
 

@@ -60,6 +60,11 @@ const CATEGORIES = [
   'Beauty',
   'Travel',
   'Professional Services',
+  'Hotels & Hospitality',
+  'Home Services',
+  'Fashion & Clothing',
+  'Electronics & Mobiles',
+  'Sports & Fitness',
   'Other',
 ];
 

@@ -39,6 +39,11 @@ const CATEGORIES = [
   { name: 'Travel', image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=500&q=80' },
   { name: 'Professional Services', image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=500&q=80' },
   { name: 'Construction', image: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80' },
+  { name: 'Hotels & Hospitality', image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500&q=80' },
+  { name: 'Home Services', image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500&q=80' },
+  { name: 'Fashion & Clothing', image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=500&q=80' },
+  { name: 'Electronics & Mobiles', image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&q=80' },
+  { name: 'Sports & Fitness', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=500&q=80' },
 ];
 
 const HOW_IT_WORKS = [
