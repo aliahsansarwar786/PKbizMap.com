@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import BusinessCard from './BusinessCard';
-import BrowseSection from './BrowseSection';
 import { businessAPI } from '@/lib/api';
 import SearchableCombobox from '@/components/ui/SearchableCombobox';
 import { COUNTRIES, getCities } from '@/data/locations';
@@ -12,6 +11,7 @@ import {
   SlidersHorizontal,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   X,
   Globe,
   MapPin,
@@ -66,6 +66,76 @@ function SkeletonCard() {
   );
 }
 
+// Category List component for Desktop Left Sidebar & Mobile Accordion
+function CategoryList({
+  categories,
+  selectedCategory,
+  onSelectCategory,
+  getCategoryCount,
+  allCategoriesCount,
+  onItemClick,
+}) {
+  return (
+    <div className="space-y-1">
+      {/* "All Categories" row on top */}
+      <button
+        type="button"
+        onClick={() => {
+          onSelectCategory('');
+          if (onItemClick) onItemClick();
+        }}
+        className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+          !selectedCategory
+            ? 'bg-blue-600 text-white shadow-xs'
+            : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+        }`}
+        aria-current={!selectedCategory ? 'true' : undefined}
+      >
+        <span className="truncate">All Categories</span>
+        <span
+          className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
+            !selectedCategory ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+          }`}
+        >
+          {allCategoriesCount}
+        </span>
+      </button>
+
+      {/* Rows for ALL 13 categories */}
+      {categories.map((cat) => {
+        const count = getCategoryCount(cat);
+        const isActive = selectedCategory === cat;
+
+        return (
+          <button
+            key={cat}
+            type="button"
+            onClick={() => {
+              onSelectCategory(cat);
+              if (onItemClick) onItemClick();
+            }}
+            className={`w-full flex items-center justify-between px-3.5 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+              isActive
+                ? 'bg-blue-600 text-white font-semibold shadow-xs'
+                : 'text-gray-700 hover:bg-gray-100 hover:text-gray-900'
+            }`}
+            aria-current={isActive ? 'true' : undefined}
+          >
+            <span className="truncate">{cat}</span>
+            <span
+              className={`text-xs font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                isActive ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-600'
+              }`}
+            >
+              {count}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function BusinessDirectory() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -76,6 +146,7 @@ export default function BusinessDirectory() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [summary, setSummary] = useState(null);
+  const [isMobileCategoryOpen, setIsMobileCategoryOpen] = useState(false);
 
   // Filters state initialized from URL query params
   const [keywordInput, setKeywordInput] = useState(searchParams.get('keyword') || '');
@@ -86,6 +157,25 @@ export default function BusinessDirectory() {
   const [rating, setRating] = useState(searchParams.get('rating') || '');
   const [sort, setSort] = useState(searchParams.get('sort') || '-createdAt');
   const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
+
+  // Sync state if searchParams change externally (e.g. navigation from Browse cards or browser back/forward)
+  useEffect(() => {
+    const urlCountry = searchParams.get('country') || '';
+    const urlCategory = searchParams.get('category') || '';
+    const urlCity = searchParams.get('city') || '';
+    const urlKeyword = searchParams.get('keyword') || '';
+    const urlRating = searchParams.get('rating') || '';
+    const urlSort = searchParams.get('sort') || '-createdAt';
+    const urlPage = Number(searchParams.get('page')) || 1;
+
+    setCountry((prev) => (prev !== urlCountry ? urlCountry : prev));
+    setCategory((prev) => (prev !== urlCategory ? urlCategory : prev));
+    setCity((prev) => (prev !== urlCity ? urlCity : prev));
+    setKeyword((prev) => (prev !== urlKeyword ? urlKeyword : prev));
+    setRating((prev) => (prev !== urlRating ? urlRating : prev));
+    setSort((prev) => (prev !== urlSort ? urlSort : prev));
+    setPage((prev) => (prev !== urlPage ? urlPage : prev));
+  }, [searchParams]);
 
   // Cities options dependent on chosen country
   const cityOptions = useMemo(() => {
@@ -100,6 +190,31 @@ export default function BusinessDirectory() {
     }, 400);
     return () => clearTimeout(timer);
   }, [keywordInput]);
+
+  // Category count for currently selected country (or aggregate if all countries)
+  const getCategoryCount = useCallback(
+    (cat) => {
+      if (!summary?.categories) return 0;
+      if (country && summary.categories[country]) {
+        return summary.categories[country][cat] || 0;
+      }
+      return (
+        (summary.categories.Pakistan?.[cat] || 0) +
+        (summary.categories.UAE?.[cat] || 0) +
+        (summary.categories.USA?.[cat] || 0)
+      );
+    },
+    [summary, country]
+  );
+
+  // Total count for All Categories in currently selected country (or all countries)
+  const getAllCategoriesCount = useCallback(() => {
+    if (!summary) return 0;
+    if (country && summary.countries) {
+      return summary.countries[country] || 0;
+    }
+    return summary.total || 0;
+  }, [summary, country]);
 
   // Handle Country selection change (resets dependent City)
   const handleCountryChange = (newCountry) => {
@@ -216,19 +331,7 @@ export default function BusinessDirectory() {
   return (
     <div className="section-sm">
       <div className="container-max">
-        {/* ── Browse Section (Level 1: Country -> Level 2: City/Category -> Level 3: Grids) ── */}
-        <BrowseSection
-          selectedCountry={country}
-          selectedCity={city}
-          selectedCategory={category}
-          onSelectCountry={handleCountryChange}
-          onSelectCity={handleCityChange}
-          onSelectCategory={handleCategoryChange}
-          onClearAll={clearFilters}
-          summary={summary}
-        />
-
-        {/* ── Filter Bar (Mandatory, directly below Browse cards) ─────────────── */}
+        {/* ── Filter Bar (Mandatory, directory controls) ─────────────────────────── */}
         <section
           className="rounded-2xl p-5 mb-8 shadow-sm transition-all"
           style={{
@@ -529,111 +632,226 @@ export default function BusinessDirectory() {
           </div>
         </section>
 
-        {/* ── Business Cards Grid ─────────────────────────────────────── */}
-        {error ? (
-          <div className="text-center py-16 card p-10">
-            <p style={{ color: '#dc2626', marginBottom: '1rem' }}>{error}</p>
-            <button onClick={fetchBusinesses} className="btn-primary">
-              Try Again
-            </button>
-          </div>
-        ) : loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {[...Array(12)].map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
-        ) : businesses.length === 0 ? (
-          <div className="text-center py-16 card p-10 bg-white rounded-2xl border border-gray-100">
-            <SlidersHorizontal
-              size={44}
-              className="text-gray-300 mx-auto mb-4"
-              aria-hidden="true"
-            />
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              No businesses found
-            </h2>
-            <p className="text-gray-500 max-w-md mx-auto mb-6 text-sm">
-              No businesses found - try another city / category
-            </p>
-            <button
-              type="button"
-              onClick={clearFilters}
-              className="btn-primary px-6 py-2.5 shadow-md"
-            >
-              Clear Filters
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {businesses.map((business) => (
-              <BusinessCard key={business._id} business={business} />
-            ))}
-          </div>
-        )}
-
-        {/* ── Pagination ───────────────────────────────────────────────── */}
-        {!loading && pagination && pagination.totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2 mt-10">
-            <button
-              onClick={() => setPage(page - 1)}
-              disabled={!pagination.hasPrevPage}
-              className="btn-secondary"
-              style={{ padding: '0.5rem 0.875rem' }}
-              aria-label="Previous page"
-            >
-              <ChevronLeft size={16} /> Prev
-            </button>
-
-            <div className="flex gap-1">
-              {[...Array(pagination.totalPages)].map((_, i) => {
-                const pageNum = i + 1;
-                const isActive = pageNum === pagination.currentPage;
-                const isNearCurrent =
-                  Math.abs(pageNum - pagination.currentPage) <= 2;
-                const isFirst = pageNum === 1;
-                const isLast = pageNum === pagination.totalPages;
-
-                if (!isFirst && !isLast && !isNearCurrent) {
-                  if (pageNum === 2 || pageNum === pagination.totalPages - 1) {
-                    return (
-                      <span
-                        key={pageNum}
-                        style={{ color: '#9ca3af', padding: '0 4px' }}
-                      >
-                        ...
-                      </span>
-                    );
-                  }
-                  return null;
-                }
-
-                return (
+        {/* ── Results Layout: Sticky Left Sidebar (Desktop lg+) + Results (Header + Cards) ── */}
+        <div className="lg:grid lg:grid-cols-[280px_1fr] lg:gap-8 items-start">
+          
+          {/* ── Desktop Left Sidebar (Sticky ~280px) ────────────────── */}
+          <aside className="hidden lg:block w-[280px] shrink-0 sticky top-24 self-start">
+            <div className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-5">
+              {/* Heading */}
+              <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-gray-100">
+                <h3 className="text-base font-extrabold text-gray-900 flex items-center gap-2">
+                  <SlidersHorizontal size={17} className="text-blue-600" />
+                  Filter Listings
+                </h3>
+                {category && (
                   <button
-                    key={pageNum}
-                    onClick={() => setPage(pageNum)}
-                    className={isActive ? 'btn-primary' : 'btn-secondary'}
-                    style={{ padding: '0.5rem 0.875rem', minWidth: 40 }}
-                    aria-label={`Page ${pageNum}`}
-                    aria-current={isActive ? 'page' : undefined}
+                    type="button"
+                    onClick={() => handleCategoryChange('')}
+                    className="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
                   >
-                    {pageNum}
+                    Reset
                   </button>
-                );
-              })}
+                )}
+              </div>
+
+              {/* Section: Popular Categories */}
+              <div className="mb-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">
+                  Popular Categories
+                </p>
+                {country && (
+                  <p className="text-[11px] text-gray-500 mb-2">
+                    Counts for <span className="font-semibold text-gray-700">{country}</span>
+                  </p>
+                )}
+              </div>
+
+              {/* Category Rows for ALL 13 categories with Live Count Pills */}
+              <CategoryList
+                categories={CATEGORIES}
+                selectedCategory={category}
+                onSelectCategory={handleCategoryChange}
+                getCategoryCount={getCategoryCount}
+                allCategoriesCount={getAllCategoriesCount()}
+              />
+            </div>
+          </aside>
+
+          {/* ── Right Content Area ───────────────────────────────────── */}
+          <div className="min-w-0">
+            {/* ── Mobile Collapsible Accordion (<lg) ─────────────────── */}
+            <div className="lg:hidden mb-6 bg-white rounded-2xl border border-gray-200/90 shadow-xs overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setIsMobileCategoryOpen(!isMobileCategoryOpen)}
+                className="w-full flex items-center justify-between p-4 text-left font-bold text-gray-900 bg-gray-50/70 hover:bg-gray-100 transition-colors cursor-pointer"
+                aria-expanded={isMobileCategoryOpen}
+              >
+                <div className="flex items-center gap-2.5">
+                  <SlidersHorizontal size={18} className="text-blue-600" />
+                  <span>Filter Listings</span>
+                  {category && (
+                    <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                      {category}
+                    </span>
+                  )}
+                </div>
+                <ChevronDown
+                  size={18}
+                  className={`text-gray-500 transition-transform duration-200 ${
+                    isMobileCategoryOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {isMobileCategoryOpen && (
+                <div className="p-4 pt-2 border-t border-gray-100">
+                  <div className="mb-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-1 mt-1">
+                      Popular Categories
+                    </p>
+                    {country && (
+                      <p className="text-[11px] text-gray-500 mb-2">
+                        Counts for <span className="font-semibold text-gray-700">{country}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  <CategoryList
+                    categories={CATEGORIES}
+                    selectedCategory={category}
+                    onSelectCategory={handleCategoryChange}
+                    getCategoryCount={getCategoryCount}
+                    allCategoriesCount={getAllCategoriesCount()}
+                    onItemClick={() => setIsMobileCategoryOpen(false)}
+                  />
+                </div>
+              )}
             </div>
 
-            <button
-              onClick={() => setPage(page + 1)}
-              disabled={!pagination.hasNextPage}
-              className="btn-secondary"
-              style={{ padding: '0.5rem 0.875rem' }}
-              aria-label="Next page"
-            >
-              Next <ChevronRight size={16} />
-            </button>
+            {/* ── Results Header: Found {totalResults} listings ──────── */}
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pb-3 border-b border-gray-200">
+              <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">
+                Found {pagination?.totalResults ?? businesses.length} listings
+              </h2>
+              {(country || category || city) && (
+                <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-500">
+                  <span>Filtered by:</span>
+                  <span className="font-semibold text-gray-800">
+                    {[country, city, category].filter(Boolean).join(' • ')}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* ── Business Cards Grid (Mobile single column, Desktop 2-3 columns) ── */}
+            {error ? (
+              <div className="text-center py-16 card p-10">
+                <p style={{ color: '#dc2626', marginBottom: '1rem' }}>{error}</p>
+                <button onClick={fetchBusinesses} className="btn-primary">
+                  Try Again
+                </button>
+              </div>
+            ) : loading ? (
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+                {[...Array(6)].map((_, i) => (
+                  <SkeletonCard key={i} />
+                ))}
+              </div>
+            ) : businesses.length === 0 ? (
+              <div className="text-center py-16 card p-10 bg-white rounded-2xl border border-gray-100">
+                <SlidersHorizontal
+                  size={44}
+                  className="text-gray-300 mx-auto mb-4"
+                  aria-hidden="true"
+                />
+                <h2 className="text-xl font-bold text-gray-900 mb-2">
+                  No businesses found
+                </h2>
+                <p className="text-gray-500 max-w-md mx-auto mb-6 text-sm">
+                  No businesses found - try another city / category
+                </p>
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="btn-primary px-6 py-2.5 shadow-md"
+                >
+                  Clear Filters
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+                {businesses.map((business) => (
+                  <BusinessCard key={business._id} business={business} />
+                ))}
+              </div>
+            )}
+
+            {/* ── Pagination ───────────────────────────────────────────── */}
+            {!loading && pagination && pagination.totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-10">
+                <button
+                  onClick={() => setPage(page - 1)}
+                  disabled={!pagination.hasPrevPage}
+                  className="btn-secondary"
+                  style={{ padding: '0.5rem 0.875rem' }}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={16} /> Prev
+                </button>
+
+                <div className="flex gap-1">
+                  {[...Array(pagination.totalPages)].map((_, i) => {
+                    const pageNum = i + 1;
+                    const isActive = pageNum === pagination.currentPage;
+                    const isNearCurrent =
+                      Math.abs(pageNum - pagination.currentPage) <= 2;
+                    const isFirst = pageNum === 1;
+                    const isLast = pageNum === pagination.totalPages;
+
+                    if (!isFirst && !isLast && !isNearCurrent) {
+                      if (pageNum === 2 || pageNum === pagination.totalPages - 1) {
+                        return (
+                          <span
+                            key={pageNum}
+                            style={{ color: '#9ca3af', padding: '0 4px' }}
+                          >
+                            ...
+                          </span>
+                        );
+                      }
+                      return null;
+                    }
+
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setPage(pageNum)}
+                        className={isActive ? 'btn-primary' : 'btn-secondary'}
+                        style={{ padding: '0.5rem 0.875rem', minWidth: 40 }}
+                        aria-label={`Page ${pageNum}`}
+                        aria-current={isActive ? 'page' : undefined}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <button
+                  onClick={() => setPage(page + 1)}
+                  disabled={!pagination.hasNextPage}
+                  className="btn-secondary"
+                  style={{ padding: '0.5rem 0.875rem' }}
+                  aria-label="Next page"
+                >
+                  Next <ChevronRight size={16} />
+                </button>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
