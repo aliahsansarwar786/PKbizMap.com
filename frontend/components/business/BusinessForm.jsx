@@ -1527,31 +1527,30 @@ export default function BusinessForm({
                                 <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 pointer-events-none" />
                               )}
 
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/35 pointer-events-none" />
-
-                              <div className="absolute inset-0 p-[5%] sm:p-5 flex flex-col justify-between text-white z-10">
+                              {/* Content with localized contrast scrim behind text blocks only */}
+                              <div className="absolute inset-0 p-[5%] sm:p-5 flex flex-col justify-between text-white z-10 pointer-events-none">
                                 <div className="flex items-center justify-end">
-                                  <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-white/20 backdrop-blur-md border border-white/25 text-white shadow-sm">
+                                  <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-black/25 backdrop-blur-[2px] border border-white/20 text-white shadow-sm [text-shadow:_0_1px_2px_rgba(0,0,0,0.85)]">
                                     {isIban ? 'IBAN' : 'ACCOUNT NO.'}
                                   </span>
                                 </div>
 
-                                <div className="my-auto space-y-1.5">
+                                <div className="my-auto rounded-xl bg-black/25 backdrop-blur-[2px] border border-white/15 p-2.5 sm:p-3 space-y-1.5 shadow-sm pointer-events-auto">
                                   <div>
-                                    <span className="text-[9px] sm:text-[10px] font-bold text-white/75 uppercase tracking-wider block">
+                                    <span className="text-[9px] sm:text-[10px] font-bold text-white/80 uppercase tracking-wider block [text-shadow:_0_1px_2px_rgba(0,0,0,0.9)]">
                                       ACCOUNT TITLE
                                     </span>
-                                    <span className="font-bold text-amber-300 text-xs sm:text-sm md:text-base drop-shadow block truncate">
+                                    <span className="font-bold text-amber-300 text-xs sm:text-sm md:text-base [text-shadow:_0_1px_3px_rgba(0,0,0,0.9)] block truncate">
                                       {method.accountTitle}
                                     </span>
                                   </div>
 
                                   <div>
-                                    <span className="text-[9px] sm:text-[10px] font-bold text-white/75 uppercase tracking-wider block">
+                                    <span className="text-[9px] sm:text-[10px] font-bold text-white/80 uppercase tracking-wider block [text-shadow:_0_1px_2px_rgba(0,0,0,0.9)]">
                                       {isIban ? 'IBAN' : 'ACCOUNT NUMBER'}
                                     </span>
                                     <div className="flex items-center justify-between gap-2 mt-0.5">
-                                      <span className="font-mono font-black text-sm sm:text-base md:text-lg tracking-wider text-white drop-shadow select-all break-all">
+                                      <span className="font-mono font-black text-sm sm:text-base md:text-lg tracking-wider text-white [text-shadow:_0_1px_3px_rgba(0,0,0,0.95)] select-all break-all">
                                         {method.accountValue}
                                       </span>
 
@@ -1561,7 +1560,7 @@ export default function BusinessForm({
                                         className={`shrink-0 flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border cursor-pointer ${
                                           isCopied
                                             ? 'bg-emerald-600 text-white border-emerald-400'
-                                            : 'bg-white/20 hover:bg-white/30 active:bg-white/40 text-white border-white/30'
+                                            : 'bg-black/35 hover:bg-black/55 active:bg-black/70 text-white border-white/30 backdrop-blur-xs'
                                         }`}
                                         title={`Copy ${method.name} ${isIban ? 'IBAN' : 'number'}`}
                                       >
@@ -1572,17 +1571,17 @@ export default function BusinessForm({
                                   </div>
                                 </div>
 
-                                <div className="flex items-end justify-between gap-2 pt-1.5 border-t border-white/20">
+                                <div className="flex items-end justify-between gap-2 pt-1 border-t border-white/15">
                                   {method.details ? (
-                                    <span className="text-[10px] sm:text-[11px] text-white/80 font-medium truncate max-w-[60%]" title={method.details}>
+                                    <span className="text-[10px] sm:text-[11px] text-white/95 font-medium truncate max-w-[60%] px-2 py-0.5 rounded-md bg-black/25 backdrop-blur-[2px] [text-shadow:_0_1px_2px_rgba(0,0,0,0.9)]" title={method.details}>
                                       {method.details}
                                     </span>
                                   ) : (
-                                    <span className="text-[10px] text-white/70 font-medium">
+                                    <span className="text-[10px] text-white/90 font-medium px-2 py-0.5 rounded-md bg-black/25 backdrop-blur-[2px] [text-shadow:_0_1px_2px_rgba(0,0,0,0.9)]">
                                       Fee: {countryFeeDisplay}
                                     </span>
                                   )}
-                                  <span className="font-black text-xs sm:text-sm md:text-base tracking-wide text-white drop-shadow ml-auto uppercase">
+                                  <span className="font-black text-xs sm:text-sm md:text-base tracking-wide text-white [text-shadow:_0_1px_3px_rgba(0,0,0,0.95)] ml-auto uppercase px-2.5 py-0.5 rounded-md bg-black/25 backdrop-blur-[2px] border border-white/15">
                                     {method.name}
                                   </span>
                                 </div>

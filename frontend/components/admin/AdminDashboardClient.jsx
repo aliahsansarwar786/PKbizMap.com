@@ -1596,38 +1596,37 @@ export default function AdminDashboardClient() {
                                   ) : (
                                     <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950" />
                                   )}
-                                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/30 pointer-events-none" />
 
                                   <div className="absolute inset-0 p-[5%] flex flex-col justify-between text-white z-10">
                                     <div className="flex items-center justify-between gap-1">
-                                      <span className="font-black text-xs sm:text-sm tracking-wide text-white drop-shadow">
+                                      <span className="font-black text-xs sm:text-sm tracking-wide text-white uppercase px-2 py-0.5 rounded-md bg-black/25 backdrop-blur-[2px] border border-white/15 [text-shadow:_0_1px_3px_rgba(0,0,0,0.9)]">
                                         {method.name}
                                       </span>
-                                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-white/20 backdrop-blur-md border border-white/20 text-white">
+                                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/25 backdrop-blur-[2px] border border-white/20 text-white [text-shadow:_0_1px_2px_rgba(0,0,0,0.85)]">
                                         {method.kind === 'iban' ? 'IBAN' : 'NUMBER'}
                                       </span>
                                     </div>
 
-                                    <div className="my-auto py-0.5">
-                                      <div className="text-[9px] uppercase font-semibold text-white/70">
+                                    <div className="my-auto py-1 px-2 rounded-lg bg-black/25 backdrop-blur-[2px] border border-white/15 space-y-0.5 shadow-sm">
+                                      <div className="text-[9px] uppercase font-bold text-white/80 [text-shadow:_0_1px_2px_rgba(0,0,0,0.9)]">
                                         {method.kind === 'iban' ? 'IBAN' : 'Account Number'}
                                       </div>
-                                      <div className="font-mono font-black text-xs sm:text-sm text-white drop-shadow break-all">
+                                      <div className="font-mono font-black text-xs sm:text-sm text-white [text-shadow:_0_1px_3px_rgba(0,0,0,0.95)] break-all">
                                         {method.accountValue}
                                       </div>
                                     </div>
 
-                                    <div className="pt-1 border-t border-white/20 flex items-end justify-between text-[10px]">
-                                      <div>
-                                        <span className="text-white/70 uppercase text-[8px] font-bold block">
+                                    <div className="pt-1 flex items-end justify-between text-[10px]">
+                                      <div className="px-1.5 py-0.5 rounded-md bg-black/25 backdrop-blur-[2px] border border-white/15">
+                                        <span className="text-white/80 uppercase text-[8px] font-bold block [text-shadow:_0_1px_2px_rgba(0,0,0,0.8)]">
                                           Account Title
                                         </span>
-                                        <span className="font-bold text-amber-300 drop-shadow">
+                                        <span className="font-bold text-amber-300 [text-shadow:_0_1px_2px_rgba(0,0,0,0.9)]">
                                           {method.accountTitle}
                                         </span>
                                       </div>
                                       {method.details && (
-                                        <span className="text-white/80 truncate max-w-[50%]" title={method.details}>
+                                        <span className="text-white font-medium truncate max-w-[50%] px-1.5 py-0.5 rounded-md bg-black/25 backdrop-blur-[2px] [text-shadow:_0_1px_2px_rgba(0,0,0,0.8)]" title={method.details}>
                                           {method.details}
                                         </span>
                                       )}
