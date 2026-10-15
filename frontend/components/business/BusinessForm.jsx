@@ -27,6 +27,10 @@ import {
   CheckCircle2,
   Calendar,
   Sparkles,
+  CreditCard,
+  Smartphone,
+  ShieldCheck,
+  UploadCloud,
 } from 'lucide-react';
 import SearchableCombobox from '@/components/ui/SearchableCombobox';
 import { COUNTRIES, getCities, isValidCity } from '@/data/locations';
@@ -161,6 +165,7 @@ export default function BusinessForm({
   const [paymentReceiptPreview, setPaymentReceiptPreview] = useState(null);
   const [copiedRaastId, setCopiedRaastId] = useState(false);
   const [copiedMethodId, setCopiedMethodId] = useState(null);
+  const [copiedDetails, setCopiedDetails] = useState(false);
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -362,6 +367,16 @@ export default function BusinessForm({
     setCopiedMethodId(methodId);
     toast.success(`${methodName || 'Account'} ${kind === 'iban' ? 'IBAN' : 'number'} copied to clipboard!`);
     setTimeout(() => setCopiedMethodId(null), 2500);
+  };
+
+  const handleCopyDetails = () => {
+    const title = paymentSettings?.accountTitle || 'BizPrimeHub';
+    const num = paymentSettings?.raastId || paymentSettings?.accountNumber || '';
+    const textToCopy = `Account Title: ${title}\nAccount Number: ${num}`;
+    navigator.clipboard.writeText(textToCopy);
+    setCopiedDetails(true);
+    toast.success('Account details copied to clipboard!');
+    setTimeout(() => setCopiedDetails(false), 2500);
   };
 
   // URL Validator Helper
@@ -1260,9 +1275,9 @@ export default function BusinessForm({
       {!isEdit && paymentSettings?.isEnabled && (
         <section
           aria-label="Listing Charges"
-          className="bg-white rounded-2xl border-2 border-emerald-300 shadow-sm p-6 sm:p-7 space-y-6 relative overflow-hidden"
+          className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-7 space-y-6 relative overflow-hidden"
         >
-          {/* Header Row: Title & Fee Amount */}
+          {/* 1. HEADER ROW: left — green QR icon + light-green "SECTION 6" pill + bold "Listing Charges"; neeche subtitle. Right — green pill "Fee: Rs. {feeAmount}" */}
           <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-gray-100">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shrink-0 shadow-sm">
@@ -1270,125 +1285,168 @@ export default function BusinessForm({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
                     Section 6
                   </span>
                   <h2 className="text-lg font-bold text-gray-900">Listing Charges</h2>
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Complete transfer using either payment option below and upload screenshot
+                  Complete the transfer using either payment option below and upload screenshot.
                 </p>
               </div>
             </div>
 
-            <div className="px-4 py-1.5 rounded-full font-extrabold text-sm tracking-wide bg-emerald-600 text-white shadow-sm">
+            <div className="px-4 py-1.5 rounded-full font-extrabold text-sm tracking-wide bg-emerald-600 text-white shadow-sm shrink-0">
               Fee: Rs. {paymentSettings.feeAmount}
             </div>
           </div>
 
-          {/* PAYMENT OPTIONS (Side-by-side with Configurable Payment Method Cards when enabled) */}
+          {/* 2. TWO COLUMNS (desktop; mobile par stack) */}
           {(() => {
             const enabledMethods = (paymentSettings.paymentMethods || []).filter((m) => m.isEnabled);
             const hasMethods = enabledMethods.length > 0;
 
             return (
-              <div className={`grid grid-cols-1 ${hasMethods ? 'lg:grid-cols-2' : ''} gap-5`}>
-                {/* Option A: Raast QR Code Card */}
-                <div className="bg-gray-50/80 rounded-2xl border border-gray-200/90 p-5 flex flex-col justify-between space-y-4">
+              <div className={`grid grid-cols-1 ${hasMethods ? 'lg:grid-cols-2' : ''} gap-6 items-start`}>
+                {/* LEFT — "Raast QR Payment" white card */}
+                <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs flex flex-col justify-between space-y-4">
                   <div>
-                    <div className="flex items-center justify-between pb-3 border-b border-gray-200">
+                    {/* Green dot + bold title + light-green pill "Any Banking App" (phone icon) */}
+                    <div className="flex items-center justify-between gap-2 pb-3 border-b border-gray-100">
                       <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
-                        <h3 className="text-sm font-bold text-gray-900">Raast QR Payment</h3>
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                        <h3 className="text-sm sm:text-base font-bold text-gray-900">Raast QR Payment</h3>
                       </div>
-                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
-                        Any Banking App
+                      <span className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full shrink-0">
+                        <Smartphone size={12} />
+                        <span>Any Banking App</span>
                       </span>
                     </div>
 
-                    <div className="flex flex-col sm:flex-row items-center gap-4 mt-4">
-                      {/* QR Graphic */}
-                      {paymentSettings.qrCode?.url ? (
-                        <div className="flex flex-col items-center gap-1.5 shrink-0">
-                          <div className="p-2 bg-white rounded-xl border border-gray-300 shadow-xs">
-                            <img
-                              src={paymentSettings.qrCode.url}
-                              alt="Raast Payment QR Code"
-                              className="w-36 h-36 object-contain rounded-lg"
-                            />
-                          </div>
-                          <a
-                            href={paymentSettings.qrCode.url}
-                            download="raast-payment-qr.png"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:text-emerald-800 transition-colors"
-                          >
-                            <Download size={12} /> Save QR
-                          </a>
-                        </div>
-                      ) : (
-                        <div className="w-36 h-36 rounded-xl bg-white flex flex-col items-center justify-center p-2 border border-dashed border-gray-300 shrink-0 text-center">
-                          <QrCode size={32} className="text-gray-400 mb-1" />
-                          <p className="text-[11px] text-gray-400 font-medium">QR code not yet uploaded by Admin</p>
-                        </div>
-                      )}
+                    {/* Subtitle */}
+                    <p className="text-xs text-gray-500 mt-2">
+                      Scan the QR code or use the account details below to make your payment.
+                    </p>
 
-                      {/* Account Details & Steps */}
-                      <div className="flex-1 space-y-2.5 text-xs w-full">
-                        <div className="p-2.5 bg-white rounded-xl border border-gray-200">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
-                            Account Title
-                          </span>
-                          <span className="text-xs font-bold text-gray-900 block mt-0.5">
+                    {/* QR Code + Account fields */}
+                    <div className="flex flex-col sm:flex-row items-center sm:items-stretch gap-4 mt-4">
+                      {/* QR image light-green box */}
+                      <div className="bg-emerald-50/70 border border-emerald-200 rounded-xl p-3 flex flex-col items-center justify-center text-center shrink-0 w-full sm:w-44">
+                        {paymentSettings.qrCode?.url ? (
+                          <>
+                            <div className="p-1.5 bg-white rounded-lg border border-emerald-200 shadow-2xs">
+                              <img
+                                src={paymentSettings.qrCode.url}
+                                alt="Raast Payment QR Code"
+                                className="w-32 h-32 object-contain rounded"
+                              />
+                            </div>
+                            <a
+                              href={paymentSettings.qrCode.url}
+                              download="raast-payment-qr.png"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-[10px] font-bold text-emerald-700 hover:text-emerald-800 transition-colors mt-1.5"
+                            >
+                              <Download size={11} /> Save QR
+                            </a>
+                          </>
+                        ) : (
+                          <div className="w-32 h-32 rounded-lg bg-white flex flex-col items-center justify-center p-2 border border-dashed border-gray-300 text-center">
+                            <QrCode size={28} className="text-gray-400 mb-1" />
+                            <p className="text-[10px] text-gray-400 font-medium">QR Code</p>
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-center gap-1 text-xs font-bold text-emerald-700 mt-2">
+                          <CheckCircle2 size={13} className="text-emerald-600 shrink-0" />
+                          <span>Scan to Pay</span>
+                        </div>
+                        <p className="text-[10px] text-gray-500 leading-tight mt-0.5 max-w-[150px]">
+                          Use any banking app (JazzCash, EasyPaisa, HBL, Meezan, etc.)
+                        </p>
+                      </div>
+
+                      {/* Side me "Account Title" field (person icon) + "Account Number" field (card icon) + green "Copy Details" button */}
+                      <div className="flex-1 flex flex-col justify-between gap-2.5 w-full">
+                        <div className="p-2.5 bg-gray-50/90 rounded-xl border border-gray-200">
+                          <div className="flex items-center gap-1.5 text-gray-500 mb-0.5">
+                            <User size={13} className="text-emerald-600 shrink-0" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                              Account Title
+                            </span>
+                          </div>
+                          <span className="text-xs sm:text-sm font-bold text-gray-900 block truncate">
                             {paymentSettings.accountTitle || 'BizPrimeHub'}
                           </span>
                         </div>
 
-                        {paymentSettings.raastId && (
-                          <div className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-gray-200">
-                            <div>
-                              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
-                                Raast ID
-                              </span>
-                              <span className="text-xs font-bold text-gray-900 font-mono">
-                                {paymentSettings.raastId}
-                              </span>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleCopyRaastId(paymentSettings.raastId)}
-                              className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors cursor-pointer"
-                            >
-                              {copiedRaastId ? <Check size={12} /> : <Copy size={12} />}
-                              {copiedRaastId ? 'Copied' : 'Copy'}
-                            </button>
+                        <div className="p-2.5 bg-gray-50/90 rounded-xl border border-gray-200">
+                          <div className="flex items-center gap-1.5 text-gray-500 mb-0.5">
+                            <CreditCard size={13} className="text-emerald-600 shrink-0" />
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                              Account Number
+                            </span>
                           </div>
-                        )}
+                          <span className="text-xs sm:text-sm font-bold font-mono text-gray-900 block truncate">
+                            {paymentSettings.raastId || paymentSettings.accountNumber || '—'}
+                          </span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={handleCopyDetails}
+                          className="w-full flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs cursor-pointer mt-auto"
+                        >
+                          {copiedDetails ? <Check size={14} /> : <Copy size={14} />}
+                          <span>{copiedDetails ? 'Details Copied!' : 'Copy Details'}</span>
+                        </button>
                       </div>
                     </div>
                   </div>
 
-                  {/* Instructions steps */}
-                  <div className="text-[11px] text-gray-600 bg-white p-3 rounded-xl border border-gray-200 space-y-1">
-                    <p className="font-bold text-gray-800">📲 Raast Steps:</p>
-                    <ol className="list-decimal pl-4 space-y-0.5">
-                      <li>Banking app (EasyPaisa, SadaPay, HBL, Meezan) open karein.</li>
-                      <li><strong>&ldquo;Scan QR&rdquo;</strong> se yeh code scan karein.</li>
-                      <li><strong>Rs. {paymentSettings.feeAmount}</strong> send kar ke screenshot save karein.</li>
+                  {/* Neeche light-blue "Important Instructions" box, 3 numbered points */}
+                  <div className="bg-blue-50/80 border border-blue-200/90 rounded-xl p-3.5 space-y-2">
+                    <div className="flex items-center gap-1.5 text-blue-900 font-bold text-xs">
+                      <AlertCircle size={14} className="text-blue-600 shrink-0" />
+                      <span>Important Instructions</span>
+                    </div>
+                    <ol className="space-y-1.5 text-xs text-blue-950 font-medium">
+                      <li className="flex items-start gap-2">
+                        <span className="w-4 h-4 rounded-full bg-blue-200 text-blue-900 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                          1
+                        </span>
+                        <span>
+                          Enter the exact amount (Rs. {paymentSettings.feeAmount}) in your banking app.
+                        </span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-4 h-4 rounded-full bg-blue-200 text-blue-900 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                          2
+                        </span>
+                        <span>Use the given Account Title and Account Number.</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="w-4 h-4 rounded-full bg-blue-200 text-blue-900 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                          3
+                        </span>
+                        <span>Keep the payment screenshot for upload below.</span>
+                      </li>
                     </ol>
                   </div>
                 </div>
 
-                {/* Option B: Configurable Payment Method Cards (JazzCash, Easypaisa, Banks, IBANs) */}
+                {/* RIGHT — payment method cards (paymentMethods se DYNAMIC list — hardcode mat karna) */}
                 {hasMethods && (
                   <div className="space-y-4">
                     {enabledMethods.map((method) => {
                       const isCopied = copiedMethodId === method._id;
+                      const isIban = method.kind === 'iban';
+
                       return (
                         <div
                           key={method._id}
-                          className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-lg border border-black/15 group select-none transition-transform hover:-translate-y-0.5"
+                          className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-md border border-black/15 group select-none transition-transform hover:-translate-y-0.5"
                         >
                           {/* Blank background card image uploaded by admin */}
                           {method.cardImage?.url ? (
@@ -1402,62 +1460,59 @@ export default function BusinessForm({
                           )}
 
                           {/* Subtle dark gradient overlay for optimal legibility across any artwork */}
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/40 to-black/30 pointer-events-none" />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/35 pointer-events-none" />
 
-                          {/* Dynamic Overlaid Content - Percentage-based positioning */}
-                          <div className="absolute inset-0 p-[5%] flex flex-col justify-between text-white z-10">
-                            {/* Card Header (top ~5%) */}
-                            <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
-                                <span className="font-black text-sm sm:text-base tracking-wide text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
-                                  {method.name}
-                                </span>
-                              </div>
+                          {/* Overlaid details */}
+                          <div className="absolute inset-0 p-[5%] sm:p-5 flex flex-col justify-between text-white z-10">
+                            {/* Top Row: top-right pill "ACCOUNT NO." or "IBAN" */}
+                            <div className="flex items-center justify-end">
                               <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-md bg-white/20 backdrop-blur-md border border-white/25 text-white shadow-sm">
-                                {method.kind === 'iban' ? 'IBAN' : 'Account No.'}
+                                {isIban ? 'IBAN' : 'ACCOUNT NO.'}
                               </span>
                             </div>
 
-                            {/* Card Middle (value + hover copy button) */}
-                            <div className="my-auto py-1">
-                              <span className="text-[10px] sm:text-[11px] font-semibold text-white/80 uppercase tracking-widest block mb-1 drop-shadow">
-                                {method.kind === 'iban' ? 'Bank IBAN' : 'Account Number'}
-                              </span>
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="font-mono font-black text-sm sm:text-lg md:text-xl tracking-wider select-all text-white drop-shadow-[0_2px_6px_rgba(0,0,0,0.95)] break-all">
-                                  {method.accountValue}
-                                </span>
-
-                                {/* Hover / Tap Copy Button */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopyMethodValue(method._id, method.accountValue, method.name, method.kind)}
-                                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all shadow-md backdrop-blur-md border cursor-pointer ${
-                                    isCopied
-                                      ? 'bg-emerald-600 text-white border-emerald-400'
-                                      : 'bg-white/20 hover:bg-white/35 active:bg-white/40 text-white border-white/30 group-hover:scale-105'
-                                  }`}
-                                  title={`Copy ${method.name} ${method.kind === 'iban' ? 'IBAN' : 'number'}`}
-                                >
-                                  {isCopied ? <Check size={13} className="text-white" /> : <Copy size={13} />}
-                                  <span>{isCopied ? 'Copied!' : 'Copy'}</span>
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* Card Footer (bottom ~5%) */}
-                            <div className="pt-2 border-t border-white/20 flex items-end justify-between gap-2 text-xs">
+                            {/* Middle: ACCOUNT TITLE + ACCOUNT NUMBER/IBAN with visible Copy button */}
+                            <div className="my-auto space-y-1.5">
                               <div>
-                                <span className="text-[9px] sm:text-[10px] text-white/70 uppercase font-bold tracking-wider block">
-                                  Account Title
+                                <span className="text-[9px] sm:text-[10px] font-bold text-white/75 uppercase tracking-wider block">
+                                  ACCOUNT TITLE
                                 </span>
-                                <span className="font-bold text-amber-300 text-xs sm:text-sm drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]">
+                                <span className="font-bold text-amber-300 text-xs sm:text-sm md:text-base drop-shadow block truncate">
                                   {method.accountTitle}
                                 </span>
                               </div>
+
+                              <div>
+                                <span className="text-[9px] sm:text-[10px] font-bold text-white/75 uppercase tracking-wider block">
+                                  {isIban ? 'IBAN' : 'ACCOUNT NUMBER'}
+                                </span>
+                                <div className="flex items-center justify-between gap-2 mt-0.5">
+                                  <span className="font-mono font-black text-sm sm:text-base md:text-lg tracking-wider text-white drop-shadow select-all break-all">
+                                    {method.accountValue}
+                                  </span>
+
+                                  {/* Visible Copy button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyMethodValue(method._id, method.accountValue, method.name, method.kind)}
+                                    className={`shrink-0 flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border cursor-pointer ${
+                                      isCopied
+                                        ? 'bg-emerald-600 text-white border-emerald-400'
+                                        : 'bg-white/20 hover:bg-white/30 active:bg-white/40 text-white border-white/30'
+                                    }`}
+                                    title={`Copy ${method.name} ${isIban ? 'IBAN' : 'number'}`}
+                                  >
+                                    {isCopied ? <Check size={12} className="text-white" /> : <Copy size={12} />}
+                                    <span>{isCopied ? 'Copied!' : 'Copy'}</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Bottom Row: bottom-right method ka name */}
+                            <div className="flex items-end justify-between gap-2 pt-1.5 border-t border-white/20">
                               {method.details ? (
-                                <span className="text-[10px] sm:text-[11px] text-white/85 font-medium text-right drop-shadow max-w-[55%] truncate" title={method.details}>
+                                <span className="text-[10px] sm:text-[11px] text-white/80 font-medium truncate max-w-[60%]" title={method.details}>
                                   {method.details}
                                 </span>
                               ) : (
@@ -1465,6 +1520,9 @@ export default function BusinessForm({
                                   Fee: Rs. {paymentSettings.feeAmount}
                                 </span>
                               )}
+                              <span className="font-black text-xs sm:text-sm md:text-base tracking-wide text-white drop-shadow ml-auto uppercase">
+                                {method.name}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -1476,19 +1534,23 @@ export default function BusinessForm({
             );
           })()}
 
-          {/* Payment Instructions Note if specified */}
+          {/* Optional instructions note if specified */}
           {paymentSettings.instructions && (
             <p className="text-xs text-amber-900 bg-amber-50 p-3 rounded-xl border border-amber-200/80">
               💡 {paymentSettings.instructions}
             </p>
           )}
 
-          {/* Screenshot Upload Input */}
-          <div className="space-y-2 pt-2">
-            <label htmlFor="payment-receipt" className="block text-xs font-bold text-gray-800 uppercase tracking-wider">
-              Upload Payment Screenshot <span className="text-rose-500">*</span>
-            </label>
+          {/* 3. YELLOW BANNER (shield icon, dynamic text) */}
+          <div className="bg-amber-50 border border-amber-300 rounded-xl p-3.5 flex items-center gap-3 text-amber-900 shadow-2xs">
+            <ShieldCheck size={20} className="text-amber-600 shrink-0" />
+            <p className="text-xs sm:text-sm font-semibold leading-snug">
+              Send the exact fee (Rs. {paymentSettings.feeAmount}) using any payment option above and attach the payment receipt screenshot.
+            </p>
+          </div>
 
+          {/* 4. UPLOAD BOX: dashed green border, cloud-upload icon, bold title + right side green Click to Upload button */}
+          <div className="space-y-2">
             {paymentReceiptPreview ? (
               <div className="flex items-center justify-between p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-300 shadow-xs">
                 <div className="flex items-center gap-3">
@@ -1516,21 +1578,31 @@ export default function BusinessForm({
             ) : (
               <label
                 htmlFor="payment-receipt"
-                className={`flex flex-col items-center justify-center p-6 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${
+                className={`flex flex-col sm:flex-row items-center justify-between gap-4 p-5 sm:p-6 rounded-2xl border-2 border-dashed cursor-pointer transition-all ${
                   errors.paymentReceipt
                     ? 'border-rose-400 bg-rose-50/40'
-                    : 'border-amber-300 hover:border-amber-500 bg-amber-50/20 hover:bg-amber-50/50'
+                    : 'border-emerald-400 hover:border-emerald-600 bg-emerald-50/20 hover:bg-emerald-50/40'
                 }`}
               >
-                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center mb-1.5">
-                  <Upload size={20} />
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 shadow-2xs">
+                    <UploadCloud size={24} />
+                  </div>
+                  <div>
+                    <span className="text-sm font-bold text-gray-900 block">
+                      Upload Payment Screenshot <span className="text-rose-500">*</span>
+                    </span>
+                    <span className="text-xs text-gray-500 block mt-0.5">
+                      (JPG, PNG, or WebP up to 5MB)
+                    </span>
+                  </div>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">
-                  Click to upload payment transaction screenshot
-                </span>
-                <span className="text-xs text-gray-500 mt-0.5">
-                  JPG, PNG, or WebP up to 5MB
-                </span>
+
+                <div className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm shadow-xs flex items-center gap-1.5 shrink-0 transition-colors pointer-events-none">
+                  <Upload size={14} />
+                  <span>Click to Upload</span>
+                </div>
+
                 <input
                   id="payment-receipt"
                   type="file"
