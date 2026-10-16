@@ -103,17 +103,12 @@ const register = [
       console.error('⚠️ [Auth:Register] Unexpected error sending verification OTP:', e.message);
     }
 
-    // Send session cookie + requiresVerification flag
-    generateTokenAndSend(
-      user,
-      201,
-      res,
-      'Registration successful. Please verify your email with the 6-digit code sent to you.',
-      {
-        requiresVerification: true,
-        email: user.email,
-      }
-    );
+    return res.status(201).json({
+      success: true,
+      message: 'Registration successful. Please verify your email with the 6-digit code sent to you.',
+      requiresVerification: true,
+      email: user.email,
+    });
   }),
 ];
 
@@ -716,9 +711,16 @@ const login = [
       });
     }
 
-    generateTokenAndSend(user, 200, res, 'Logged in successfully.', {
-      requiresVerification: !user.emailVerified && user.role !== 'admin' && user.role !== 'subadmin',
-    });
+    if (!user.emailVerified && user.role !== 'admin' && user.role !== 'subadmin') {
+      return res.status(403).json({
+        success: false,
+        requiresVerification: true,
+        email: user.email,
+        message: 'Please verify your email before logging in. Enter the 6-digit code sent to your email.',
+      });
+    }
+
+    generateTokenAndSend(user, 200, res, 'Logged in successfully.');
   }),
 ];
 

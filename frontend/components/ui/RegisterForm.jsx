@@ -72,7 +72,7 @@ export default function RegisterForm() {
     try {
       const res = await register({ name: form.name.trim(), email: form.email.toLowerCase(), password: form.password });
       toast.success('Account created! Please verify your email with the 6-digit code sent to you.');
-      router.push(`/verify-email?email=${encodeURIComponent(form.email.toLowerCase())}`);
+      router.push(`/verify-email?email=${encodeURIComponent(form.email.toLowerCase())}&registered=true`);
     } catch (err) {
       if (err.status === 409) {
         setErrors({ email: 'An account with this email already exists.' });

@@ -13,11 +13,12 @@ export default function VerifyEmailForm() {
   const searchParams = useSearchParams();
   const { user, updateUser } = useAuth();
 
+  const isRegisteredJustNow = searchParams.get('registered') === 'true';
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const [resendCooldown, setResendCooldown] = useState(60);
+  const [resendCooldown, setResendCooldown] = useState(isRegisteredJustNow ? 60 : 0);
   const [attemptsRemaining, setAttemptsRemaining] = useState(null);
   const [blockedUntilSeconds, setBlockedUntilSeconds] = useState(0);
   const [showChangeEmail, setShowChangeEmail] = useState(false);
@@ -26,6 +27,7 @@ export default function VerifyEmailForm() {
   const [verifiedSuccess, setVerifiedSuccess] = useState(false);
 
   const inputRefs = useRef([]);
+  const autoResendTriggered = useRef(false);
 
   // Initialize email from query param or auth state
   useEffect(() => {
@@ -36,6 +38,40 @@ export default function VerifyEmailForm() {
       setEmail(user.email);
     }
   }, [searchParams, user]);
+
+  // Handle auto-resend if routed with ?resend=true from login prompt
+  useEffect(() => {
+    const shouldResend = searchParams.get('resend') === 'true';
+    const targetEmail = searchParams.get('email')?.trim() || email;
+    if (shouldResend && targetEmail && !autoResendTriggered.current) {
+      autoResendTriggered.current = true;
+      setResending(true);
+      authAPI
+        .resendOtp({ email: targetEmail.toLowerCase() })
+        .then(() => {
+          toast.success('A fresh 6-digit code has been sent to your email!');
+          setResendCooldown(60);
+          setOtp(['', '', '', '', '', '']);
+          inputRefs.current[0]?.focus();
+        })
+        .catch((err) => {
+          if (err.isBlocked || err.status === 429) {
+            const retry = err.retryAfter || 60;
+            if (err.isBlocked) {
+              setBlockedUntilSeconds(retry);
+            } else {
+              setResendCooldown(retry);
+            }
+            toast.error(err.message || 'Please wait before requesting a new code.');
+          } else {
+            toast.error(err.message || 'Failed to resend code.');
+          }
+        })
+        .finally(() => {
+          setResending(false);
+        });
+    }
+  }, [searchParams, email]);
 
   // Resend cooldown timer
   useEffect(() => {
@@ -203,7 +239,12 @@ export default function VerifyEmailForm() {
       toast.success(`Email updated! Verification code sent to ${updated}`);
       inputRefs.current[0]?.focus();
     } catch (err) {
-      toast.error(err.message || 'Failed to update email.');
+      if (err.status === 401) {
+        toast.error('Please register with your correct email address.');
+        router.push(`/register?email=${encodeURIComponent(newEmail.toLowerCase())}`);
+      } else {
+        toast.error(err.message || 'Failed to update email.');
+      }
     } finally {
       setChangingEmail(false);
     }

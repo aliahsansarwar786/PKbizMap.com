@@ -59,6 +59,7 @@ async function fetchAPI(endpoint, options = {}) {
       err.retryAfter = data.retryAfter || (retryAfterHeader ? parseInt(retryAfterHeader, 10) : undefined);
       err.attemptsRemaining = data.attemptsRemaining;
       err.requiresVerification = Boolean(data.requiresVerification || data.requiresEmailVerification);
+      err.email = data.email;
       throw err;
     }
 

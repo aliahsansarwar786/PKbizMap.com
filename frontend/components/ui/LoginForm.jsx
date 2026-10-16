@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
-import { Eye, EyeOff, Building2, Mail, Lock } from 'lucide-react';
+import { Eye, EyeOff, Building2, Mail, Lock, AlertTriangle, ArrowRight } from 'lucide-react';
 
 export default function LoginForm() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [unverifiedInfo, setUnverifiedInfo] = useState(null);
   const { login, isAuthenticated, user, loading: authLoading } = useAuth();
   const router = useRouter();
 
@@ -49,7 +50,18 @@ export default function LoginForm() {
         router.push('/dashboard');
       }
     } catch (err) {
-      toast.error(err.message || 'Invalid email or password.');
+      if (err.requiresVerification || (err.status === 403 && err.data?.requiresVerification)) {
+        const unverifiedEmail = err.email || err.data?.email || form.email.toLowerCase().trim();
+        const msg = err.message || 'Please verify your email before logging in. Enter the 6-digit code sent to your email.';
+        setUnverifiedInfo({
+          email: unverifiedEmail,
+          message: msg,
+        });
+        toast.error(msg);
+      } else {
+        setUnverifiedInfo(null);
+        toast.error(err.message || 'Invalid email or password.');
+      }
     } finally {
       setLoading(false);
     }
@@ -67,6 +79,34 @@ export default function LoginForm() {
           Sign in to your BizPrimeHub account
         </p>
       </div>
+
+      {/* Unverified Email Warning Banner */}
+      {unverifiedInfo && (
+        <div className="mb-6 p-4 rounded-2xl bg-amber-50 border border-amber-200/90 text-amber-900 shadow-xs">
+          <div className="flex items-start gap-2.5 mb-3">
+            <AlertTriangle className="text-amber-600 shrink-0 mt-0.5" size={18} />
+            <div>
+              <p className="font-bold text-amber-950 text-sm mb-0.5">Verification Required</p>
+              <p className="text-xs text-amber-800 leading-relaxed">{unverifiedInfo.message}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 pt-2.5 border-t border-amber-200/70">
+            <Link
+              href={`/verify-email?email=${encodeURIComponent(unverifiedInfo.email)}`}
+              className="btn-primary text-xs py-2 px-3.5 inline-flex items-center gap-1.5 font-semibold shadow-xs"
+            >
+              <span>Verify Email Now</span>
+              <ArrowRight size={14} />
+            </Link>
+            <Link
+              href={`/verify-email?email=${encodeURIComponent(unverifiedInfo.email)}&resend=true`}
+              className="text-xs text-blue-700 hover:text-blue-900 font-semibold py-1.5 px-2.5 rounded-lg hover:bg-amber-100/60 transition-colors"
+            >
+              Resend Code &rarr;
+            </Link>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} noValidate>
         {/* Email */}

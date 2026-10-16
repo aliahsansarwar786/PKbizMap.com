@@ -35,7 +35,9 @@ export function AuthProvider({ children }) {
 
   const register = async (userData) => {
     const res = await authAPI.register(userData);
-    setUser(res.data.user);
+    if (!res?.requiresVerification && res?.data?.user) {
+      setUser(res.data.user);
+    }
     return res;
   };
 
@@ -45,7 +47,7 @@ export function AuthProvider({ children }) {
   };
 
   const updateUser = (updatedUser) => {
-    setUser((prev) => ({ ...prev, ...updatedUser }));
+    setUser((prev) => (prev ? { ...prev, ...updatedUser } : updatedUser));
   };
 
   const value = {
