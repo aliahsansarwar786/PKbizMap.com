@@ -12,7 +12,8 @@ import {
   Check, X, Trash2, ChevronLeft, ChevronRight, Shield, Edit3,
   CreditCard, Eye, Image as ImageIcon, Save, ExternalLink,
   DollarSign, CheckCircle, AlertCircle, Phone, ArrowUpRight,
-  QrCode, Upload, MessageSquare, Search, Filter, Plus, Mail, Bell
+  QrCode, Upload, MessageSquare, Search, Filter, Plus, Mail, Bell,
+  ArrowLeft
 } from 'lucide-react';
 import BusinessForm from '@/components/business/BusinessForm';
 
@@ -67,6 +68,51 @@ const normalizePaymentConfig = (s) => {
   };
 };
 
+const TAB_META = {
+  pending: {
+    icon: Clock,
+    color: '#d97706',
+    bgColor: '#fffbeb',
+    borderColor: '#fde68a',
+    desc: 'Review submissions',
+  },
+  'all-businesses': {
+    icon: Building2,
+    color: '#2563eb',
+    bgColor: '#eff6ff',
+    borderColor: '#bfdbfe',
+    desc: 'Directory listings',
+  },
+  payments: {
+    icon: CreditCard,
+    color: '#059669',
+    bgColor: '#ecfdf5',
+    borderColor: '#a7f3d0',
+    desc: 'Verify receipts',
+  },
+  reviews: {
+    icon: Star,
+    color: '#db2777',
+    bgColor: '#fdf2f8',
+    borderColor: '#fbcfe8',
+    desc: 'Moderate reviews',
+  },
+  users: {
+    icon: Users,
+    color: '#7c3aed',
+    bgColor: '#f5f3ff',
+    borderColor: '#ddd6fe',
+    desc: 'Accounts & roles',
+  },
+  'payment-settings': {
+    icon: QrCode,
+    color: '#16a34a',
+    bgColor: '#f0fdf4',
+    borderColor: '#bbf7d0',
+    desc: 'Raast QR & cards',
+  },
+};
+
 export default function AdminDashboardClient() {
   const { user, isAuthenticated, isAdmin, hasAdminAccess, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -82,6 +128,7 @@ export default function AdminDashboardClient() {
   }, [user?.permissions]);
 
   const [tab, setTab] = useState('pending');
+  const [mobileActive, setMobileActive] = useState(false);
   const [dashStats, setDashStats] = useState(null);
   const [businesses, setBusinesses] = useState([]);
   const [users, setUsers] = useState([]);
@@ -200,6 +247,18 @@ export default function AdminDashboardClient() {
       setPage(1);
     }
   }, [tabs, tab]);
+
+  const handleMobileSelectTab = (selectedId) => {
+    setTab(selectedId);
+    setPage(1);
+    setMobileActive(true);
+  };
+
+  const handleMobileBack = () => {
+    setMobileActive(false);
+  };
+
+  const currentTabObj = tabs.find((t) => t.id === tab) || tabs[0];
 
   // Load stats & initial payment settings
   useEffect(() => {
@@ -851,45 +910,175 @@ export default function AdminDashboardClient() {
             </p>
           </div>
         ) : (
-          <div className="card overflow-hidden">
-            <div
-              className="flex border-b overflow-x-auto"
-              style={{
-                borderColor: '#e5e7eb',
-                WebkitOverflowScrolling: 'touch',
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none',
-              }}
-            >
-            {tabs.map(({ id, label, badge, badgeClass }) => (
-              <button
-                key={id}
-                onClick={() => { setTab(id); setPage(1); }}
-                className="flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-3 text-xs sm:text-sm font-semibold transition-colors relative whitespace-nowrap shrink-0 min-h-[44px]"
-                style={{
-                  color: tab === id ? '#2563eb' : '#6b7280',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  borderBottom: tab === id ? '2px solid #2563eb' : '2px solid transparent',
-                  marginBottom: '-1px',
-                }}
-                aria-selected={tab === id}
-              >
-                {label}
-                {badge != null && (
-                  <span
-                    className={`badge ${badgeClass || 'badge-yellow'}`}
-                    style={{ fontSize: '0.6875rem', padding: '1px 6px' }}
-                  >
-                    {badge}
+          <>
+            {/* Mobile Dashboard Card Grid (<768px, shown when not in a section) */}
+            {!mobileActive && (
+              <div className="md:hidden mb-6">
+                <div className="flex items-center justify-between mb-3 px-1">
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                    Dashboard Sections
+                  </h2>
+                  <span className="text-xs font-semibold text-gray-400">
+                    {tabs.length} sections
                   </span>
-                )}
-              </button>
-            ))}
-          </div>
+                </div>
 
-          <div className="p-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {tabs.map((t) => {
+                    const meta = TAB_META[t.id] || {
+                      icon: Building2,
+                      color: '#2563eb',
+                      bgColor: '#eff6ff',
+                      borderColor: '#bfdbfe',
+                      desc: 'Manage section',
+                    };
+                    const Icon = meta.icon;
+                    const isPending = t.id === 'pending';
+
+                    if (isPending) {
+                      return (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => handleMobileSelectTab(t.id)}
+                          className="col-span-2 w-full p-4 rounded-2xl border-2 transition-all active:scale-[0.98] cursor-pointer text-left flex items-center justify-between gap-3 shadow-xs"
+                          style={{
+                            background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #ffffff 100%)',
+                            borderColor: '#f59e0b',
+                          }}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-xs"
+                              style={{ background: '#fef3c7', color: '#b45309' }}
+                            >
+                              <Icon size={24} />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-bold text-base text-gray-900 leading-snug">
+                                  Pending Listings
+                                </span>
+                                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-amber-200 text-amber-900 uppercase tracking-wider">
+                                  PRIORITY
+                                </span>
+                              </div>
+                              <p className="text-xs text-amber-900/80 mt-0.5 truncate">
+                                Businesses awaiting review &amp; approval
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="badge badge-yellow text-xs font-bold px-2.5 py-1">
+                              {t.badge ?? 0} Pending
+                            </span>
+                            <ChevronRight size={18} className="text-amber-700" />
+                          </div>
+                        </button>
+                      );
+                    }
+
+                    return (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onClick={() => handleMobileSelectTab(t.id)}
+                        className="col-span-1 w-full p-4 rounded-2xl border border-gray-200 bg-white transition-all active:scale-[0.98] cursor-pointer text-left flex flex-col justify-between gap-3 shadow-2xs hover:shadow-xs min-h-[110px]"
+                      >
+                        <div className="flex items-start justify-between gap-2 w-full">
+                          <div
+                            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
+                            style={{ background: meta.bgColor, color: meta.color }}
+                          >
+                            <Icon size={20} />
+                          </div>
+                          {t.badge != null && (
+                            <span
+                              className={`badge ${t.badgeClass || (t.id === 'reviews' ? 'badge-yellow' : 'badge-gray')} text-[11px] font-bold px-2 py-0.5 shrink-0`}
+                            >
+                              {t.badge}
+                            </span>
+                          )}
+                        </div>
+
+                        <div>
+                          <p className="font-bold text-sm text-gray-900 leading-snug line-clamp-1">
+                            {t.label}
+                          </p>
+                          <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
+                            {meta.desc}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Content Container (On desktop always visible; on mobile visible only when mobileActive is true) */}
+            <div className={`card overflow-hidden ${!mobileActive ? 'hidden md:block' : 'block'}`}>
+              {/* Desktop Tabs Bar (>=768px, identical to original) */}
+              <div
+                className="hidden md:flex border-b overflow-x-auto"
+                style={{
+                  borderColor: '#e5e7eb',
+                  WebkitOverflowScrolling: 'touch',
+                  scrollbarWidth: 'none',
+                  msOverflowStyle: 'none',
+                }}
+              >
+                {tabs.map(({ id, label, badge, badgeClass }) => (
+                  <button
+                    key={id}
+                    onClick={() => { setTab(id); setPage(1); }}
+                    className="flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-3 text-xs sm:text-sm font-semibold transition-colors relative whitespace-nowrap shrink-0 min-h-[44px]"
+                    style={{
+                      color: tab === id ? '#2563eb' : '#6b7280',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      borderBottom: tab === id ? '2px solid #2563eb' : '2px solid transparent',
+                      marginBottom: '-1px',
+                    }}
+                    aria-selected={tab === id}
+                  >
+                    {label}
+                    {badge != null && (
+                      <span
+                        className={`badge ${badgeClass || 'badge-yellow'}`}
+                        style={{ fontSize: '0.6875rem', padding: '1px 6px' }}
+                      >
+                        {badge}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <div className="p-4">
+                {/* Mobile Back Button (<768px, visible when inside section) */}
+                <div className="md:hidden mb-4 flex items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                  <button
+                    type="button"
+                    onClick={handleMobileBack}
+                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 border border-blue-200 transition-colors cursor-pointer min-h-[44px]"
+                  >
+                    <ArrowLeft size={16} />
+                    <span>Back to Dashboard</span>
+                  </button>
+                  <div className="flex items-center gap-1.5 text-right min-w-0">
+                    <span className="text-xs font-bold text-gray-800 truncate">
+                      {currentTabObj?.label}
+                    </span>
+                    {currentTabObj?.badge != null && (
+                      <span className={`badge ${currentTabObj.badgeClass || 'badge-yellow'} text-[10px] shrink-0`}>
+                        {currentTabObj.badge}
+                      </span>
+                    )}
+                  </div>
+                </div>
             {loading ? (
               <div className="space-y-3">
                 {[...Array(5)].map((_, i) => <div key={i} className="skeleton h-16 rounded-lg" />)}
@@ -2138,6 +2327,7 @@ export default function AdminDashboardClient() {
             )}
           </div>
         </div>
+        </>
         )}
       </div>
 
