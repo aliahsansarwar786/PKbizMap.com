@@ -963,7 +963,7 @@ export default function AdminDashboardClient() {
                                   PRIORITY
                                 </span>
                               </div>
-                              <p className="text-xs text-amber-900/80 mt-0.5 truncate">
+                              <p className="text-xs text-amber-900/80 mt-0.5">
                                 Businesses awaiting review &amp; approval
                               </p>
                             </div>
