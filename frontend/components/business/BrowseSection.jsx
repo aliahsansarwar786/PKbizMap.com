@@ -565,8 +565,17 @@ export default function BrowseSection({
 
   // Helper: Category listing count
   const getCategoryCount = (categoryName) => {
-    if (!internalSummary?.categories || !effectiveCountry) return 0;
-    const countryMap = internalSummary.categories[effectiveCountry] || {};
+    if (!internalSummary || !effectiveCountry) return 0;
+    if (effectiveCity) {
+      const countryCities = internalSummary.categoriesByCity?.[effectiveCountry] || {};
+      const cityMap =
+        countryCities[effectiveCity] ||
+        countryCities[effectiveCity.toLowerCase()] ||
+        Object.entries(countryCities).find(([k]) => k.toLowerCase() === effectiveCity.toLowerCase())?.[1];
+      if (cityMap) return cityMap[categoryName] || 0;
+      return 0;
+    }
+    const countryMap = internalSummary.categories?.[effectiveCountry] || {};
     return countryMap[categoryName] || 0;
   };
 

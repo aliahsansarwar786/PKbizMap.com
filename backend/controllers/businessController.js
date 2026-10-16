@@ -652,6 +652,7 @@ const getBusinessSummary = asyncHandler(async (req, res) => {
   const countries = { Pakistan: 0, UAE: 0, USA: 0 };
   const cities = { Pakistan: {}, UAE: {}, USA: {} };
   const categories = { Pakistan: {}, UAE: {}, USA: {} };
+  const categoriesByCity = { Pakistan: {}, UAE: {}, USA: {} };
 
   for (const b of businesses) {
     let bCountry = (b.address?.country || '').trim();
@@ -673,6 +674,13 @@ const getBusinessSummary = asyncHandler(async (req, res) => {
       if (!categories[bCountry]) categories[bCountry] = {};
       categories[bCountry][cat] = (categories[bCountry][cat] || 0) + 1;
     }
+
+    if (!categoriesByCity[bCountry]) categoriesByCity[bCountry] = {};
+    if (rawCity && cat) {
+      if (!categoriesByCity[bCountry][rawCity]) categoriesByCity[bCountry][rawCity] = {};
+      categoriesByCity[bCountry][rawCity][cat] =
+        (categoriesByCity[bCountry][rawCity][cat] || 0) + 1;
+    }
   }
 
   res.status(200).json({
@@ -683,6 +691,7 @@ const getBusinessSummary = asyncHandler(async (req, res) => {
       countries,
       cities,
       categories,
+      categoriesByCity,
     },
   });
 });
