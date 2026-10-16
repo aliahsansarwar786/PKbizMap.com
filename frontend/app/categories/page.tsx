@@ -61,10 +61,10 @@ export default function CategoriesPage() {
                 <Link
                   key={name}
                   href={`/businesses?category=${encodeURIComponent(name)}`}
-                  className="flex items-center gap-5 p-4 bg-white rounded-2xl border border-slate-200 hover:border-blue-400 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
+                  className="flex items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 bg-white rounded-2xl border border-slate-200 hover:border-blue-400 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
                   suppressHydrationWarning
                 >
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl overflow-hidden shrink-0 relative bg-slate-100 shadow-sm">
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-xl overflow-hidden shrink-0 relative bg-slate-100 shadow-sm">
                     <img
                       src={image}
                       alt={name}

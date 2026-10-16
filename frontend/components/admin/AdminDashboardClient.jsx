@@ -18,14 +18,15 @@ import BusinessForm from '@/components/business/BusinessForm';
 
 function StatCard({ label, value, icon: Icon, color = '#2563eb' }) {
   return (
-    <div className="card p-5">
-      <div className="flex items-center justify-between mb-3">
-        <p style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280' }}>{label}</p>
-        <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${color}15` }}>
-          <Icon size={18} style={{ color }} />
+    <div className="card p-3.5 sm:p-5">
+      <div className="flex items-center justify-between mb-2 sm:mb-3">
+        <p className="text-xs sm:text-[0.8125rem] font-medium text-gray-500 truncate mr-1">{label}</p>
+        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color}15` }}>
+          <Icon size={16} className="sm:hidden" style={{ color }} />
+          <Icon size={18} className="hidden sm:block" style={{ color }} />
         </div>
       </div>
-      <p style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1f2937' }}>{value ?? '—'}</p>
+      <p className="text-xl sm:text-2xl lg:text-[1.75rem] font-bold text-gray-800 tracking-tight">{value ?? '—'}</p>
     </div>
   );
 }
@@ -781,7 +782,7 @@ export default function AdminDashboardClient() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
           {statsLoading ? (
             [...Array(5)].map((_, i) => <div key={i} className="skeleton rounded-xl h-24" />)
           ) : (
@@ -842,7 +843,7 @@ export default function AdminDashboardClient() {
 
         {/* Tabs Bar or Empty State */}
         {tabs.length === 0 ? (
-          <div className="card p-12 text-center my-6">
+          <div className="card p-8 sm:p-12 text-center my-6">
             <Shield size={48} className="mx-auto text-amber-500 mb-3" />
             <h3 className="text-lg font-bold text-gray-800 mb-1">Sub-Admin (No Permissions Assigned)</h3>
             <p className="text-sm text-gray-600 max-w-md mx-auto">
@@ -851,12 +852,20 @@ export default function AdminDashboardClient() {
           </div>
         ) : (
           <div className="card overflow-hidden">
-            <div className="flex border-b overflow-x-auto" style={{ borderColor: '#e5e7eb' }}>
+            <div
+              className="flex border-b overflow-x-auto"
+              style={{
+                borderColor: '#e5e7eb',
+                WebkitOverflowScrolling: 'touch',
+                scrollbarWidth: 'none',
+                msOverflowStyle: 'none',
+              }}
+            >
             {tabs.map(({ id, label, badge, badgeClass }) => (
               <button
                 key={id}
                 onClick={() => { setTab(id); setPage(1); }}
-                className="flex items-center gap-2 px-5 py-3 text-sm font-medium transition-colors relative whitespace-nowrap"
+                className="flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-3 text-xs sm:text-sm font-semibold transition-colors relative whitespace-nowrap shrink-0 min-h-[44px]"
                 style={{
                   color: tab === id ? '#2563eb' : '#6b7280',
                   background: 'none',
@@ -871,7 +880,7 @@ export default function AdminDashboardClient() {
                 {badge != null && (
                   <span
                     className={`badge ${badgeClass || 'badge-yellow'}`}
-                    style={{ fontSize: '0.7rem', padding: '2px 6px' }}
+                    style={{ fontSize: '0.6875rem', padding: '1px 6px' }}
                   >
                     {badge}
                   </span>
@@ -966,7 +975,7 @@ export default function AdminDashboardClient() {
                         </div>
 
                         {/* Action buttons */}
-                        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap pt-3 sm:pt-0 border-t border-gray-200/80 sm:border-0 w-full sm:w-auto justify-start sm:justify-end">
                           {biz.paymentReceipt?.url && (
                             <button
                               type="button"
@@ -974,12 +983,12 @@ export default function AdminDashboardClient() {
                                 setVerifiedInBankApp(false);
                                 setSelectedReceiptBiz(biz);
                               }}
-                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+                              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors min-h-[40px]"
                               style={{ background: '#ecfdf5', color: '#065f46', border: '1px solid #6ee7b7', cursor: 'pointer' }}
                               aria-label={`View payment receipt for ${biz.title}`}
                               title="View Payment Screenshot"
                             >
-                              <Eye size={13} /> View Screenshot
+                              <Eye size={14} /> View Screenshot
                             </button>
                           )}
 
@@ -997,10 +1006,10 @@ export default function AdminDashboardClient() {
                                   handleApprove(biz._id);
                                 }}
                                 disabled={receiptMissing}
-                                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-colors min-h-[40px] ${
                                   receiptMissing
                                     ? 'opacity-40 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200'
-                                    : 'bg-green-50 text-green-800 border-green-200 hover:bg-green-100 cursor-pointer'
+                                    : 'bg-green-50 text-green-800 border-green-200 hover:bg-green-100 cursor-pointer shadow-2xs'
                                 }`}
                                 style={{ border: '1px solid' }}
                                 aria-label={`Approve ${biz.title}`}
@@ -1010,48 +1019,49 @@ export default function AdminDashboardClient() {
                                     : `Approve ${biz.title}`
                                 }
                               >
-                                <Check size={13} /> Approve
+                                <Check size={14} /> Approve
                               </button>
                             );
                           })()}
                           {!biz.isApproved && (isSuperAdmin || perms.canApproveListings) && (
                             <button
                               onClick={() => handleReject(biz._id)}
-                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                              className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-colors min-h-[40px]"
                               style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', cursor: 'pointer' }}
                               aria-label={`Reject ${biz.title}`}
                             >
-                              <X size={13} /> Reject
+                              <X size={14} /> Reject
                             </button>
                           )}
                           {(isSuperAdmin || perms.canApproveListings) && (
                             <button
                               type="button"
                               onClick={() => setEditingBusiness(biz)}
-                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200 cursor-pointer"
+                              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200 cursor-pointer min-h-[40px]"
                               aria-label={`Edit ${biz.title}`}
                               title="Edit Business Details (Admin)"
                             >
-                              <Edit3 size={13} /> Edit
+                              <Edit3 size={14} /> Edit
                             </button>
                           )}
                           <Link
                             href={biz.isApproved ? `/businesses/${biz._id}` : '#'}
-                            className={`p-2 rounded-lg transition-colors ${!biz.isApproved ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-200'}`}
+                            className={`p-2.5 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center ${!biz.isApproved ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-200 text-gray-600'}`}
                             aria-label={`View ${biz.title}`}
-                            style={{ color: '#6b7280' }}
                             onClick={(e) => !biz.isApproved && e.preventDefault()}
+                            title="View Business on Site"
                           >
-                            <CheckCircle2 size={15} />
+                            <CheckCircle2 size={16} />
                           </Link>
                           {(isSuperAdmin || perms.canDeleteListings) && (
                             <button
                               onClick={() => handleDeleteBusiness(biz._id, biz.title)}
-                              className="p-2 rounded-lg hover:bg-red-50 transition-colors"
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}
+                              className="p-2.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center cursor-pointer"
+                              style={{ background: 'none', border: 'none' }}
                               aria-label={`Delete ${biz.title}`}
+                              title="Delete Business"
                             >
-                              <Trash2 size={15} />
+                              <Trash2 size={16} />
                             </button>
                           )}
                         </div>
@@ -1072,7 +1082,7 @@ export default function AdminDashboardClient() {
                     }}
                     className="flex items-center gap-2 flex-1 max-w-md"
                   >
-                    <div className="relative flex-1">
+                    <div className="relative flex-1 min-w-0">
                       <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                       <input
                         type="text"
@@ -1082,7 +1092,7 @@ export default function AdminDashboardClient() {
                         className="form-input pl-9 text-sm"
                       />
                     </div>
-                    <button type="submit" className="btn-secondary text-xs px-3 py-2 font-semibold">
+                    <button type="submit" className="btn-secondary text-xs px-3 py-2 font-semibold min-h-[38px] shrink-0">
                       Search
                     </button>
                     {paymentSearch && (
@@ -1173,7 +1183,7 @@ export default function AdminDashboardClient() {
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+                        <div className="flex items-center gap-2 flex-wrap pt-3 sm:pt-0 border-t border-gray-200/80 sm:border-0 w-full sm:w-auto justify-start sm:justify-end">
                           {p.paymentReceipt?.url && (
                             <button
                               type="button"
@@ -1181,19 +1191,19 @@ export default function AdminDashboardClient() {
                                 setVerifiedInBankApp(false);
                                 setSelectedReceiptBiz(p);
                               }}
-                              className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-200 cursor-pointer"
+                              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-200 cursor-pointer min-h-[40px]"
                               title="View uploaded payment receipt"
                             >
-                              <Eye size={13} /> View Receipt
+                              <Eye size={14} /> View Receipt
                             </button>
                           )}
                           <button
                             type="button"
                             onClick={() => setEditingBusiness(p)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200 cursor-pointer"
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200 cursor-pointer min-h-[40px]"
                             title="Edit Business Details (Admin)"
                           >
-                            <Edit3 size={13} /> Edit Business
+                            <Edit3 size={14} /> Edit Business
                           </button>
                         </div>
                       </div>
@@ -1212,7 +1222,7 @@ export default function AdminDashboardClient() {
                   }}
                   className="flex items-center gap-2 max-w-md pb-2"
                 >
-                  <div className="relative flex-1">
+                  <div className="relative flex-1 min-w-0">
                     <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                     <input
                       type="text"
@@ -1222,7 +1232,7 @@ export default function AdminDashboardClient() {
                       className="form-input pl-9 text-sm"
                     />
                   </div>
-                  <button type="submit" className="btn-secondary text-xs px-3 py-2 font-semibold">
+                  <button type="submit" className="btn-secondary text-xs px-3 py-2 font-semibold min-h-[38px] shrink-0">
                     Search
                   </button>
                   {reviewSearch && (
@@ -1276,10 +1286,10 @@ export default function AdminDashboardClient() {
                           <button
                             type="button"
                             onClick={() => handleDeleteReview(r._id, r.business?.title)}
-                            className="flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors border border-red-200 self-end sm:self-start cursor-pointer font-medium"
+                            className="flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg text-red-600 bg-red-50 hover:bg-red-100 transition-colors border border-red-200 self-start sm:self-start cursor-pointer font-medium min-h-[40px]"
                             title="Delete this review permanently"
                           >
-                            <Trash2 size={13} /> Delete Review
+                            <Trash2 size={14} /> Delete Review
                           </button>
                         )}
                       </div>
@@ -1328,7 +1338,7 @@ export default function AdminDashboardClient() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+                          <div className="flex flex-wrap items-center gap-2 pt-2.5 sm:pt-0 border-t border-gray-100 sm:border-0 w-full sm:w-auto justify-start sm:justify-end">
                             {u._id !== user?._id && (
                               <>
                                 {u.role === 'user' && (
@@ -1336,7 +1346,7 @@ export default function AdminDashboardClient() {
                                     <button
                                       type="button"
                                       onClick={() => handleSetRole(u._id, 'admin')}
-                                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                      className="min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shadow-2xs shrink-0 inline-flex items-center justify-center"
                                       style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer' }}
                                       title="Grant full admin privileges"
                                     >
@@ -1345,7 +1355,7 @@ export default function AdminDashboardClient() {
                                     <button
                                       type="button"
                                       onClick={() => handleSetRole(u._id, 'subadmin')}
-                                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                      className="min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shadow-2xs shrink-0 inline-flex items-center justify-center"
                                       style={{ background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe', cursor: 'pointer' }}
                                       title="Grant sub-admin role with custom permissions"
                                     >
@@ -1359,7 +1369,7 @@ export default function AdminDashboardClient() {
                                     <button
                                       type="button"
                                       onClick={() => handleSetRole(u._id, 'admin')}
-                                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                      className="min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shadow-2xs shrink-0 inline-flex items-center justify-center"
                                       style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer' }}
                                       title="Promote to full admin"
                                     >
@@ -1368,7 +1378,7 @@ export default function AdminDashboardClient() {
                                     <button
                                       type="button"
                                       onClick={() => handleSetRole(u._id, 'user')}
-                                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                      className="min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shadow-2xs shrink-0 inline-flex items-center justify-center"
                                       style={{ background: '#f3f4f6', color: '#4b5563', border: '1px solid #e5e7eb', cursor: 'pointer' }}
                                       title="Demote to regular user"
                                     >
@@ -1382,7 +1392,7 @@ export default function AdminDashboardClient() {
                                     <button
                                       type="button"
                                       onClick={() => handleSetRole(u._id, 'subadmin')}
-                                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                      className="min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shadow-2xs shrink-0 inline-flex items-center justify-center"
                                       style={{ background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe', cursor: 'pointer' }}
                                       title="Change to sub-admin"
                                     >
@@ -1391,7 +1401,7 @@ export default function AdminDashboardClient() {
                                     <button
                                       type="button"
                                       onClick={() => handleSetRole(u._id, 'user')}
-                                      className="px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                                      className="min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shadow-2xs shrink-0 inline-flex items-center justify-center"
                                       style={{ background: '#f3f4f6', color: '#4b5563', border: '1px solid #e5e7eb', cursor: 'pointer' }}
                                       title="Demote to regular user"
                                     >
@@ -1403,12 +1413,11 @@ export default function AdminDashboardClient() {
                                 <button
                                   type="button"
                                   onClick={() => handleDeleteUser(u._id, u.name)}
-                                  className="p-2 rounded-lg hover:bg-red-50 transition-colors"
-                                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626' }}
+                                  className="min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors inline-flex items-center justify-center gap-1 shrink-0 cursor-pointer"
                                   aria-label={`Delete user ${u.name}`}
                                   title="Delete user"
                                 >
-                                  <Trash2 size={15} />
+                                  <Trash2 size={14} /> Delete
                                 </button>
                               </>
                             )}
@@ -2035,9 +2044,9 @@ export default function AdminDashboardClient() {
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                      {/* Toggle Option */}
-                      <div className="flex items-start gap-3 p-3.5 bg-gray-50/80 rounded-xl border border-gray-200">
+                    <div className="space-y-4 pt-1">
+                      {/* Toggle Option (Full-Width) */}
+                      <div className="flex items-start gap-3 p-3.5 bg-gray-50/80 rounded-xl border border-gray-200 w-full">
                         <input
                           id="ownerNotificationsEnabled"
                           type="checkbox"
@@ -2050,7 +2059,7 @@ export default function AdminDashboardClient() {
                           }
                           className="w-4 h-4 mt-0.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
                         />
-                        <label htmlFor="ownerNotificationsEnabled" className="cursor-pointer select-none">
+                        <label htmlFor="ownerNotificationsEnabled" className="cursor-pointer select-none flex-1">
                           <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1f2937' }}>
                             Send Alerts on New Listings &amp; Users
                           </p>
@@ -2060,10 +2069,10 @@ export default function AdminDashboardClient() {
                         </label>
                       </div>
 
-                      {/* Recipient Email Input */}
-                      <div>
-                        <label htmlFor="ownerNotificationEmail" className="form-label flex items-center justify-between">
-                          <span>Owner Notification Email</span>
+                      {/* Recipient Email Input (FULL-WIDTH) */}
+                      <div className="w-full">
+                        <label htmlFor="ownerNotificationEmail" className="form-label flex flex-wrap items-center justify-between gap-1 mb-1.5">
+                          <span className="font-bold text-gray-800">Owner Notification Email</span>
                           <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Default: ahsanalisarwar555@gmail.com</span>
                         </label>
                         <input
@@ -2076,11 +2085,11 @@ export default function AdminDashboardClient() {
                               ownerNotificationEmail: e.target.value,
                             })
                           }
-                          className="form-input"
+                          className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm sm:text-base text-gray-900 font-mono sm:font-sans focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
                           placeholder="e.g. ahsanalisarwar555@gmail.com"
                         />
                         <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
-                          If left blank or disabled, notification emails will be skipped.
+                          If left blank or disabled, notification emails will be skipped. Both new listing submissions and new user registrations will notify this inbox.
                         </p>
                       </div>
                     </div>

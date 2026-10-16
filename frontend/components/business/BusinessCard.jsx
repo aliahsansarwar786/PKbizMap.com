@@ -154,7 +154,7 @@ export default function BusinessCard({ business }) {
               href={whatsappHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200/80 hover:border-emerald-600 transition-colors duration-200"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold bg-emerald-50 hover:bg-emerald-600 text-emerald-700 hover:text-white border border-emerald-200/80 hover:border-emerald-600 transition-colors duration-200 min-h-[44px]"
               aria-label={`Chat on WhatsApp with ${business.title}`}
             >
               <WhatsAppIcon size={14} />
@@ -165,7 +165,7 @@ export default function BusinessCard({ business }) {
             {phoneHref ? (
               <a
                 href={phoneHref}
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200/80 hover:border-blue-600 transition-colors duration-200"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold bg-blue-50 hover:bg-blue-600 text-blue-700 hover:text-white border border-blue-200/80 hover:border-blue-600 transition-colors duration-200 min-h-[44px]"
                 aria-label={`Call ${business.title}`}
               >
                 <Phone size={13} />
@@ -175,7 +175,7 @@ export default function BusinessCard({ business }) {
               <button
                 type="button"
                 disabled
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-slate-50 text-slate-400 border border-slate-200/60 cursor-not-allowed opacity-60"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold bg-slate-50 text-slate-400 border border-slate-200/60 cursor-not-allowed opacity-60 min-h-[44px]"
                 aria-label="No phone number available"
               >
                 <Phone size={13} />

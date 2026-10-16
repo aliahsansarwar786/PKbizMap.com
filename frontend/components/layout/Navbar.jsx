@@ -550,7 +550,7 @@ export default function Navbar() {
 
           {/* Mobile menu toggle (visible below lg) */}
           <button
-            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors text-slate-700 cursor-pointer"
+            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors text-slate-700 cursor-pointer min-h-[44px] min-w-[44px] flex items-center justify-center shrink-0"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileOpen}

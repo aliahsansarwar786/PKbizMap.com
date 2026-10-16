@@ -314,7 +314,7 @@ export default function BusinessDirectory() {
               setKeyword(keywordInput.trim());
               setPage(1);
             }}
-            className="flex items-center gap-2.5 sm:gap-3"
+            className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3"
           >
             <div className="relative flex-1">
               <Search
@@ -476,7 +476,7 @@ export default function BusinessDirectory() {
                 </button>
               </div>
             ) : loading ? (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                 {[...Array(6)].map((_, i) => (
                   <SkeletonCard key={i} />
                 ))}
@@ -503,7 +503,7 @@ export default function BusinessDirectory() {
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                 {businesses.map((business) => (
                   <BusinessCard key={business._id} business={business} />
                 ))}

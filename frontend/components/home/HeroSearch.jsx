@@ -33,7 +33,7 @@ export default function HeroSearch({ categories = [] }) {
   };
 
   return (
-    <div className="rounded-2xl border border-gray-100 bg-white/95 p-6 sm:p-8 shadow-2xl backdrop-blur-md">
+    <div className="rounded-2xl border border-gray-100 bg-white/95 p-4 sm:p-6 md:p-8 shadow-2xl backdrop-blur-md">
       <h2 className="text-xl font-bold text-gray-900 mb-5 text-center sm:text-left">
         Search Local Businesses
       </h2>

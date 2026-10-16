@@ -600,7 +600,7 @@ export default function BusinessForm({
       ───────────────────────────────────────────────────────────── */}
       <section
         aria-label="Business Identity"
-        className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-6 sm:p-7 space-y-6"
+        className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-4 sm:p-6 md:p-7 space-y-5 sm:space-y-6"
       >
         <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
           <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold shrink-0">
@@ -753,7 +753,7 @@ export default function BusinessForm({
       ───────────────────────────────────────────────────────────── */}
       <section
         aria-label="Location and Category"
-        className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-6 sm:p-7 space-y-6"
+        className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-4 sm:p-6 md:p-7 space-y-5 sm:space-y-6"
       >
         <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
           <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
@@ -925,7 +925,7 @@ export default function BusinessForm({
       ───────────────────────────────────────────────────────────── */}
       <section
         aria-label="Content and Media"
-        className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-6 sm:p-7 space-y-6"
+        className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-4 sm:p-6 md:p-7 space-y-5 sm:space-y-6"
       >
         <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
           <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold shrink-0">
@@ -1065,7 +1065,7 @@ export default function BusinessForm({
       ───────────────────────────────────────────────────────────── */}
       <section
         aria-label="Weekly Opening Hours"
-        className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-6 sm:p-7 space-y-6"
+        className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-4 sm:p-6 md:p-7 space-y-5 sm:space-y-6"
       >
         <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-gray-100">
           <div className="flex items-center gap-3">
@@ -1087,18 +1087,18 @@ export default function BusinessForm({
           </div>
 
           {/* Quick preset buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
             <button
               type="button"
               onClick={applyDefaultHours}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer"
+              className="min-h-[40px] px-3.5 py-2 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors cursor-pointer"
             >
               Standard (Mon-Sat 9AM-6PM)
             </button>
             <button
               type="button"
               onClick={apply24SevenHours}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer"
+              className="min-h-[40px] px-3.5 py-2 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors cursor-pointer"
             >
               24/7 Open
             </button>
@@ -1177,7 +1177,7 @@ export default function BusinessForm({
       ───────────────────────────────────────────────────────────── */}
       <section
         aria-label="Online Links"
-        className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-6 sm:p-7 space-y-6"
+        className="bg-white rounded-2xl border border-gray-200/90 shadow-xs p-4 sm:p-6 md:p-7 space-y-5 sm:space-y-6"
       >
         <div className="flex items-center gap-3 pb-4 border-b border-gray-100">
           <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold shrink-0">
@@ -1314,7 +1314,7 @@ export default function BusinessForm({
         return (
           <section
             aria-label="Listing Charges"
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 sm:p-7 space-y-6 relative overflow-hidden"
+            className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 sm:p-6 md:p-7 space-y-5 sm:space-y-6 relative overflow-hidden"
           >
             {/* 1. HEADER ROW */}
             <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-gray-100">
