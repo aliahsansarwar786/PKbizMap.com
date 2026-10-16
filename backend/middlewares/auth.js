@@ -49,4 +49,21 @@ const protect = asyncHandler(async (req, res, next) => {
   next();
 });
 
-module.exports = { protect };
+/**
+ * Middleware ensuring user has verified their email address before proceeding.
+ * Admins and subadmins bypass this check.
+ */
+const requireVerifiedEmail = (req, res, next) => {
+  const isAdmin = req.user?.role === 'admin' || req.user?.role === 'subadmin';
+  if (!isAdmin && req.user?.emailVerified === false) {
+    return res.status(403).json({
+      success: false,
+      requiresEmailVerification: true,
+      message: 'Please verify your email before adding a business',
+    });
+  }
+  next();
+};
+
+module.exports = { protect, requireVerifiedEmail };
+

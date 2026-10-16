@@ -112,7 +112,7 @@ export default function BusinessForm({
   onAdminSaved = null,
   onCancel = null,
 }) {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
   const isEdit = !!existingBusiness;
 
@@ -577,6 +577,43 @@ export default function BusinessForm({
       setLoading(false);
     }
   };
+
+  // If user is logged in but unverified (and not an admin), show verification banner instead of form
+  if (
+    !authLoading &&
+    user &&
+    user.emailVerified === false &&
+    user.role !== 'admin' &&
+    user.role !== 'subadmin'
+  ) {
+    return (
+      <div className="bg-white rounded-3xl border border-amber-200/90 shadow-sm p-8 max-w-xl mx-auto text-center my-6">
+        <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-4 border border-amber-200 shadow-xs">
+          <Mail size={32} />
+        </div>
+        <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 mb-2">
+          Email Verification Required
+        </h2>
+        <p className="text-sm text-slate-600 mb-6 leading-relaxed max-w-md mx-auto">
+          Please verify your email address (<strong className="text-slate-800">{user.email}</strong>) before adding a business listing to BizPrimeHub.
+        </p>
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Link
+            href={`/verify-email?email=${encodeURIComponent(user.email)}&next=/add-business`}
+            className="btn-primary w-full sm:w-auto px-6 h-11 justify-center font-bold shadow-md"
+          >
+            Verify Email Now &rarr;
+          </Link>
+          <Link
+            href="/dashboard"
+            className="btn-secondary w-full sm:w-auto px-5 h-11 justify-center"
+          >
+            Back to Dashboard
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8 max-w-4xl mx-auto" noValidate>

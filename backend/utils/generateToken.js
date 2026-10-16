@@ -9,7 +9,7 @@ const jwt = require('jsonwebtoken');
  * @param {Object} res - Express response object
  * @param {string} message - Success message
  */
-const generateTokenAndSend = (user, statusCode, res, message) => {
+const generateTokenAndSend = (user, statusCode, res, message, extraData = {}) => {
   // Minimal JWT payload - never include password or sensitive data
   const payload = {
     id: user._id,
@@ -35,6 +35,7 @@ const generateTokenAndSend = (user, statusCode, res, message) => {
     name: user.name,
     email: user.email,
     role: user.role,
+    emailVerified: user.emailVerified === true,
     permissions: user.permissions,
     avatar: user.avatar,
     createdAt: user.createdAt,
@@ -46,7 +47,9 @@ const generateTokenAndSend = (user, statusCode, res, message) => {
     .json({
       success: true,
       message,
-      data: { user: safeUser },
+      token,
+      data: { user: safeUser, ...extraData },
+      ...extraData,
     });
 };
 

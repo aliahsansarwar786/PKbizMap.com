@@ -5,24 +5,17 @@ import { Suspense } from 'react';
 
 export const metadata = {
   title: 'Reset Password - BizPrimeHub',
-  description: 'Set a new password for your BizPrimeHub account.',
+  description: 'Password reset instructions for BizPrimeHub.',
 };
 
-export default async function ResetPasswordWithTokenPage({
-  params,
-}: {
-  params: Promise<{ token: string }>;
-}) {
-  const resolvedParams = await params;
-  const token = resolvedParams?.token || '';
-
+export default function ResetPasswordWithTokenPage() {
   return (
     <>
       <Navbar />
       <main style={{ background: '#f9fafb', minHeight: '80vh' }} className="flex items-center py-12">
         <div className="container-max w-full">
           <Suspense fallback={<div className="text-center p-4">Loading...</div>}>
-            <ResetPasswordForm tokenProp={token} />
+            <ResetPasswordForm />
           </Suspense>
         </div>
       </main>
@@ -30,3 +23,4 @@ export default async function ResetPasswordWithTokenPage({
     </>
   );
 }
+

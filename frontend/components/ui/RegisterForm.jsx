@@ -70,9 +70,9 @@ export default function RegisterForm() {
     setErrors({});
     setLoading(true);
     try {
-      await register({ name: form.name.trim(), email: form.email.toLowerCase(), password: form.password });
-      toast.success('Account created! Welcome to BizPrimeHub.');
-      router.push('/dashboard');
+      const res = await register({ name: form.name.trim(), email: form.email.toLowerCase(), password: form.password });
+      toast.success('Account created! Please verify your email with the 6-digit code sent to you.');
+      router.push(`/verify-email?email=${encodeURIComponent(form.email.toLowerCase())}`);
     } catch (err) {
       if (err.status === 409) {
         setErrors({ email: 'An account with this email already exists.' });

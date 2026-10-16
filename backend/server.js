@@ -84,6 +84,7 @@ app.use(mongoSanitize()); // Prevent NoSQL injection ($, . stripping)
 // Fields exempt from HTML entity encoding / sanitization:
 // - Whitelisted enum fields (category, country): strictly validated against exact safe string lists
 // - Password fields: must preserve raw characters (including &, <, >) and are never rendered in HTML
+// - OTP, tokens, and email fields
 const SANITIZE_EXEMPT_FIELDS = new Set([
   'category',
   'country',
@@ -91,6 +92,10 @@ const SANITIZE_EXEMPT_FIELDS = new Set([
   'currentPassword',
   'newPassword',
   'confirmPassword',
+  'otp',
+  'resetToken',
+  'email',
+  'newEmail',
 ]);
 
 // ─── Security: XSS Protection (sanitize string fields in body) ───────────────
@@ -141,7 +146,7 @@ const generalLimiter = rateLimit({
 // Strict limiter for auth endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20,
+  max: 30,
   message: {
     success: false,
     message: 'Too many authentication attempts. Please try again after 15 minutes.',
@@ -150,13 +155,13 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Very strict limiter for password reset
+// Strict limiter for password reset
 const passwordResetLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5,
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 25,
   message: {
     success: false,
-    message: 'Too many password reset attempts. Please try again after 1 hour.',
+    message: 'Too many password reset attempts. Please try again after 15 minutes.',
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -181,8 +186,12 @@ app.use(async (req, res, next) => {
 // ─── API Routes ───────────────────────────────────────────────────────────────
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/register', authLimiter);
+app.use('/api/auth/verify-email', authLimiter);
+app.use('/api/auth/resend-otp', authLimiter);
 app.use('/api/auth/forgot-password', passwordResetLimiter);
+app.use('/api/auth/verify-reset-otp', passwordResetLimiter);
 app.use('/api/auth/reset-password', passwordResetLimiter);
+app.use('/api/auth/resend-reset-otp', passwordResetLimiter);
 
 app.use('/api/auth', authRoutes);
 app.use('/api/businesses', businessRoutes);

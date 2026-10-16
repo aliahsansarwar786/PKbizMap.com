@@ -51,6 +51,64 @@ const forgotPasswordValidator = [
     .normalizeEmail({ gmail_remove_dots: false }),
 ];
 
+const verifyEmailValidator = [
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Email is required')
+    .isEmail().withMessage('Please provide a valid email')
+    .normalizeEmail({ gmail_remove_dots: false }),
+  body('otp')
+    .trim()
+    .notEmpty().withMessage('Verification code is required')
+    .isLength({ min: 6, max: 6 }).withMessage('Verification code must be 6 digits')
+    .isNumeric().withMessage('Verification code must contain numbers only'),
+];
+
+const resendOtpValidator = [
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Email is required')
+    .isEmail().withMessage('Please provide a valid email')
+    .normalizeEmail({ gmail_remove_dots: false }),
+];
+
+const updateEmailValidator = [
+  body('newEmail')
+    .trim()
+    .notEmpty().withMessage('New email address is required')
+    .isEmail().withMessage('Please provide a valid email')
+    .normalizeEmail({ gmail_remove_dots: false }),
+];
+
+const verifyResetOtpValidator = [
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Email is required')
+    .isEmail().withMessage('Please provide a valid email')
+    .normalizeEmail({ gmail_remove_dots: false }),
+  body('otp')
+    .trim()
+    .notEmpty().withMessage('Verification code is required')
+    .isLength({ min: 6, max: 6 }).withMessage('Verification code must be 6 digits')
+    .isNumeric().withMessage('Verification code must contain numbers only'),
+];
+
+const resetPasswordWithOtpValidator = [
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Email is required')
+    .isEmail().withMessage('Please provide a valid email')
+    .normalizeEmail({ gmail_remove_dots: false }),
+  body('resetToken')
+    .trim()
+    .notEmpty().withMessage('Reset token is required'),
+  body('newPassword')
+    .notEmpty().withMessage('New password is required')
+    .isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+    .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
+    .withMessage('Password must contain uppercase, lowercase, and a number'),
+];
+
 const resetPasswordValidator = [
   body('newPassword')
     .custom((val, { req }) => {
@@ -318,7 +376,12 @@ module.exports = {
   validate,
   registerValidator,
   loginValidator,
+  verifyEmailValidator,
+  resendOtpValidator,
+  updateEmailValidator,
   forgotPasswordValidator,
+  verifyResetOtpValidator,
+  resetPasswordWithOtpValidator,
   resetPasswordValidator,
   changePasswordValidator,
   updateProfileValidator,

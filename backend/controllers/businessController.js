@@ -160,6 +160,27 @@ const getBusiness = [
 const createBusiness = [
   ...businessValidator,
   asyncHandler(async (req, res) => {
+    // Require verified email before adding a business (admins and subadmins bypass)
+    const isAdmin = req.user?.role === 'admin' || req.user?.role === 'subadmin';
+    if (!isAdmin && !req.user?.emailVerified) {
+      // Clean up uploaded images from Cloudinary if any
+      const imageFiles = Array.isArray(req.files) ? req.files : (req.files?.images || []);
+      if (imageFiles.length > 0) {
+        await Promise.all(
+          imageFiles.map((file) => cloudinary.uploader.destroy(file.filename).catch(() => {}))
+        );
+      }
+      const receiptFile = req.files?.paymentReceipt?.[0];
+      if (receiptFile?.filename) {
+        await cloudinary.uploader.destroy(receiptFile.filename).catch(() => {});
+      }
+      return res.status(403).json({
+        success: false,
+        requiresEmailVerification: true,
+        message: 'Please verify your email before adding a business.',
+      });
+    }
+
     validate(req);
 
     const {

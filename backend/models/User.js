@@ -51,13 +51,59 @@ const userSchema = new mongoose.Schema(
       url: { type: String, default: '' },
       publicId: { type: String, default: '' },
     },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerificationOTP: {
+      type: String,
+      select: false,
+    },
+    emailVerificationOTPExpires: {
+      type: Date,
+      select: false,
+    },
+    emailVerificationOTPAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+    emailVerificationLastResend: {
+      type: Date,
+      select: false,
+    },
+    resetPasswordOTP: {
+      type: String,
+      select: false,
+    },
+    resetPasswordOTPExpires: {
+      type: Date,
+      select: false,
+    },
+    resetPasswordOTPAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+    resetPasswordLastResend: {
+      type: Date,
+      select: false,
+    },
+    resetPasswordTokenHash: {
+      type: String,
+      select: false,
+    },
+    resetPasswordTokenExpires: {
+      type: Date,
+      select: false,
+    },
     resetPasswordToken: {
       type: String,
-      select: false, // Never return in queries
+      select: false, // Legacy field
     },
     resetPasswordExpire: {
       type: Date,
-      select: false,
+      select: false, // Legacy field
     },
   },
   {
@@ -107,6 +153,16 @@ userSchema.methods.toJSON = function () {
   delete obj.password;
   delete obj.resetPasswordToken;
   delete obj.resetPasswordExpire;
+  delete obj.emailVerificationOTP;
+  delete obj.emailVerificationOTPExpires;
+  delete obj.emailVerificationOTPAttempts;
+  delete obj.emailVerificationLastResend;
+  delete obj.resetPasswordOTP;
+  delete obj.resetPasswordOTPExpires;
+  delete obj.resetPasswordOTPAttempts;
+  delete obj.resetPasswordLastResend;
+  delete obj.resetPasswordTokenHash;
+  delete obj.resetPasswordTokenExpires;
   delete obj.__v;
   return obj;
 };

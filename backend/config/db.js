@@ -22,6 +22,17 @@ const connectDB = async () => {
     lastDbError = null;
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
 
+    // MIGRATION/backfill: Ensure all existing users have emailVerified = true
+    try {
+      const User = require('../models/User');
+      await User.updateMany(
+        { emailVerified: { $exists: false } },
+        { $set: { emailVerified: true } }
+      );
+    } catch (migErr) {
+      console.warn('User migration warning:', migErr.message);
+    }
+
     // Handle connection events
     mongoose.connection.on('error', (err) => {
       lastDbError = err.message;

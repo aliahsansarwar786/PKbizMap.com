@@ -48,11 +48,18 @@ async function fetchAPI(endpoint, options = {}) {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new ApiError(
+      const retryAfterHeader = response.headers.get('Retry-After');
+      const err = new ApiError(
         data.message || 'Something went wrong',
         response.status,
         data.errors || []
       );
+      err.data = data;
+      err.isBlocked = Boolean(data.isBlocked);
+      err.retryAfter = data.retryAfter || (retryAfterHeader ? parseInt(retryAfterHeader, 10) : undefined);
+      err.attemptsRemaining = data.attemptsRemaining;
+      err.requiresVerification = Boolean(data.requiresVerification || data.requiresEmailVerification);
+      throw err;
     }
 
     return data;
@@ -90,16 +97,28 @@ export const authAPI = {
   login: (data) => api.post('/auth/login', data),
   logout: () => api.post('/auth/logout'),
   getMe: () => api.get('/auth/me'),
+  verifyEmail: (data) => api.post('/auth/verify-email', data),
+  resendOtp: (data) => api.post('/auth/resend-otp', data),
+  updateEmail: (data) => api.patch('/auth/email', data),
   forgotPassword: (data) => api.post('/auth/forgot-password', data),
+  verifyResetOtp: (data) => api.post('/auth/verify-reset-otp', data),
+  resendResetOtp: (data) => api.post('/auth/resend-reset-otp', data),
+  resetPasswordWithToken: (data) => api.post('/auth/reset-password', data),
   resetPassword: (tokenOrData, payload) => {
     if (typeof tokenOrData === 'string') {
       const newPassword = typeof payload === 'object' ? (payload?.newPassword || payload?.password) : payload;
       return api.post(`/auth/reset-password/${tokenOrData}`, { newPassword, password: newPassword });
     }
-    const token = tokenOrData?.token;
+    const token = tokenOrData?.token || tokenOrData?.resetToken;
     const newPassword = tokenOrData?.newPassword || tokenOrData?.password;
     if (token) {
-      return api.post(`/auth/reset-password/${token}`, { newPassword, password: newPassword, token });
+      return api.post('/auth/reset-password', {
+        email: tokenOrData?.email,
+        resetToken: token,
+        newPassword,
+        password: newPassword,
+        token,
+      });
     }
     return api.post('/auth/reset-password', tokenOrData);
   },

@@ -4,21 +4,41 @@ const asyncHandler = require('../utils/asyncHandler');
 const generateTokenAndSend = require('../utils/generateToken');
 const cloudinary = require('../config/cloudinary');
 const sendEmail = require('../utils/sendEmail');
-const { getWelcomeEmailHtml, getPasswordResetEmailHtml, getNewUserNotificationHtml } = require('../utils/emailTemplates');
+const {
+  getWelcomeEmailHtml,
+  getNewUserNotificationHtml,
+  getEmailVerificationOtpHtml,
+  getPasswordResetOtpHtml,
+  getPasswordChangedSuccessEmailHtml,
+} = require('../utils/emailTemplates');
 const PaymentSetting = require('../models/PaymentSetting');
+const {
+  generate6DigitOtp,
+  hashOtp,
+  timingSafeCompare,
+  getClientIp,
+  checkIpBlock,
+  recordFailedAttempt,
+  clearIpAttempts,
+  OTP_EXPIRY_MS,
+  RESEND_COOLDOWN_MS,
+} = require('../utils/otpManager');
 const {
   validate,
   registerValidator,
   loginValidator,
+  verifyEmailValidator,
+  resendOtpValidator,
+  updateEmailValidator,
   forgotPasswordValidator,
-  resetPasswordValidator,
+  verifyResetOtpValidator,
+  resetPasswordWithOtpValidator,
   changePasswordValidator,
   updateProfileValidator,
 } = require('../utils/validators');
 
 // ─── Resolve active frontend URL safely ───────────────────────────────────────
 const getFrontendUrl = (req) => {
-  // 1. Prefer request Origin header if provided by browser
   try {
     const origin = req?.headers?.origin || (req?.headers?.referer ? new URL(req.headers.referer).origin : null);
     if (origin && !origin.includes('pkbizmap-com.vercel.app')) {
@@ -26,26 +46,26 @@ const getFrontendUrl = (req) => {
     }
   } catch (e) {}
 
-  // 2. Use FRONTEND_URL environment variable (ignore stale deleted deployment)
   const envUrl = process.env.FRONTEND_URL;
   if (envUrl && !envUrl.includes('pkbizmap-com.vercel.app')) {
     return envUrl.replace(/\/$/, '');
   }
 
-  // 3. Fallback to active live frontend
   return 'https://bizprimehub.vercel.app';
 };
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
+// Creates unverified user, generates 3-min OTP, sends OTP email, returns requiresVerification: true
 const register = [
   ...registerValidator,
   asyncHandler(async (req, res) => {
     validate(req);
 
     const { name, email, password } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
 
     // Check if user exists
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -53,12 +73,146 @@ const register = [
       });
     }
 
-    // Create user - password hashed by pre-save hook
-    const user = await User.create({ name, email, password });
+    // Generate fresh 6-digit numeric OTP and SHA-256 hash
+    const otp = generate6DigitOtp();
+    const otpHash = hashOtp(otp);
+    const otpExpires = new Date(Date.now() + OTP_EXPIRY_MS);
 
-    // Welcome Email: awaited before responding so serverless functions (Vercel)
-    // do not freeze execution before SMTP transmission finishes.
-    // sendEmail is safe and never throws, so signup will NEVER fail or block.
+    // Create user unverified
+    const user = await User.create({
+      name,
+      email: normalizedEmail,
+      password,
+      emailVerified: false,
+      emailVerificationOTP: otpHash,
+      emailVerificationOTPExpires: otpExpires,
+      emailVerificationOTPAttempts: 0,
+      emailVerificationLastResend: new Date(),
+    });
+
+    // Send OTP verification email: awaited before response so Vercel does not freeze
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Your BizPrimeHub verification code',
+        html: getEmailVerificationOtpHtml({ name: user.name, otp }),
+      }).catch((err) => {
+        console.error('⚠️ [Auth:Register] Error sending verification OTP email:', err.message);
+      });
+    } catch (e) {
+      console.error('⚠️ [Auth:Register] Unexpected error sending verification OTP:', e.message);
+    }
+
+    // Send session cookie + requiresVerification flag
+    generateTokenAndSend(
+      user,
+      201,
+      res,
+      'Registration successful. Please verify your email with the 6-digit code sent to you.',
+      {
+        requiresVerification: true,
+        email: user.email,
+      }
+    );
+  }),
+];
+
+// ─── POST /api/auth/verify-email ──────────────────────────────────────────────
+// Verifies 6-digit registration OTP with timing-safe check and per-IP failure tracking
+const verifyEmail = [
+  ...verifyEmailValidator,
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    const { email, otp } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+    const ip = getClientIp(req);
+
+    // 1. Check if IP is currently blocked
+    const { isBlocked, retryAfterSeconds } = await checkIpBlock(ip, 'email-verification');
+    if (isBlocked) {
+      return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+        success: false,
+        isBlocked: true,
+        retryAfter: retryAfterSeconds,
+        message: `Too many failed attempts. Your IP has been temporarily blocked for 30 minutes. Please try again later.`,
+      });
+    }
+
+    // 2. Find user including hidden OTP fields
+    const user = await User.findOne({ email: normalizedEmail }).select(
+      '+emailVerificationOTP +emailVerificationOTPExpires +emailVerificationOTPAttempts'
+    );
+
+    if (!user) {
+      const fail = await recordFailedAttempt(ip, 'email-verification');
+      if (fail.isBlocked) {
+        return res.status(429).set('Retry-After', String(fail.retryAfterSeconds)).json({
+          success: false,
+          isBlocked: true,
+          retryAfter: fail.retryAfterSeconds,
+          message: 'Too many failed attempts. Your IP has been temporarily blocked for 30 minutes.',
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        attemptsRemaining: fail.attemptsRemaining,
+        message: 'Invalid verification code.',
+      });
+    }
+
+    // If user is already verified
+    if (user.emailVerified) {
+      return res.status(200).json({
+        success: true,
+        message: 'Email is already verified. You can proceed.',
+        data: { user },
+      });
+    }
+
+    // 3. Check if OTP is expired
+    if (!user.emailVerificationOTPExpires || user.emailVerificationOTPExpires.getTime() < Date.now()) {
+      return res.status(400).json({
+        success: false,
+        isExpired: true,
+        message: 'Verification code has expired. Please request a new code.',
+      });
+    }
+
+    // 4. Timing-safe compare of OTP hash
+    const isMatch = timingSafeCompare(otp, user.emailVerificationOTP);
+
+    if (!isMatch) {
+      user.emailVerificationOTPAttempts = (user.emailVerificationOTPAttempts || 0) + 1;
+      await user.save({ validateBeforeSave: false });
+
+      const fail = await recordFailedAttempt(ip, 'email-verification');
+      if (fail.isBlocked) {
+        return res.status(429).set('Retry-After', String(fail.retryAfterSeconds)).json({
+          success: false,
+          isBlocked: true,
+          retryAfter: fail.retryAfterSeconds,
+          message: 'Too many failed attempts. Your IP has been temporarily blocked for 30 minutes.',
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        attemptsRemaining: fail.attemptsRemaining,
+        message: `Invalid verification code. ${fail.attemptsRemaining} attempt${fail.attemptsRemaining === 1 ? '' : 's'} remaining before temporary lockout.`,
+      });
+    }
+
+    // 5. Success! Clear IP attempts and activate account
+    await clearIpAttempts(ip, 'email-verification');
+
+    user.emailVerified = true;
+    user.emailVerificationOTP = undefined;
+    user.emailVerificationOTPExpires = undefined;
+    user.emailVerificationOTPAttempts = 0;
+    await user.save({ validateBeforeSave: false });
+
+    // Send Welcome Email upon successful verification
     try {
       const frontendUrl = getFrontendUrl(req);
       const loginUrl = `${frontendUrl}/login`;
@@ -67,14 +221,13 @@ const register = [
         subject: 'Welcome to BizPrimeHub!',
         html: getWelcomeEmailHtml({ name: user.name, loginUrl }),
       }).catch((err) => {
-        console.error('⚠️ [Auth:Register] Non-fatal error sending welcome email:', err.message);
+        console.error('⚠️ [Auth:VerifyEmail] Error sending welcome email:', err.message);
       });
     } catch (e) {
-      console.error('⚠️ [Auth:Register] Unexpected error setting up welcome email:', e.message);
+      console.error('⚠️ [Auth:VerifyEmail] Unexpected error sending welcome email:', e.message);
     }
 
-    // Owner Notification: New user registered alert
-    // Awaited before responding so Vercel serverless functions do not freeze SMTP delivery.
+    // Owner Notification: New user registered alert (triggered after email is verified)
     try {
       const settings = await PaymentSetting.getSettings();
       const ownerEmail = settings?.ownerNotificationEmail?.trim();
@@ -90,15 +243,443 @@ const register = [
             date: new Date().toUTCString(),
           }),
         }).catch((err) => {
-          console.error('⚠️ [Auth:Register] Non-fatal error sending owner alert:', err.message);
+          console.error('⚠️ [Auth:VerifyEmail] Error sending owner alert:', err.message);
         });
       }
     } catch (e) {
-      console.error('⚠️ [Auth:Register] Unexpected error setting up owner alert:', e.message);
+      console.error('⚠️ [Auth:VerifyEmail] Unexpected error sending owner alert:', e.message);
     }
 
-    // Send token in cookie
-    generateTokenAndSend(user, 201, res, 'Account created successfully. Welcome!');
+    // Refresh session cookie with emailVerified = true
+    generateTokenAndSend(user, 200, res, 'Email verified successfully! Welcome to BizPrimeHub.');
+  }),
+];
+
+// ─── POST /api/auth/resend-otp ────────────────────────────────────────────────
+// Resends registration OTP with 60s server-enforced cooldown
+const resendOtp = [
+  ...resendOtpValidator,
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    const { email } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+    const ip = getClientIp(req);
+
+    // Check if IP is currently blocked
+    const { isBlocked, retryAfterSeconds } = await checkIpBlock(ip, 'email-verification');
+    if (isBlocked) {
+      return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+        success: false,
+        isBlocked: true,
+        retryAfter: retryAfterSeconds,
+        message: 'Too many failed attempts. Your IP has been temporarily blocked for 30 minutes.',
+      });
+    }
+
+    const user = await User.findOne({ email: normalizedEmail }).select(
+      '+emailVerificationLastResend'
+    );
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'Account not found.' });
+    }
+
+    if (user.emailVerified) {
+      return res.status(400).json({ success: false, message: 'Email is already verified.' });
+    }
+
+    // 60-second cooldown check
+    if (user.emailVerificationLastResend) {
+      const elapsed = Date.now() - new Date(user.emailVerificationLastResend).getTime();
+      if (elapsed < RESEND_COOLDOWN_MS) {
+        const retryAfter = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
+        return res.status(429).set('Retry-After', String(retryAfter)).json({
+          success: false,
+          retryAfter,
+          message: `Please wait ${retryAfter} seconds before requesting a new code.`,
+        });
+      }
+    }
+
+    // Generate fresh OTP
+    const otp = generate6DigitOtp();
+    user.emailVerificationOTP = hashOtp(otp);
+    user.emailVerificationOTPExpires = new Date(Date.now() + OTP_EXPIRY_MS);
+    user.emailVerificationOTPAttempts = 0;
+    user.emailVerificationLastResend = new Date();
+    await user.save({ validateBeforeSave: false });
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Your BizPrimeHub verification code',
+        html: getEmailVerificationOtpHtml({ name: user.name, otp }),
+      }).catch((err) => {
+        console.error('⚠️ [Auth:ResendOtp] Error sending OTP:', err.message);
+      });
+    } catch (e) {
+      console.error('⚠️ [Auth:ResendOtp] Unexpected error sending OTP:', e.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'A new 6-digit verification code has been sent to your email.',
+    });
+  }),
+];
+
+// ─── PATCH /api/auth/email ────────────────────────────────────────────────────
+// Allows authenticated-but-unverified user to correct a typo'd email
+const updateEmail = [
+  ...updateEmailValidator,
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    if (req.user.emailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'Your email is already verified and cannot be changed here.',
+      });
+    }
+
+    const { newEmail } = req.body;
+    const normalizedNewEmail = newEmail.toLowerCase().trim();
+
+    if (normalizedNewEmail === req.user.email.toLowerCase()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a different email address.',
+      });
+    }
+
+    // Check uniqueness
+    const existing = await User.findOne({ email: normalizedNewEmail });
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: 'An account with this email already exists.',
+      });
+    }
+
+    // Generate fresh OTP for the new email
+    const otp = generate6DigitOtp();
+    const user = await User.findById(req.user._id);
+    user.email = normalizedNewEmail;
+    user.emailVerificationOTP = hashOtp(otp);
+    user.emailVerificationOTPExpires = new Date(Date.now() + OTP_EXPIRY_MS);
+    user.emailVerificationOTPAttempts = 0;
+    user.emailVerificationLastResend = new Date();
+    await user.save({ validateBeforeSave: false });
+
+    // Send OTP to new address
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Your BizPrimeHub verification code',
+        html: getEmailVerificationOtpHtml({ name: user.name, otp }),
+      }).catch((err) => {
+        console.error('⚠️ [Auth:UpdateEmail] Error sending OTP to new email:', err.message);
+      });
+    } catch (e) {
+      console.error('⚠️ [Auth:UpdateEmail] Unexpected error sending OTP:', e.message);
+    }
+
+    generateTokenAndSend(
+      user,
+      200,
+      res,
+      'Email updated successfully. A new verification code has been sent to your new email.',
+      {
+        email: user.email,
+        requiresVerification: true,
+      }
+    );
+  }),
+];
+
+// ─── POST /api/auth/forgot-password ──────────────────────────────────────────
+// Replaces reset-link flow: sends a 6-digit OTP to user's email (generic response always)
+const forgotPassword = [
+  ...forgotPasswordValidator,
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    const { email } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+    const ip = getClientIp(req);
+
+    // Check IP block
+    const { isBlocked, retryAfterSeconds } = await checkIpBlock(ip, 'password-reset');
+    if (isBlocked) {
+      return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+        success: false,
+        isBlocked: true,
+        retryAfter: retryAfterSeconds,
+        message: 'Too many failed attempts. Your IP has been temporarily blocked for 30 minutes.',
+      });
+    }
+
+    const genericResponse = {
+      success: true,
+      message: 'If an account exists for this email, a verification code has been sent.',
+    };
+
+    const user = await User.findOne({ email: normalizedEmail }).select(
+      '+resetPasswordLastResend'
+    );
+
+    if (!user) {
+      return res.status(200).json(genericResponse);
+    }
+
+    // Generate fresh OTP
+    const otp = generate6DigitOtp();
+    user.resetPasswordOTP = hashOtp(otp);
+    user.resetPasswordOTPExpires = new Date(Date.now() + OTP_EXPIRY_MS);
+    user.resetPasswordOTPAttempts = 0;
+    user.resetPasswordLastResend = new Date();
+    // Clear any previous reset tokens
+    user.resetPasswordTokenHash = undefined;
+    user.resetPasswordTokenExpires = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Your BizPrimeHub password reset code',
+        html: getPasswordResetOtpHtml({ name: user.name, otp }),
+      }).catch((err) => {
+        console.error('⚠️ [Auth:ForgotPassword] Error sending reset OTP:', err.message);
+      });
+    } catch (e) {
+      console.error('⚠️ [Auth:ForgotPassword] Unexpected error sending reset OTP:', e.message);
+    }
+
+    res.status(200).json(genericResponse);
+  }),
+];
+
+// ─── POST /api/auth/verify-reset-otp ──────────────────────────────────────────
+// Step 2 of password reset: validates OTP, returns single-use 10-minute resetToken
+const verifyResetOtp = [
+  ...verifyResetOtpValidator,
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    const { email, otp } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+    const ip = getClientIp(req);
+
+    // 1. Check IP block
+    const { isBlocked, retryAfterSeconds } = await checkIpBlock(ip, 'password-reset');
+    if (isBlocked) {
+      return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+        success: false,
+        isBlocked: true,
+        retryAfter: retryAfterSeconds,
+        message: 'Too many failed attempts. Your IP has been temporarily blocked for 30 minutes.',
+      });
+    }
+
+    // 2. Find user
+    const user = await User.findOne({ email: normalizedEmail }).select(
+      '+resetPasswordOTP +resetPasswordOTPExpires +resetPasswordOTPAttempts'
+    );
+
+    if (!user) {
+      const fail = await recordFailedAttempt(ip, 'password-reset');
+      if (fail.isBlocked) {
+        return res.status(429).set('Retry-After', String(fail.retryAfterSeconds)).json({
+          success: false,
+          isBlocked: true,
+          retryAfter: fail.retryAfterSeconds,
+          message: 'Too many failed attempts. Your IP has been temporarily blocked for 30 minutes.',
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        attemptsRemaining: fail.attemptsRemaining,
+        message: 'Invalid or expired verification code.',
+      });
+    }
+
+    // 3. Expiry check
+    if (!user.resetPasswordOTPExpires || user.resetPasswordOTPExpires.getTime() < Date.now()) {
+      return res.status(400).json({
+        success: false,
+        isExpired: true,
+        message: 'Verification code has expired. Please request a new code.',
+      });
+    }
+
+    // 4. Timing safe compare
+    const isMatch = timingSafeCompare(otp, user.resetPasswordOTP);
+
+    if (!isMatch) {
+      user.resetPasswordOTPAttempts = (user.resetPasswordOTPAttempts || 0) + 1;
+      await user.save({ validateBeforeSave: false });
+
+      const fail = await recordFailedAttempt(ip, 'password-reset');
+      if (fail.isBlocked) {
+        return res.status(429).set('Retry-After', String(fail.retryAfterSeconds)).json({
+          success: false,
+          isBlocked: true,
+          retryAfter: fail.retryAfterSeconds,
+          message: 'Too many failed attempts. Your IP has been temporarily blocked for 30 minutes.',
+        });
+      }
+
+      return res.status(400).json({
+        success: false,
+        attemptsRemaining: fail.attemptsRemaining,
+        message: `Invalid verification code. ${fail.attemptsRemaining} attempt${fail.attemptsRemaining === 1 ? '' : 's'} remaining before temporary lockout.`,
+      });
+    }
+
+    // 5. Success! Clear IP attempts and issue single-use passwordResetToken (10-min expiry)
+    await clearIpAttempts(ip, 'password-reset');
+
+    user.resetPasswordOTP = undefined;
+    user.resetPasswordOTPExpires = undefined;
+    user.resetPasswordOTPAttempts = 0;
+
+    const rawResetToken = crypto.randomBytes(32).toString('hex');
+    user.resetPasswordTokenHash = crypto.createHash('sha256').update(rawResetToken).digest('hex');
+    user.resetPasswordTokenExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    await user.save({ validateBeforeSave: false });
+
+    res.status(200).json({
+      success: true,
+      resetToken: rawResetToken,
+      message: 'Verification code confirmed. You may now set your new password.',
+    });
+  }),
+];
+
+// ─── POST /api/auth/reset-password ────────────────────────────────────────────
+// Step 3 of password reset: validates single-use resetToken, hashes new password, sends confirmation email
+const resetPassword = [
+  ...resetPasswordWithOtpValidator,
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    const { email, resetToken, newPassword } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Hash incoming resetToken to match stored hash
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    const user = await User.findOne({
+      email: normalizedEmail,
+      resetPasswordTokenHash: hashedToken,
+      resetPasswordTokenExpires: { $gt: Date.now() },
+    }).select('+resetPasswordTokenHash +resetPasswordTokenExpires');
+
+    if (!user) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired password reset session. Please request a new verification code.',
+      });
+    }
+
+    // Set new password (pre-save hook hashes with bcrypt)
+    user.password = newPassword;
+    user.resetPasswordTokenHash = undefined;
+    user.resetPasswordTokenExpires = undefined;
+    user.resetPasswordOTP = undefined;
+    user.resetPasswordOTPExpires = undefined;
+    user.resetPasswordToken = undefined; // Clear legacy field
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    // Send confirmation email: "password changed"
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Your BizPrimeHub password has been changed',
+        html: getPasswordChangedSuccessEmailHtml({ name: user.name }),
+      }).catch((err) => {
+        console.error('⚠️ [Auth:ResetPassword] Error sending confirmation email:', err.message);
+      });
+    } catch (e) {
+      console.error('⚠️ [Auth:ResetPassword] Unexpected error sending confirmation email:', e.message);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Password reset successfully. You can now log in with your new password.',
+    });
+  }),
+];
+
+// ─── POST /api/auth/resend-reset-otp ──────────────────────────────────────────
+// Resends password reset OTP with 60s cooldown (generic response)
+const resendResetOtp = [
+  ...resendOtpValidator,
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    const { email } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+    const ip = getClientIp(req);
+
+    const { isBlocked, retryAfterSeconds } = await checkIpBlock(ip, 'password-reset');
+    if (isBlocked) {
+      return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+        success: false,
+        isBlocked: true,
+        retryAfter: retryAfterSeconds,
+        message: 'Too many failed attempts. Your IP has been temporarily blocked for 30 minutes.',
+      });
+    }
+
+    const genericResponse = {
+      success: true,
+      message: 'If an account exists for this email, a new verification code has been sent.',
+    };
+
+    const user = await User.findOne({ email: normalizedEmail }).select(
+      '+resetPasswordLastResend'
+    );
+
+    if (!user) {
+      return res.status(200).json(genericResponse);
+    }
+
+    // 60-second cooldown check
+    if (user.resetPasswordLastResend) {
+      const elapsed = Date.now() - new Date(user.resetPasswordLastResend).getTime();
+      if (elapsed < RESEND_COOLDOWN_MS) {
+        const retryAfter = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
+        return res.status(429).set('Retry-After', String(retryAfter)).json({
+          success: false,
+          retryAfter,
+          message: `Please wait ${retryAfter} seconds before requesting a new code.`,
+        });
+      }
+    }
+
+    const otp = generate6DigitOtp();
+    user.resetPasswordOTP = hashOtp(otp);
+    user.resetPasswordOTPExpires = new Date(Date.now() + OTP_EXPIRY_MS);
+    user.resetPasswordOTPAttempts = 0;
+    user.resetPasswordLastResend = new Date();
+    await user.save({ validateBeforeSave: false });
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: 'Your BizPrimeHub password reset code',
+        html: getPasswordResetOtpHtml({ name: user.name, otp }),
+      }).catch((err) => {
+        console.error('⚠️ [Auth:ResendResetOtp] Error sending OTP:', err.message);
+      });
+    } catch (e) {
+      console.error('⚠️ [Auth:ResendResetOtp] Unexpected error sending OTP:', e.message);
+    }
+
+    res.status(200).json(genericResponse);
   }),
 ];
 
@@ -110,7 +691,6 @@ const login = [
 
     const { email, password } = req.body;
 
-    // Need password for comparison - use .select('+password')
     const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
     if (!user) {
       return res.status(401).json({
@@ -127,7 +707,9 @@ const login = [
       });
     }
 
-    generateTokenAndSend(user, 200, res, 'Logged in successfully.');
+    generateTokenAndSend(user, 200, res, 'Logged in successfully.', {
+      requiresVerification: !user.emailVerified && user.role !== 'admin' && user.role !== 'subadmin',
+    });
   }),
 ];
 
@@ -137,7 +719,7 @@ const logout = asyncHandler(async (req, res) => {
     .status(200)
     .cookie('token', '', {
       httpOnly: true,
-      expires: new Date(0), // Immediately expire
+      expires: new Date(0),
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       path: '/',
@@ -150,100 +732,12 @@ const logout = asyncHandler(async (req, res) => {
 
 // ─── GET /api/auth/me ─────────────────────────────────────────────────────────
 const getMe = asyncHandler(async (req, res) => {
-  // req.user is set by protect middleware with fresh DB data
   res.status(200).json({
     success: true,
     message: 'User retrieved successfully.',
     data: { user: req.user },
   });
 });
-
-// ─── POST /api/auth/forgot-password ──────────────────────────────────────────
-const forgotPassword = [
-  ...forgotPasswordValidator,
-  asyncHandler(async (req, res) => {
-    validate(req);
-
-    const { email } = req.body;
-    const user = await User.findOne({ email: email.toLowerCase() });
-
-    // Always return generic success response to prevent email enumeration attacks
-    const genericResponse = {
-      success: true,
-      message: 'If this email is registered, a reset link has been sent.',
-    };
-
-    if (!user) {
-      return res.status(200).json(genericResponse);
-    }
-
-    // Generate reset token (raw token returned, hashed token + 1-hour expiry stored in DB)
-    const resetToken = user.generatePasswordResetToken();
-    await user.save({ validateBeforeSave: false });
-
-    const frontendUrl = getFrontendUrl(req);
-    const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
-
-    // Send reset email: awaited before response so Vercel serverless environment does not freeze
-    try {
-      await sendEmail({
-        to: user.email,
-        subject: 'Reset Your BizPrimeHub Password',
-        html: getPasswordResetEmailHtml({ name: user.name, resetUrl }),
-      }).catch((err) => {
-        console.error('⚠️ [Auth:ForgotPassword] Error sending reset email:', err.message);
-      });
-    } catch (e) {
-      console.error('⚠️ [Auth:ForgotPassword] Unexpected error sending reset email:', e.message);
-    }
-
-    res.status(200).json(genericResponse);
-  }),
-];
-
-// ─── POST /api/auth/reset-password/:token (and POST /api/auth/reset-password) ─
-const resetPassword = [
-  ...resetPasswordValidator,
-  asyncHandler(async (req, res) => {
-    validate(req);
-
-    const token = req.params?.token || req.body?.token;
-    const newPassword = req.body?.newPassword || req.body?.password;
-
-    if (!token) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or missing reset token.',
-      });
-    }
-
-    // Hash the incoming raw token to compare with stored hash
-    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-
-    const user = await User.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExpire: { $gt: Date.now() }, // Token must not be expired
-    }).select('+resetPasswordToken +resetPasswordExpire');
-
-    if (!user) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or expired password reset token.',
-      });
-    }
-
-    // Set new password - hashing done by pre-save hook
-    user.password = newPassword;
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
-    await user.save();
-
-    res.status(200).json({
-      success: true,
-      message: 'Password reset successfully. You can now log in with your new password.',
-    });
-  }),
-];
 
 // ─── PATCH /api/auth/change-password ─────────────────────────────────────────
 const changePassword = [
@@ -253,7 +747,6 @@ const changePassword = [
 
     const { currentPassword, newPassword } = req.body;
 
-    // Fetch user with password for verification
     const user = await User.findById(req.user._id).select('+password');
 
     const isMatch = await user.comparePassword(currentPassword);
@@ -274,7 +767,6 @@ const changePassword = [
     user.password = newPassword;
     await user.save();
 
-    // Re-issue token with fresh cookie
     generateTokenAndSend(user, 200, res, 'Password changed successfully.');
   }),
 ];
@@ -285,8 +777,7 @@ const updateProfile = [
   asyncHandler(async (req, res) => {
     validate(req);
 
-    // Only allow safe fields - NEVER allow role or isApproved from body
-    const allowedFields = ['name', 'email'];
+    const allowedFields = ['name'];
     const updates = {};
 
     allowedFields.forEach((field) => {
@@ -295,37 +786,41 @@ const updateProfile = [
       }
     });
 
-  if (req.file) {
-    // Delete old avatar from Cloudinary if it exists
-    if (req.user.avatar?.publicId) {
-      await cloudinary.uploader.destroy(req.user.avatar.publicId);
+    if (req.file) {
+      if (req.user.avatar?.publicId) {
+        await cloudinary.uploader.destroy(req.user.avatar.publicId);
+      }
+      updates.avatar = {
+        url: req.file.path,
+        publicId: req.file.filename,
+      };
     }
-    updates.avatar = {
-      url: req.file.path,
-      publicId: req.file.filename,
-    };
-  }
 
-  const user = await User.findByIdAndUpdate(req.user._id, updates, {
-    new: true,
-    runValidators: true,
-  });
+    const user = await User.findByIdAndUpdate(req.user._id, updates, {
+      new: true,
+      runValidators: true,
+    });
 
-  res.status(200).json({
-    success: true,
-    message: 'Profile updated successfully.',
-    data: { user },
-  });
-}),
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully.',
+      data: { user },
+    });
+  }),
 ];
 
 module.exports = {
   register,
+  verifyEmail,
+  resendOtp,
+  updateEmail,
   login,
   logout,
   getMe,
   forgotPassword,
+  verifyResetOtp,
   resetPassword,
+  resendResetOtp,
   changePassword,
   updateProfile,
 };

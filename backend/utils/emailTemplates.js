@@ -388,9 +388,265 @@ const getNewUserNotificationHtml = ({ name, email, date }) => {
   `.trim();
 };
 
+/**
+ * Generates the Email Verification OTP HTML
+ * Contains ONLY the 6-digit code - NO login button, NO other CTAs.
+ * @param {Object} params
+ * @param {string} params.name
+ * @param {string} params.otp
+ * @returns {string} HTML string
+ */
+const getEmailVerificationOtpHtml = ({ name, otp }) => {
+  const safeName = name || 'there';
+  const safeOtp = String(otp || '').trim();
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your BizPrimeHub Verification Code</title>
+</head>
+<body style="${getBaseStyles()} padding: 32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">
+          BizPrimeHub
+        </h1>
+        <p style="color: #bfdbfe; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+          Email Verification
+        </p>
+      </td>
+    </tr>
+
+    <!-- Body Content -->
+    <tr>
+      <td style="padding: 32px 28px;">
+        <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #111827;">
+          Verify Your Email Address
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; color: #4b5563;">
+          Hello ${safeName},
+        </p>
+        <p style="margin: 0 0 24px 0; font-size: 15px; color: #4b5563; line-height: 1.6;">
+          Thank you for registering on <strong>BizPrimeHub</strong>. Please enter the following 6-digit verification code to confirm your email address and activate your account:
+        </p>
+
+        <!-- High-Contrast Large OTP Code Box (NO CTA buttons) -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 28px 0;">
+          <tr>
+            <td align="center">
+              <div style="display: inline-block; background: #f8fafc; border: 2px dashed #3b82f6; border-radius: 12px; padding: 18px 36px; text-align: center;">
+                <span style="font-family: 'Courier New', Courier, monospace, sans-serif; font-size: 38px; font-weight: 800; letter-spacing: 10px; color: #1e3a8a; display: block; margin-left: 10px;">
+                  ${safeOtp}
+                </span>
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Expiry Alert -->
+        <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; margin: 24px 0 20px 0;">
+          <p style="margin: 0; font-size: 13px; color: #92400e; font-weight: 600;">
+            ⏳ This code expires in <strong>3 minutes</strong> and can only be used once.
+          </p>
+        </div>
+
+        <!-- Security & Spam Notice -->
+        <p style="margin: 0 0 12px 0; font-size: 13px; color: #6b7280; line-height: 1.5;">
+          Didn't request this verification code? You can safely ignore this email — your account will not be activated without it.
+        </p>
+        <p style="margin: 0; font-size: 12px; color: #9ca3af; line-height: 1.5;">
+          💡 <em>Tip: If you ever have trouble finding our emails, please check your spam or junk folder.</em>
+        </p>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f9fafb; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+          &copy; ${new Date().getFullYear()} BizPrimeHub. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+};
+
+/**
+ * Generates the Password Reset OTP HTML
+ * Contains ONLY the 6-digit code - NO login button, NO other CTAs.
+ * @param {Object} params
+ * @param {string} params.name
+ * @param {string} params.otp
+ * @returns {string} HTML string
+ */
+const getPasswordResetOtpHtml = ({ name, otp }) => {
+  const safeName = name || 'there';
+  const safeOtp = String(otp || '').trim();
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your BizPrimeHub Password Reset Code</title>
+</head>
+<body style="${getBaseStyles()} padding: 32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">
+          BizPrimeHub
+        </h1>
+        <p style="color: #bfdbfe; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+          Account Security
+        </p>
+      </td>
+    </tr>
+
+    <!-- Body Content -->
+    <tr>
+      <td style="padding: 32px 28px;">
+        <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #111827;">
+          Password Reset Code
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; color: #4b5563;">
+          Hello ${safeName},
+        </p>
+        <p style="margin: 0 0 24px 0; font-size: 15px; color: #4b5563; line-height: 1.6;">
+          We received a request to reset the password for your BizPrimeHub account. Enter the following 6-digit verification code to proceed:
+        </p>
+
+        <!-- High-Contrast Large OTP Code Box (NO CTA buttons) -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 28px 0;">
+          <tr>
+            <td align="center">
+              <div style="display: inline-block; background: #f8fafc; border: 2px dashed #2563eb; border-radius: 12px; padding: 18px 36px; text-align: center;">
+                <span style="font-family: 'Courier New', Courier, monospace, sans-serif; font-size: 38px; font-weight: 800; letter-spacing: 10px; color: #1e3a8a; display: block; margin-left: 10px;">
+                  ${safeOtp}
+                </span>
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Expiry Alert -->
+        <div style="background-color: #fef3c7; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 6px; margin: 24px 0 20px 0;">
+          <p style="margin: 0; font-size: 13px; color: #92400e; font-weight: 600;">
+            ⏳ This code expires in <strong>3 minutes</strong> and can only be used once.
+          </p>
+        </div>
+
+        <!-- Security Notice -->
+        <p style="margin: 0 0 12px 0; font-size: 13px; color: #6b7280; line-height: 1.5;">
+          Didn't request this code? You can safely ignore this email. Your password will remain unchanged and your account remains secure.
+        </p>
+        <p style="margin: 0; font-size: 12px; color: #9ca3af; line-height: 1.5;">
+          💡 <em>Tip: If you ever have trouble finding our emails, please check your spam or junk folder.</em>
+        </p>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f9fafb; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+          &copy; ${new Date().getFullYear()} BizPrimeHub. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+};
+
+/**
+ * Generates the Password Changed Confirmation HTML
+ * @param {Object} params
+ * @param {string} params.name
+ * @returns {string} HTML string
+ */
+const getPasswordChangedSuccessEmailHtml = ({ name }) => {
+  const safeName = name || 'there';
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your BizPrimeHub Password Has Been Changed</title>
+</head>
+<body style="${getBaseStyles()} padding: 32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #065f46 0%, #059669 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">
+          BizPrimeHub
+        </h1>
+        <p style="color: #a7f3d0; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+          Security Alert
+        </p>
+      </td>
+    </tr>
+
+    <!-- Body Content -->
+    <tr>
+      <td style="padding: 32px 28px;">
+        <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #111827;">
+          Your Password Was Successfully Changed
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; color: #4b5563;">
+          Hello ${safeName},
+        </p>
+        <p style="margin: 0 0 20px 0; font-size: 15px; color: #4b5563; line-height: 1.6;">
+          This email confirms that the password for your BizPrimeHub account was successfully changed on <strong>${new Date().toUTCString()}</strong>.
+        </p>
+
+        <div style="background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">
+          <p style="margin: 0; font-size: 13px; color: #065f46; font-weight: 600;">
+            ✓ Your account is secure. You can now log in using your new password.
+          </p>
+        </div>
+
+        <p style="margin: 20px 0 0 0; font-size: 13px; color: #dc2626; line-height: 1.5;">
+          <strong>Didn't make this change?</strong> If you did not authorize this password change, please contact our support team immediately or request a new password reset.
+        </p>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f9fafb; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+          &copy; ${new Date().getFullYear()} BizPrimeHub. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+};
+
 module.exports = {
   getWelcomeEmailHtml,
   getPasswordResetEmailHtml,
   getNewListingNotificationHtml,
   getNewUserNotificationHtml,
+  getEmailVerificationOtpHtml,
+  getPasswordResetOtpHtml,
+  getPasswordChangedSuccessEmailHtml,
 };
+

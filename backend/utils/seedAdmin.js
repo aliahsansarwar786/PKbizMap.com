@@ -42,6 +42,7 @@ const seedAdmin = async () => {
       email: process.env.ADMIN_EMAIL.toLowerCase(),
       password: process.env.ADMIN_PASSWORD,
       role: 'admin',
+      emailVerified: true,
     });
 
     console.log(`✅ Admin created successfully: ${admin.email}`);
