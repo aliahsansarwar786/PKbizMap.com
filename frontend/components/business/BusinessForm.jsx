@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { businessAPI, settingsAPI, adminAPI } from '@/lib/api';
@@ -31,9 +31,17 @@ import {
   Smartphone,
   ShieldCheck,
   UploadCloud,
+  Loader2,
 } from 'lucide-react';
 import SearchableCombobox from '@/components/ui/SearchableCombobox';
 import { COUNTRIES, getCities, isValidCity } from '@/data/locations';
+
+const COUNTRY_TO_NOMINATIM_CODE = {
+  Pakistan: 'pk',
+  UAE: 'ae',
+  USA: 'us',
+};
+
 
 const CATEGORIES = [
   'Bank',
@@ -130,7 +138,6 @@ export default function BusinessForm({
     area: existingBusiness?.address?.area || '',
     zipCode: existingBusiness?.address?.zipCode || '',
     category: existingBusiness?.category || '',
-    subcategory: existingBusiness?.subcategory || '',
     street: existingBusiness?.address?.street || '',
 
     // Section 3: Content & Media
@@ -142,6 +149,30 @@ export default function BusinessForm({
     youtube: existingBusiness?.socialLinks?.youtube || '',
     googleBusiness: existingBusiness?.socialLinks?.googleBusiness || '',
   });
+
+  // Complete Address Nominatim Autocomplete state & refs
+  const [addressSuggestions, setAddressSuggestions] = useState([]);
+  const [showAddressDropdown, setShowAddressDropdown] = useState(false);
+  const [addressLoading, setAddressLoading] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const addressWrapperRef = useRef(null);
+  const nominatimAbortRef = useRef(null);
+  const addressDebounceRef = useRef(null);
+
+  // Close address suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (addressWrapperRef.current && !addressWrapperRef.current.contains(e.target)) {
+        setShowAddressDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (addressDebounceRef.current) clearTimeout(addressDebounceRef.current);
+      if (nominatimAbortRef.current) nominatimAbortRef.current.abort();
+    };
+  }, []);
 
   // Section 4: Opening Hours
   const [openingHours, setOpeningHours] = useState(() => {
@@ -203,7 +234,6 @@ export default function BusinessForm({
         area: existingBusiness.address?.area || '',
         zipCode: existingBusiness.address?.zipCode || '',
         category: existingBusiness.category || '',
-        subcategory: existingBusiness.subcategory || '',
         street: existingBusiness.address?.street || '',
         description: existingBusiness.description || '',
         website: existingBusiness.website || '',
@@ -250,6 +280,92 @@ export default function BusinessForm({
   const handleCityChange = (newCity) => {
     setForm((prev) => ({ ...prev, city: newCity }));
     if (errors.city) setErrors((prev) => ({ ...prev, city: '' }));
+  };
+
+  // Complete Address Nominatim Autocomplete Handlers
+  const handleAddressChange = (e) => {
+    const val = e.target.value;
+    setForm((prev) => ({ ...prev, street: val }));
+    if (errors.street) setErrors((prev) => ({ ...prev, street: '' }));
+
+    if (addressDebounceRef.current) {
+      clearTimeout(addressDebounceRef.current);
+    }
+
+    const query = val.trim();
+    if (query.length < 3) {
+      setAddressSuggestions([]);
+      setShowAddressDropdown(false);
+      setAddressLoading(false);
+      return;
+    }
+
+    setAddressLoading(true);
+    addressDebounceRef.current = setTimeout(async () => {
+      try {
+        if (nominatimAbortRef.current) {
+          nominatimAbortRef.current.abort();
+        }
+        nominatimAbortRef.current = new AbortController();
+
+        const countryCode = COUNTRY_TO_NOMINATIM_CODE[form.country] || 'pk';
+        const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
+          query
+        )}&countrycodes=${countryCode}&limit=5&addressdetails=1`;
+
+        const res = await fetch(url, {
+          signal: nominatimAbortRef.current.signal,
+          headers: {
+            'Accept-Language': 'en',
+          },
+        });
+
+        if (!res.ok) throw new Error('Nominatim error');
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setAddressSuggestions(data.slice(0, 5));
+          setShowAddressDropdown(true);
+          setHighlightedIndex(-1);
+        } else {
+          setAddressSuggestions([]);
+          setShowAddressDropdown(false);
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          setAddressSuggestions([]);
+          setShowAddressDropdown(false);
+        }
+      } finally {
+        setAddressLoading(false);
+      }
+    }, 400);
+  };
+
+  const selectAddressSuggestion = (item) => {
+    setForm((prev) => ({ ...prev, street: item.display_name }));
+    setAddressSuggestions([]);
+    setShowAddressDropdown(false);
+    setHighlightedIndex(-1);
+    if (errors.street) setErrors((prev) => ({ ...prev, street: '' }));
+  };
+
+  const handleAddressKeyDown = (e) => {
+    if (!showAddressDropdown || addressSuggestions.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev < addressSuggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : addressSuggestions.length - 1));
+    } else if (e.key === 'Enter') {
+      if (highlightedIndex >= 0 && addressSuggestions[highlightedIndex]) {
+        e.preventDefault();
+        selectAddressSuggestion(addressSuggestions[highlightedIndex]);
+      }
+    } else if (e.key === 'Escape') {
+      setShowAddressDropdown(false);
+    }
   };
 
   // Opening hours handlers
@@ -410,9 +526,7 @@ export default function BusinessForm({
     if (!form.contactPerson.trim()) {
       errs.contactPerson = 'Contact Person Name is required';
     }
-    if (!form.email.trim()) {
-      errs.email = 'Business Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(form.email)) {
+    if (form.email.trim() && !/\S+@\S+\.\S+/.test(form.email.trim())) {
       errs.email = 'Please provide a valid email address';
     }
     if (!form.phone.trim()) {
@@ -420,9 +534,7 @@ export default function BusinessForm({
     } else if (!/^[+\d\s\-().]{7,25}$/.test(form.phone.trim())) {
       errs.phone = 'Please provide a valid phone number';
     }
-    if (!form.whatsapp.trim()) {
-      errs.whatsapp = 'WhatsApp Number is required';
-    } else if (!/^[+\d\s\-().]{7,25}$/.test(form.whatsapp.trim())) {
+    if (form.whatsapp.trim() && !/^[+\d\s\-().]{7,25}$/.test(form.whatsapp.trim())) {
       errs.whatsapp = 'Please provide a valid WhatsApp number';
     }
 
@@ -510,7 +622,6 @@ export default function BusinessForm({
           phone: form.phone.trim(),
           whatsapp: form.whatsapp.trim(),
           category: form.category,
-          subcategory: form.subcategory.trim(),
           description: form.description.trim(),
           website: form.website.trim(),
           socialLinks: socialLinksData,
@@ -539,7 +650,6 @@ export default function BusinessForm({
         formData.append('phone', form.phone.trim());
         formData.append('whatsapp', form.whatsapp.trim());
         formData.append('category', form.category);
-        if (form.subcategory.trim()) formData.append('subcategory', form.subcategory.trim());
         formData.append('description', form.description.trim());
 
         if (form.website.trim()) formData.append('website', form.website.trim());
@@ -708,8 +818,9 @@ export default function BusinessForm({
 
           {/* Business Email */}
           <div>
-            <label htmlFor="biz-email" className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
-              Business Email <span className="text-rose-500">*</span>
+            <label htmlFor="biz-email" className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 flex items-center justify-between">
+              <span>Business Email</span>
+              <span className="text-[11px] font-normal text-gray-400 lowercase">optional</span>
             </label>
             <div className="relative">
               <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
@@ -724,7 +835,6 @@ export default function BusinessForm({
                     ? 'border-rose-400 focus:border-rose-600 focus:ring-2 focus:ring-rose-500/20'
                     : 'border-gray-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20'
                 }`}
-                aria-required="true"
                 aria-invalid={!!errors.email}
               />
             </div>
@@ -758,8 +868,9 @@ export default function BusinessForm({
 
           {/* WhatsApp Number */}
           <div>
-            <label htmlFor="biz-whatsapp" className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
-              WhatsApp Number <span className="text-rose-500">*</span>
+            <label htmlFor="biz-whatsapp" className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 flex items-center justify-between">
+              <span>WhatsApp Number</span>
+              <span className="text-[11px] font-normal text-gray-400 lowercase">optional</span>
             </label>
             <div className="relative">
               <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600 pointer-events-none">
@@ -776,7 +887,6 @@ export default function BusinessForm({
                     ? 'border-rose-400 focus:border-rose-600 focus:ring-2 focus:ring-rose-500/20'
                     : 'border-gray-200 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-500/20'
                 }`}
-                aria-required="true"
                 aria-invalid={!!errors.whatsapp}
               />
             </div>
@@ -900,22 +1010,6 @@ export default function BusinessForm({
             {errors.category && <p className="text-xs text-rose-600 mt-1.5 font-medium">{errors.category}</p>}
           </div>
 
-          {/* Subcategory (Optional) */}
-          <div>
-            <label htmlFor="biz-subcategory" className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 flex items-center justify-between">
-              <span>Subcategory</span>
-              <span className="text-[11px] font-normal text-gray-400 lowercase">optional</span>
-            </label>
-            <input
-              id="biz-subcategory"
-              type="text"
-              value={form.subcategory}
-              onChange={set('subcategory')}
-              placeholder="e.g. Software House / Fast Food"
-              className="w-full h-11 px-4 rounded-xl border border-gray-200 bg-gray-50/60 focus:bg-white text-sm text-gray-900 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all"
-            />
-          </div>
-
           {/* Postal / ZIP Code */}
           <div>
             <label htmlFor="biz-zip" className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2 flex items-center justify-between">
@@ -933,26 +1027,73 @@ export default function BusinessForm({
             />
           </div>
 
-          {/* Complete Street Address */}
-          <div className="sm:col-span-2 lg:col-span-3">
+          {/* Complete Street Address with OpenStreetMap Nominatim Autocomplete */}
+          <div className="sm:col-span-2 lg:col-span-3 relative" ref={addressWrapperRef}>
             <label htmlFor="biz-street" className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
               Complete Address <span className="text-rose-500">*</span>
             </label>
-            <input
-              id="biz-street"
-              type="text"
-              value={form.street}
-              onChange={set('street')}
-              placeholder="e.g. Office # 402, 4th Floor, Arfa Software Technology Park, Ferozepur Road"
-              className={`w-full h-11 px-4 rounded-xl border bg-gray-50/60 focus:bg-white text-sm text-gray-900 outline-none transition-all ${
-                errors.street
-                  ? 'border-rose-400 focus:border-rose-600 focus:ring-2 focus:ring-rose-500/20'
-                  : 'border-gray-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20'
-              }`}
-              aria-required="true"
-              aria-invalid={!!errors.street}
-            />
+            <div className="relative">
+              <input
+                id="biz-street"
+                type="text"
+                value={form.street}
+                onChange={handleAddressChange}
+                onKeyDown={handleAddressKeyDown}
+                onFocus={() => {
+                  if (addressSuggestions.length > 0) setShowAddressDropdown(true);
+                }}
+                placeholder="e.g. Office # 402, 4th Floor, Arfa Software Technology Park, Ferozepur Road"
+                autoComplete="off"
+                className={`w-full h-11 pl-4 pr-10 rounded-xl border bg-gray-50/60 focus:bg-white text-sm text-gray-900 outline-none transition-all ${
+                  errors.street
+                    ? 'border-rose-400 focus:border-rose-600 focus:ring-2 focus:ring-rose-500/20'
+                    : 'border-gray-200 focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20'
+                }`}
+                aria-required="true"
+                aria-invalid={!!errors.street}
+                aria-autocomplete="list"
+                aria-expanded={showAddressDropdown}
+              />
+              <div className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
+                {addressLoading ? (
+                  <Loader2 size={16} className="animate-spin text-blue-500" />
+                ) : (
+                  <MapPin size={16} />
+                )}
+              </div>
+            </div>
             {errors.street && <p className="text-xs text-rose-600 mt-1.5 font-medium">{errors.street}</p>}
+
+            {/* Nominatim Suggestions Dropdown */}
+            {showAddressDropdown && addressSuggestions.length > 0 && (
+              <ul
+                role="listbox"
+                className="absolute z-30 left-0 right-0 top-full mt-1.5 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden max-h-60 overflow-y-auto py-1 divide-y divide-gray-100"
+              >
+                {addressSuggestions.map((item, idx) => (
+                  <li
+                    key={item.place_id || idx}
+                    role="option"
+                    aria-selected={highlightedIndex === idx}
+                    onClick={() => selectAddressSuggestion(item)}
+                    onMouseEnter={() => setHighlightedIndex(idx)}
+                    className={`px-4 py-2.5 text-xs sm:text-sm cursor-pointer flex items-start gap-2.5 transition-colors ${
+                      highlightedIndex === idx
+                        ? 'bg-blue-50 text-blue-900 font-medium'
+                        : 'text-gray-700 hover:bg-gray-50'
+                    }`}
+                  >
+                    <MapPin
+                      size={16}
+                      className={`shrink-0 mt-0.5 ${
+                        highlightedIndex === idx ? 'text-blue-600' : 'text-gray-400'
+                      }`}
+                    />
+                    <span className="line-clamp-2 leading-snug">{item.display_name}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </div>
       </section>

@@ -310,9 +310,9 @@ const createBusiness = [
       category,
       subcategory: subcategory || '',
       contactPerson: contactPerson || '',
-      email,
-      phone,
-      whatsapp: whatsapp || '',
+      email: email ? email.trim().toLowerCase() : '',
+      phone: phone ? phone.trim() : '',
+      whatsapp: whatsapp ? whatsapp.trim() : '',
       website: website || '',
       socialLinks: parsedSocialLinks,
       openingHours: parsedOpeningHours,
@@ -405,7 +405,15 @@ const updateBusiness = [
     const updates = {};
     allowedFields.forEach((field) => {
       if (req.body[field] !== undefined) {
-        updates[field] = req.body[field];
+        if (field === 'email') {
+          updates.email = req.body.email ? req.body.email.trim().toLowerCase() : '';
+        } else if (field === 'whatsapp') {
+          updates.whatsapp = req.body.whatsapp ? req.body.whatsapp.trim() : '';
+        } else if (field === 'phone') {
+          updates.phone = req.body.phone ? req.body.phone.trim() : '';
+        } else {
+          updates[field] = req.body[field];
+        }
       }
     });
 

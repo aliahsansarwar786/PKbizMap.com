@@ -212,46 +212,55 @@ const verifyEmail = [
     user.emailVerificationOTPAttempts = 0;
     await user.save({ validateBeforeSave: false });
 
-    // Send Welcome Email upon successful verification
-    try {
-      const frontendUrl = getFrontendUrl(req);
-      const loginUrl = `${frontendUrl}/login`;
-      await sendEmail({
-        to: user.email,
-        subject: 'Welcome to BizPrimeHub!',
-        html: getWelcomeEmailHtml({ name: user.name, loginUrl }),
-      }).catch((err) => {
-        console.error('⚠️ [Auth:VerifyEmail] Error sending welcome email:', err.message);
-      });
-    } catch (e) {
-      console.error('⚠️ [Auth:VerifyEmail] Unexpected error sending welcome email:', e.message);
-    }
+    // Capture request context before sending response
+    const frontendUrl = getFrontendUrl(req);
+    const verifiedUserEmail = user.email;
+    const verifiedUserName = user.name;
 
-    // Owner Notification: New user registered alert (triggered after email is verified)
-    try {
-      const settings = await PaymentSetting.getSettings();
-      const ownerEmail = settings?.ownerNotificationEmail?.trim();
-      const isOwnerNotificationsEnabled = settings?.ownerNotificationsEnabled !== false;
-
-      if (isOwnerNotificationsEnabled && ownerEmail) {
-        await sendEmail({
-          to: ownerEmail,
-          subject: `New user registered: ${user.name}`,
-          html: getNewUserNotificationHtml({
-            name: user.name,
-            email: user.email,
-            date: new Date().toUTCString(),
-          }),
-        }).catch((err) => {
-          console.error('⚠️ [Auth:VerifyEmail] Error sending owner alert:', err.message);
-        });
-      }
-    } catch (e) {
-      console.error('⚠️ [Auth:VerifyEmail] Unexpected error sending owner alert:', e.message);
-    }
-
-    // Refresh session cookie with emailVerified = true
+    // Refresh session cookie with emailVerified = true and return response IMMEDIATELY
     generateTokenAndSend(user, 200, res, 'Email verified successfully! Welcome to BizPrimeHub.');
+
+    // Fire-and-forget: dispatch welcome email and owner alert in background (non-blocking)
+    (async () => {
+      // Send Welcome Email upon successful verification
+      try {
+        const loginUrl = `${frontendUrl}/login`;
+        sendEmail({
+          to: verifiedUserEmail,
+          subject: 'Welcome to BizPrimeHub!',
+          html: getWelcomeEmailHtml({ name: verifiedUserName, loginUrl }),
+        }).catch((err) => {
+          console.error('⚠️ [Auth:VerifyEmail] Error sending welcome email:', err.message);
+        });
+      } catch (e) {
+        console.error('⚠️ [Auth:VerifyEmail] Unexpected error sending welcome email:', e.message);
+      }
+
+      // Owner Notification: New user registered alert (triggered after email is verified)
+      try {
+        const settings = await PaymentSetting.getSettings();
+        const ownerEmail = settings?.ownerNotificationEmail?.trim();
+        const isOwnerNotificationsEnabled = settings?.ownerNotificationsEnabled !== false;
+
+        if (isOwnerNotificationsEnabled && ownerEmail) {
+          sendEmail({
+            to: ownerEmail,
+            subject: `New user registered: ${verifiedUserName}`,
+            html: getNewUserNotificationHtml({
+              name: verifiedUserName,
+              email: verifiedUserEmail,
+              date: new Date().toUTCString(),
+            }),
+          }).catch((err) => {
+            console.error('⚠️ [Auth:VerifyEmail] Error sending owner alert:', err.message);
+          });
+        }
+      } catch (e) {
+        console.error('⚠️ [Auth:VerifyEmail] Unexpected error sending owner alert:', e.message);
+      }
+    })().catch((err) => {
+      console.error('⚠️ [Auth:VerifyEmail] Background email task error:', err.message);
+    });
   }),
 ];
 
