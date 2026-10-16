@@ -120,6 +120,8 @@ const getUsers = asyncHandler(async (req, res) => {
         totalPages: Math.ceil(total / limitNum),
         totalResults: total,
         resultsPerPage: limitNum,
+        hasNextPage: pageNum < Math.ceil(total / limitNum),
+        hasPrevPage: pageNum > 1,
       },
     },
   });
@@ -189,6 +191,8 @@ const getAllBusinesses = asyncHandler(async (req, res) => {
         totalPages: Math.ceil(total / limitNum),
         totalResults: total,
         resultsPerPage: limitNum,
+        hasNextPage: pageNum < Math.ceil(total / limitNum),
+        hasPrevPage: pageNum > 1,
       },
     },
   });
@@ -222,6 +226,8 @@ const getPendingBusinesses = asyncHandler(async (req, res) => {
         totalPages: Math.ceil(total / limitNum),
         totalResults: total,
         resultsPerPage: limitNum,
+        hasNextPage: pageNum < Math.ceil(total / limitNum),
+        hasPrevPage: pageNum > 1,
       },
     },
   });
@@ -505,6 +511,8 @@ const getAllReviews = asyncHandler(async (req, res) => {
         totalPages: Math.ceil(total / limitNum),
         totalResults: total,
         resultsPerPage: limitNum,
+        hasNextPage: pageNum < Math.ceil(total / limitNum),
+        hasPrevPage: pageNum > 1,
       },
     },
   });
@@ -661,6 +669,8 @@ const getPaymentHistory = asyncHandler(async (req, res) => {
         totalPages: Math.ceil(total / limitNum),
         totalResults: total,
         resultsPerPage: limitNum,
+        hasNextPage: pageNum < Math.ceil(total / limitNum),
+        hasPrevPage: pageNum > 1,
       },
     },
   });

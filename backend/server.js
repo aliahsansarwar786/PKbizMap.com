@@ -81,11 +81,26 @@ app.use(cookieParser());
 
 // ─── Security: Input Sanitization ────────────────────────────────────────────
 app.use(mongoSanitize()); // Prevent NoSQL injection ($, . stripping)
+// Fields exempt from HTML entity encoding / sanitization:
+// - Whitelisted enum fields (category, country): strictly validated against exact safe string lists
+// - Password fields: must preserve raw characters (including &, <, >) and are never rendered in HTML
+const SANITIZE_EXEMPT_FIELDS = new Set([
+  'category',
+  'country',
+  'password',
+  'currentPassword',
+  'newPassword',
+  'confirmPassword',
+]);
+
 // ─── Security: XSS Protection (sanitize string fields in body) ───────────────
 app.use((req, res, next) => {
   if (req.body && typeof req.body === 'object') {
     const sanitize = (obj) => {
       for (const key of Object.keys(obj)) {
+        if (SANITIZE_EXEMPT_FIELDS.has(key)) {
+          continue;
+        }
         if (typeof obj[key] === 'string') {
           obj[key] = sanitizeHtml(obj[key], { allowedTags: [], allowedAttributes: {} });
         } else if (typeof obj[key] === 'object' && obj[key] !== null) {
