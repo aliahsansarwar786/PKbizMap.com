@@ -4,6 +4,7 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import HeroSearch from '@/components/home/HeroSearch';
 import BrowseSection from '@/components/business/BrowseSection';
+import RecentlyListed from '@/components/business/RecentlyListed';
 import {
   Search,
   ArrowRight,
@@ -222,6 +223,11 @@ export default async function HomePage() {
             </Suspense>
           </div>
         </section>
+
+        {/* ── Recently Listed Section ─────────────────────────────────────── */}
+        <Suspense fallback={null}>
+          <RecentlyListed />
+        </Suspense>
 
         {/* ── How It Works ────────────────────────────────────────────────── */}
         <section className="section" style={{ background: '#ffffff', borderTop: '1px solid #f1f5f9' }} aria-labelledby="how-heading">

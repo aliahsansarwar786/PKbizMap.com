@@ -90,7 +90,10 @@ export default function BusinessCard({ business }) {
     <article className="group flex flex-col bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative">
       
       {/* Image Section */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100">
+      <Link
+        href={`/businesses/${business._id}`}
+        className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 block"
+      >
         <Image
           src={firstImage || defaultImage}
           alt={`${business.title} image`}
@@ -115,7 +118,7 @@ export default function BusinessCard({ business }) {
             </span>
           )}
         </div>
-      </div>
+      </Link>
 
       {/* Content Section */}
       <div className="flex flex-col flex-1 p-5">
@@ -123,7 +126,9 @@ export default function BusinessCard({ business }) {
         {/* Title & Badge */}
         <div className="flex items-start justify-between gap-3 mb-1.5">
           <h2 className="font-bold text-lg text-slate-900 leading-tight line-clamp-1 group-hover:text-blue-600 transition-colors">
-            {business.title}
+            <Link href={`/businesses/${business._id}`} className="hover:text-blue-600 transition-colors">
+              {business.title}
+            </Link>
           </h2>
           <BadgeCheck className="w-5 h-5 text-blue-500 shrink-0" />
         </div>
