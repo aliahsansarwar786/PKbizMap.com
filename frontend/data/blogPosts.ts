@@ -225,6 +225,128 @@ If you have not already claimed your free directory profile, take a moment to **
     `
   },
   {
+    slug: "local-seo-guide-pakistan-ranking-google-maps",
+    title: "Local SEO in Pakistan: How to Rank on Google Maps & Local Directories",
+    excerpt: "Understand the fundamentals of Local Search Engine Optimization (Local SEO) tailored to Pakistani cities: Google 3-Pack, local citations, backlink signals, and customer review velocity.",
+    category: "Local SEO",
+    author: {
+      name: "Ahsan Ali",
+      role: "Digital Growth Specialist",
+      avatar: "https://ui-avatars.com/api/?name=Ahsan+Ali&background=2563eb&color=fff&size=96"
+    },
+    publishedAt: "2026-03-25",
+    readTime: "8 min read",
+    coverImage: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80",
+    coverImageAlt: "Local SEO analytics, search rankings, and Google maps on laptop screen",
+    metaTitle: "Local SEO in Pakistan: Rank on Google Maps & Local Searches 2026",
+    metaDescription: "Master local SEO for businesses in Lahore, Karachi, and Islamabad. Discover citation building, Google Maps optimization, and BizPrimeHub directory listings.",
+    keywords: [
+      "local seo pakistan",
+      "google maps ranking lahore karachi",
+      "pakistan local citations",
+      "directory seo bizprimehub"
+    ],
+    content: `
+## What is Local SEO and Why Does It Drive Foot Traffic?
+
+When a customer in Islamabad types *"plumber in F-7"* or a tourist in Lahore searches *"best biryani in Anarkali"*, search engines recognize localized geographic intent. Instead of standard global web links, search engines display the **Local 3-Pack**—the top three local businesses pinned with star ratings, opening hours, and one-tap call buttons.
+
+Winning one of these coveted top three placements can increase customer phone calls and store visits tenfold without paying for expensive pay-per-click advertising.
+
+---
+
+## Key Ranking Factors for Pakistani Local Search
+
+Search engine ranking algorithms assess three foundational signals when evaluating local businesses:
+
+### 1. Relevance
+How accurately your profile matches the search query. Make sure your primary category and business description explicitly describe your service scope using natural terminology.
+
+### 2. Distance
+How close your verified physical premises are to the searcher's physical GPS location or the neighborhood specified in their query.
+
+### 3. Prominence & Citations
+How established and trusted your brand appears across the wider Pakistani web. Search algorithms calculate prominence by scanning:
+* Active listings on recognized platforms such as **[BizPrimeHub](/businesses)**.
+* Quantity, authenticity, and frequency of customer reviews.
+* Mentions across regional media, partner supplier websites, and community portals.
+
+---
+
+## The Strategic Value of Directory Citations
+
+Building citations across verified directories like **[BizPrimeHub](/)** signals to search engine algorithms that your organization is a legitimate, active entity operating at an exact address in Pakistan. Ensure your company title, street address, and phone number match everywhere.
+
+Begin by [adding your business details](/add-business) with comprehensive descriptions and clear photos to build lasting digital visibility.
+    `
+  },
+  {
+    slug: "how-to-set-up-whatsapp-business-for-pakistani-retailers",
+    title: "How Pakistani Retailers Can Turn WhatsApp Business into a High-Converting Sales Engine",
+    excerpt: "A step-by-step practical blueprint for retailers, boutiques, and home businesses in Pakistan to set up digital product catalogs, automated responses, and broadcast promotions on WhatsApp.",
+    category: "Marketing & Tools",
+    author: {
+      name: "Ahsan Ali",
+      role: "Digital Growth Specialist",
+      avatar: "https://ui-avatars.com/api/?name=Ahsan+Ali&background=2563eb&color=fff&size=96"
+    },
+    publishedAt: "2026-03-20",
+    readTime: "6 min read",
+    coverImage: "https://images.unsplash.com/photo-1611746872915-64382b5c76da?auto=format&fit=crop&w=1200&q=80",
+    coverImageAlt: "WhatsApp Business interface and smartphone messaging for local retailers",
+    metaTitle: "WhatsApp Business Guide for Pakistani Retailers & Home Sellers",
+    metaDescription: "Learn how to build product catalogs, automated greetings, customer labels, and payment links using WhatsApp Business in Pakistan.",
+    keywords: [
+      "whatsapp business catalog pakistan",
+      "sell on whatsapp pakistan",
+      "local business automation",
+      "pakistan retail marketing"
+    ],
+    content: `
+## The Power of WhatsApp in Pakistani Commerce
+
+In Pakistan, over 80% of online orders for small and medium retailers are finalized inside WhatsApp chat windows. While social platforms like Instagram and TikTok generate customer interest, the actual transaction discussion, address verification, and delivery tracking take place inside WhatsApp.
+
+Using a personal WhatsApp account limits your business capacity. This practical guide walks you through transforming the free **WhatsApp Business App** into an automated storefront.
+
+---
+
+## 1. Professional Business Profile Setup
+
+First, download WhatsApp Business from the Google Play Store or Apple App Store. Register using your official business SIM card so that work messages remain distinct from personal conversations.
+
+* **Business Category:** Pick the exact industry (e.g., Apparel & Clothing, Grocery Store, Medical & Health).
+* **Operating Address & Map Pin:** Add your verified shop location so customers can tap to view directions.
+* **Website Link:** Add your [BizPrimeHub business profile URL](/businesses) or online store link.
+
+---
+
+## 2. Creating an Organized Digital Catalog
+
+The Catalog feature functions as your miniature 24/7 digital showcase without needing complex e-commerce hosting.
+
+* Group items by collection (e.g., *"Summer Lawn Arrivals"*, *"Bridal Footwear"*, *"Combo Deals"*).
+* Add PKR pricing and clear dimension/size availability in the item description.
+* Include item codes so buyers can reference exact stock numbers easily.
+
+---
+
+## 3. Automated Messaging & Response Times
+
+Customer inquiries frequently arrive outside normal working hours. Automated tools keep buyers engaged even when you are away from the shop counter:
+
+* **Away Message:** *"Thank you for contacting BizPrimeHub partner store. We are currently closed (working hours: 10 AM to 10 PM). We have received your message and will attend to your order first thing in the morning."*
+* **Greeting Message:** Send an automatic welcome note with a direct link to view your catalog.
+* **Quick Replies:** Setup shortcuts like \`/bank\` for IBAN/Raast details, \`/delivery\` for courier rates, and \`/location\` for Google Maps links.
+
+---
+
+## 4. Staying Compliant and Avoiding Spam Blocks
+
+WhatsApp strictly penalizes unsolicited broadcast spam. Never purchase random phone lists or send cold bulk promotions to people who have not opted in. Always obtain customer consent when taking in-store orders, and provide clear value such as exclusive weekend discounts or seasonal arrival alerts.
+    `
+  },
+  {
     slug: "top-10-essential-business-tips-local-shops-pakistan-grow-online-2026",
     title: "Top 10 Essential Business Tips for Local Shops in Pakistan to Grow Online in 2026",
     excerpt: "Discover practical, actionable strategies for neighborhood retailers and service providers in Pakistan to build a strong digital presence, attract foot traffic, and turn online searches into paying customers.",
@@ -360,133 +482,13 @@ Transitioning your local shop online does not require massive marketing budgets 
 
 Start with step one today, and watch your local walk-ins and phone calls grow consistently throughout 2026.
     `
-  },
-  {
-    slug: "how-to-set-up-whatsapp-business-for-pakistani-retailers",
-    title: "How Pakistani Retailers Can Turn WhatsApp Business into a High-Converting Sales Engine",
-    excerpt: "A step-by-step practical blueprint for retailers, boutiques, and home businesses in Pakistan to set up digital product catalogs, automated responses, and broadcast promotions on WhatsApp.",
-    category: "Marketing & Tools",
-    author: {
-      name: "Ahsan Ali",
-      role: "Digital Growth Specialist",
-      avatar: "https://ui-avatars.com/api/?name=Ahsan+Ali&background=2563eb&color=fff&size=96"
-    },
-    publishedAt: "2026-03-20",
-    readTime: "6 min read",
-    coverImage: "https://images.unsplash.com/photo-1611746872915-64382b5c76da?auto=format&fit=crop&w=1200&q=80",
-    coverImageAlt: "WhatsApp Business interface and smartphone messaging for local retailers",
-    metaTitle: "WhatsApp Business Guide for Pakistani Retailers & Home Sellers",
-    metaDescription: "Learn how to build product catalogs, automated greetings, customer labels, and payment links using WhatsApp Business in Pakistan.",
-    keywords: [
-      "whatsapp business catalog pakistan",
-      "sell on whatsapp pakistan",
-      "local business automation",
-      "pakistan retail marketing"
-    ],
-    content: `
-## The Power of WhatsApp in Pakistani Commerce
-
-In Pakistan, over 80% of online orders for small and medium retailers are finalized inside WhatsApp chat windows. While social platforms like Instagram and TikTok generate customer interest, the actual transaction discussion, address verification, and delivery tracking take place inside WhatsApp.
-
-Using a personal WhatsApp account limits your business capacity. This practical guide walks you through transforming the free **WhatsApp Business App** into an automated storefront.
-
----
-
-## 1. Professional Business Profile Setup
-
-First, download WhatsApp Business from the Google Play Store or Apple App Store. Register using your official business SIM card so that work messages remain distinct from personal conversations.
-
-* **Business Category:** Pick the exact industry (e.g., Apparel & Clothing, Grocery Store, Medical & Health).
-* **Operating Address & Map Pin:** Add your verified shop location so customers can tap to view directions.
-* **Website Link:** Add your [BizPrimeHub business profile URL](/businesses) or online store link.
-
----
-
-## 2. Creating an Organized Digital Catalog
-
-The Catalog feature functions as your miniature 24/7 digital showcase without needing complex e-commerce hosting.
-
-* Group items by collection (e.g., *"Summer Lawn Arrivals"*, *"Bridal Footwear"*, *"Combo Deals"*).
-* Add PKR pricing and clear dimension/size availability in the item description.
-* Include item codes so buyers can reference exact stock numbers easily.
-
----
-
-## 3. Automated Messaging & Response Times
-
-Customer inquiries frequently arrive outside normal working hours. Automated tools keep buyers engaged even when you are away from the shop counter:
-
-* **Away Message:** *"Thank you for contacting BizPrimeHub partner store. We are currently closed (working hours: 10 AM to 10 PM). We have received your message and will attend to your order first thing in the morning."*
-* **Greeting Message:** Send an automatic welcome note with a direct link to view your catalog.
-* **Quick Replies:** Setup shortcuts like \`/bank\` for IBAN/Raast details, \`/delivery\` for courier rates, and \`/location\` for Google Maps links.
-
----
-
-## 4. Staying Compliant and Avoiding Spam Blocks
-
-WhatsApp strictly penalizes unsolicited broadcast spam. Never purchase random phone lists or send cold bulk promotions to people who have not opted in. Always obtain customer consent when taking in-store orders, and provide clear value such as exclusive weekend discounts or seasonal arrival alerts.
-    `
-  },
-  {
-    slug: "local-seo-guide-pakistan-ranking-google-maps",
-    title: "Local SEO in Pakistan: How to Rank on Google Maps & Local Directories",
-    excerpt: "Understand the fundamentals of Local Search Engine Optimization (Local SEO) tailored to Pakistani cities: Google 3-Pack, local citations, backlink signals, and customer review velocity.",
-    category: "Local SEO",
-    author: {
-      name: "Ahsan Ali",
-      role: "Digital Growth Specialist",
-      avatar: "https://ui-avatars.com/api/?name=Ahsan+Ali&background=2563eb&color=fff&size=96"
-    },
-    publishedAt: "2026-03-25",
-    readTime: "8 min read",
-    coverImage: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80",
-    coverImageAlt: "Local SEO analytics, search rankings, and Google maps on laptop screen",
-    metaTitle: "Local SEO in Pakistan: Rank on Google Maps & Local Searches 2026",
-    metaDescription: "Master local SEO for businesses in Lahore, Karachi, and Islamabad. Discover citation building, Google Maps optimization, and BizPrimeHub directory listings.",
-    keywords: [
-      "local seo pakistan",
-      "google maps ranking lahore karachi",
-      "pakistan local citations",
-      "directory seo bizprimehub"
-    ],
-    content: `
-## What is Local SEO and Why Does It Drive Foot Traffic?
-
-When a customer in Islamabad types *"plumber in F-7"* or a tourist in Lahore searches *"best biryani in Anarkali"*, search engines recognize localized geographic intent. Instead of standard global web links, search engines display the **Local 3-Pack**—the top three local businesses pinned with star ratings, opening hours, and one-tap call buttons.
-
-Winning one of these coveted top three placements can increase customer phone calls and store visits tenfold without paying for expensive pay-per-click advertising.
-
----
-
-## Key Ranking Factors for Pakistani Local Search
-
-Search engine ranking algorithms assess three foundational signals when evaluating local businesses:
-
-### 1. Relevance
-How accurately your profile matches the search query. Make sure your primary category and business description explicitly describe your service scope using natural terminology.
-
-### 2. Distance
-How close your verified physical premises are to the searcher's physical GPS location or the neighborhood specified in their query.
-
-### 3. Prominence & Citations
-How established and trusted your brand appears across the wider Pakistani web. Search algorithms calculate prominence by scanning:
-* Active listings on recognized platforms such as **[BizPrimeHub](/businesses)**.
-* Quantity, authenticity, and frequency of customer reviews.
-* Mentions across regional media, partner supplier websites, and community portals.
-
----
-
-## The Strategic Value of Directory Citations
-
-Building citations across verified directories like **[BizPrimeHub](/)** signals to search engine algorithms that your organization is a legitimate, active entity operating at an exact address in Pakistan. Ensure your company title, street address, and phone number match everywhere.
-
-Begin by [adding your business details](/add-business) with comprehensive descriptions and clear photos to build lasting digital visibility.
-    `
   }
 ];
 
 export function getAllPosts(): BlogPost[] {
-  return BLOG_POSTS;
+  return [...BLOG_POSTS].sort(
+    (a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+  );
 }
 
 export function getPostBySlug(slug: string): BlogPost | undefined {

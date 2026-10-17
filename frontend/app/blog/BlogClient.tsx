@@ -16,19 +16,21 @@ export default function BlogClient({ initialPosts }: BlogClientProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const postsPerPage = 6;
 
-  // Filter posts based on search query and category
+  // Filter and sort posts based on search query, category, and date (newest first)
   const filteredPosts = useMemo(() => {
-    return initialPosts.filter((post) => {
-      const matchesSearch =
-        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.keywords.some((k) => k.toLowerCase().includes(searchQuery.toLowerCase()));
+    return initialPosts
+      .filter((post) => {
+        const matchesSearch =
+          post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          post.keywords.some((k) => k.toLowerCase().includes(searchQuery.toLowerCase()));
 
-      const matchesCategory =
-        selectedCategory === 'All' || post.category.toLowerCase() === selectedCategory.toLowerCase();
+        const matchesCategory =
+          selectedCategory === 'All' || post.category.toLowerCase() === selectedCategory.toLowerCase();
 
-      return matchesSearch && matchesCategory;
-    });
+        return matchesSearch && matchesCategory;
+      })
+      .sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
   }, [initialPosts, searchQuery, selectedCategory]);
 
   // Pagination calculation
