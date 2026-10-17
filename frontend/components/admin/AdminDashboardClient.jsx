@@ -13,7 +13,7 @@ import {
   CreditCard, Eye, Image as ImageIcon, Save, ExternalLink,
   DollarSign, CheckCircle, AlertCircle, Phone, ArrowUpRight,
   QrCode, Upload, MessageSquare, Search, Filter, Plus, Mail, Bell,
-  ArrowLeft
+  ArrowLeft, AlertTriangle
 } from 'lucide-react';
 import BusinessForm from '@/components/business/BusinessForm';
 
@@ -196,6 +196,22 @@ export default function AdminDashboardClient() {
 
   // Bank App Verification Checkbox
   const [verifiedInBankApp, setVerifiedInBankApp] = useState(false);
+
+  // Make Admin Confirmation Dialog State
+  const [makeAdminTarget, setMakeAdminTarget] = useState(null);
+  const [isPromotingAdmin, setIsPromotingAdmin] = useState(false);
+
+  // Close Make Admin confirmation dialog on Escape key
+  useEffect(() => {
+    if (!makeAdminTarget) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !isPromotingAdmin) {
+        setMakeAdminTarget(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [makeAdminTarget, isPromotingAdmin]);
 
   // Dynamic tabs based on user role & permissions
   const tabs = useMemo(() => {
@@ -414,8 +430,37 @@ export default function AdminDashboardClient() {
     }
   };
 
+  const handleConfirmMakeAdmin = async () => {
+    if (!makeAdminTarget) return;
+    setIsPromotingAdmin(true);
+    try {
+      const res = await adminAPI.updateUserRole(makeAdminTarget._id, 'admin');
+      const updatedUser = res.data?.user;
+      setUsers((prev) =>
+        prev.map((u) =>
+          u._id === makeAdminTarget._id
+            ? {
+                ...u,
+                role: 'admin',
+                permissions: updatedUser?.permissions || {
+                  canApproveListings: false,
+                  canDeleteListings: false,
+                  canModerateReviews: false,
+                },
+              }
+            : u
+        )
+      );
+      toast.success(`Role updated to "admin".`);
+      setMakeAdminTarget(null);
+    } catch (err) {
+      toast.error(err.message || 'Failed to update user role.');
+    } finally {
+      setIsPromotingAdmin(false);
+    }
+  };
+
   const handleSetRole = async (userId, newRole) => {
-    if (!confirm(`Are you sure you want to change this user's role to "${newRole}"?`)) return;
     try {
       const res = await adminAPI.updateUserRole(userId, newRole);
       const updatedUser = res.data?.user;
@@ -1534,7 +1579,7 @@ export default function AdminDashboardClient() {
                                   <>
                                     <button
                                       type="button"
-                                      onClick={() => handleSetRole(u._id, 'admin')}
+                                      onClick={() => setMakeAdminTarget(u)}
                                       className="min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shadow-2xs shrink-0 inline-flex items-center justify-center"
                                       style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer' }}
                                       title="Grant full admin privileges"
@@ -1557,7 +1602,7 @@ export default function AdminDashboardClient() {
                                   <>
                                     <button
                                       type="button"
-                                      onClick={() => handleSetRole(u._id, 'admin')}
+                                      onClick={() => setMakeAdminTarget(u)}
                                       className="min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold transition-all shadow-2xs shrink-0 inline-flex items-center justify-center"
                                       style={{ background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', cursor: 'pointer' }}
                                       title="Promote to full admin"
@@ -2514,6 +2559,100 @@ export default function AdminDashboardClient() {
                 }}
                 onCancel={() => setEditingBusiness(null)}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal: Make Full Admin */}
+      {makeAdminTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
+          onClick={() => {
+            if (!isPromotingAdmin) setMakeAdminTarget(null);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="make-admin-modal-title"
+        >
+          <div
+            className="relative bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-gray-100 my-8 animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header / Icon & Close Button */}
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="w-11 h-11 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-600 shrink-0 shadow-2xs">
+                <AlertTriangle size={22} className="text-amber-600" />
+              </div>
+              <button
+                type="button"
+                disabled={isPromotingAdmin}
+                onClick={() => setMakeAdminTarget(null)}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                style={{ border: 'none', cursor: 'pointer' }}
+                aria-label="Close dialog"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Warning Title */}
+            <h3
+              id="make-admin-modal-title"
+              className="text-lg sm:text-xl font-bold text-gray-950 leading-snug mb-2"
+            >
+              Are you sure? This grants FULL admin access.
+            </h3>
+
+            {/* Target User Info */}
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200/80 mb-3 text-xs sm:text-sm">
+              <span className="text-gray-500">Target User: </span>
+              <span className="font-bold text-gray-900">{makeAdminTarget.name}</span>
+              <span className="text-gray-500 block truncate text-xs mt-0.5">{makeAdminTarget.email}</span>
+            </div>
+
+            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-3">
+              Promoting this user gives them <strong>complete, unrestricted control</strong> over BizPrimeHub, including:
+            </p>
+
+            <ul className="text-xs sm:text-sm text-gray-600 space-y-1.5 mb-4 pl-1">
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                <span><strong>Payments & Banking</strong> (bank accounts, fee settings, payment receipts)</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                <span><strong>User Management</strong> (promoting, demoting, or deleting any user)</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                <span><strong>Sub-Admin Permissions</strong> (configuring staff access rules)</span>
+              </li>
+            </ul>
+
+            <div className="p-3 bg-amber-50/80 border border-amber-200/90 rounded-xl text-xs text-amber-900 leading-relaxed mb-5">
+              ⚠️ <strong>Warning:</strong> Only assign this role to individuals you fully trust as administrators.
+            </div>
+
+            {/* Actions: Cancel and Confirm / Yes, Make Admin */}
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 sm:gap-3">
+              <button
+                type="button"
+                disabled={isPromotingAdmin}
+                onClick={() => setMakeAdminTarget(null)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 transition-colors cursor-pointer min-h-[44px] text-center"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isPromotingAdmin}
+                onClick={handleConfirmMakeAdmin}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 transition-all cursor-pointer min-h-[44px] shadow-sm flex items-center justify-center gap-1.5"
+              >
+                <Shield size={14} />
+                <span>{isPromotingAdmin ? 'Granting Access...' : 'Yes, Make Admin'}</span>
+              </button>
             </div>
           </div>
         </div>
