@@ -60,6 +60,54 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
   };
 }
 
+// Helper function to format markdown inline links [text](url), **bold**, and *italic*
+function formatInlineText(text: string) {
+  const tokens: (string | React.ReactNode)[] = [];
+  const regex = /\[([^\]]+)\]\(([^)]+)\)|\*\*([^*]+)\*\*|\*([^*]+)\*/g;
+  let lastIndex = 0;
+  let match;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      tokens.push(text.substring(lastIndex, match.index));
+    }
+    if (match[1] && match[2]) {
+      const linkText = match[1];
+      const href = match[2];
+      if (href.startsWith('/')) {
+        tokens.push(
+          <Link key={match.index} href={href} className="text-blue-600 hover:underline font-medium">
+            {linkText}
+          </Link>
+        );
+      } else {
+        tokens.push(
+          <a
+            key={match.index}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline font-medium"
+          >
+            {linkText}
+          </a>
+        );
+      }
+    } else if (match[3]) {
+      tokens.push(<strong key={match.index} className="font-semibold text-slate-900">{match[3]}</strong>);
+    } else if (match[4]) {
+      tokens.push(<em key={match.index}>{match[4]}</em>);
+    }
+    lastIndex = regex.lastIndex;
+  }
+
+  if (lastIndex < text.length) {
+    tokens.push(text.substring(lastIndex));
+  }
+
+  return tokens.length > 0 ? tokens : text;
+}
+
 export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const { slug } = await params;
   const post = getPostBySlug(slug);
@@ -216,7 +264,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                     <ul key={index} className="list-disc pl-6 space-y-2 text-slate-700">
                       {items.map((item, idx) => (
                         <li key={idx}>
-                          {item.replace(/^[*|-]\s+/, '')}
+                          {formatInlineText(item.replace(/^[*|-]\s+/, ''))}
                         </li>
                       ))}
                     </ul>
@@ -230,7 +278,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                       key={index}
                       className="border-l-4 border-blue-600 bg-blue-50/70 p-4 rounded-r-xl italic text-slate-700 text-sm sm:text-base my-4"
                     >
-                      {trimmed.replace('> ', '')}
+                      {formatInlineText(trimmed.replace('> ', ''))}
                     </blockquote>
                   );
                 }
@@ -238,7 +286,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                 // Default paragraph with internal links conversion
                 return (
                   <p key={index} className="text-slate-700 text-sm sm:text-base leading-relaxed">
-                    {trimmed}
+                    {formatInlineText(trimmed)}
                   </p>
                 );
               })}
