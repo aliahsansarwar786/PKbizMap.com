@@ -5,6 +5,7 @@ import Footer from '@/components/layout/Footer';
 import HeroSearch from '@/components/home/HeroSearch';
 import BrowseSection from '@/components/business/BrowseSection';
 import RecentlyListed from '@/components/business/RecentlyListed';
+import FaqSection from '@/components/home/FaqSection';
 import {
   Search,
   ArrowRight,
@@ -298,6 +299,9 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* ── FAQ Section ("Got Questions?") ──────────────────────────────── */}
+        <FaqSection />
 
         {/* ── Newsletter ──────────────────────────────────────────────────── */}
         <section className="section" style={{ background: '#f8fafc', borderTop: '1px solid #f1f5f9' }} aria-labelledby="newsletter-heading">
