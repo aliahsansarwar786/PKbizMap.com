@@ -60,8 +60,8 @@ export function StarRating({ rating = 0, count = 0, size = 14 }) {
         })}
       </div>
       <span className="text-xs font-semibold text-slate-700">
-        {numRating.toFixed(1)}{' '}
-        <span className="font-normal text-slate-400">({numCount} reviews)</span>
+        {`${numRating.toFixed(1)} `}
+        <span className="font-normal text-slate-400">{`(${numCount} reviews)`}</span>
       </span>
     </div>
   );
@@ -180,10 +180,11 @@ export default function BusinessCard({ business }) {
               <button
                 type="button"
                 disabled
-                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold bg-slate-50 text-slate-400 border border-slate-200/60 cursor-not-allowed opacity-60 min-h-[44px]"
+                className="inline-flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl text-xs font-semibold bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed select-none min-h-[44px]"
+                title="No phone number available"
                 aria-label="No phone number available"
               >
-                <Phone size={13} />
+                <Phone size={13} className="text-slate-400" />
                 <span>Call</span>
               </button>
             )}

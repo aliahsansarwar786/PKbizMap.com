@@ -42,39 +42,7 @@ const COUNTRY_TO_NOMINATIM_CODE = {
   USA: 'us',
 };
 
-
-const CATEGORIES = [
-  'Bank',
-  'Laboratory',
-  'Bus Companies',
-  'Information Technology (IT) & Services',
-  'Hospital',
-  'Local Shops & Traders',
-  'Education',
-  'Shopping & Retail Chains',
-  'Real Estate',
-  'Restaurants & Food Chains',
-  'Importer and Exporter',
-  'Courier & Cargo Companies',
-  'Hotels & Guest Houses',
-  'Telecom Companies',
-  'IT',
-  'Restaurant',
-  'Healthcare',
-  'Automotive',
-  'Retail',
-  'Construction',
-  'Finance',
-  'Beauty',
-  'Travel',
-  'Professional Services',
-  'Hotels & Hospitality',
-  'Home Services',
-  'Fashion & Clothing',
-  'Electronics & Mobiles',
-  'Sports & Fitness',
-  'Other',
-];
+import { CATEGORY_NAMES as CATEGORIES } from '@/data/categories';
 
 const DAYS_OF_WEEK = [
   { key: 'monday', label: 'Monday' },

@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { businessAPI } from '@/lib/api';
 import { COUNTRIES, getCities } from '@/data/locations';
+import { CATEGORIES as CATEGORIES_LIST } from '@/data/categories';
 import {
   ChevronLeft,
   ChevronRight,
@@ -63,9 +64,11 @@ function getCategorySvgFallback(categoryName) {
   return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100%" height="100%" fill="%23f8fafc"/><rect x="2" y="2" width="96" height="96" rx="8" fill="%23f1f5f9" stroke="%23e2e8f0" stroke-width="2"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="%234f46e5">${encodeURIComponent(categoryName || 'Category')}</text></svg>`;
 }
 
-// Emergency City SVG fallback
+// Vibrant City SVG fallback: renders an elegant brand gradient with skyline & city initial (never blank gray)
 function getCitySvgFallback(cityName) {
-  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><rect width="100%" height="100%" fill="%23f8fafc"/><rect x="2" y="2" width="96" height="96" rx="8" fill="%23f1f5f9" stroke="%23e2e8f0" stroke-width="2"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-family="system-ui,sans-serif" font-size="11" font-weight="700" fill="%232563eb">${encodeURIComponent(cityName || 'City')}</text></svg>`;
+  const name = cityName || 'City';
+  const initial = name.charAt(0).toUpperCase();
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="%231e40af"/><stop offset="100%" stop-color="%233b82f6"/></linearGradient></defs><rect width="100%" height="100%" rx="10" fill="url(%23g)"/><g opacity="0.18" fill="%23ffffff"><rect x="10" y="45" width="14" height="55"/><rect x="28" y="30" width="18" height="70"/><rect x="50" y="40" width="16" height="60"/><rect x="70" y="20" width="20" height="80"/></g><circle cx="50" cy="42" r="20" fill="%23ffffff" fill-opacity="0.2"/><text x="50%" y="48%" dominant-baseline="middle" text-anchor="middle" font-family="system-ui,sans-serif" font-size="20" font-weight="800" fill="%23ffffff">${encodeURIComponent(initial)}</text><text x="50%" y="82%" dominant-baseline="middle" text-anchor="middle" font-family="system-ui,sans-serif" font-size="9" font-weight="700" fill="%23ffffff" letter-spacing="0.5">${encodeURIComponent(name.length > 10 ? name.slice(0, 9) + '…' : name)}</text></svg>`;
 }
 
 function PakistanFlag() {
@@ -122,160 +125,6 @@ const COUNTRY_DETAILS = {
   },
 };
 
-// Exact 13 categories with exact requested descriptions and 100% unique verified Unsplash images
-const CATEGORIES_LIST = [
-  {
-    name: 'Bank',
-    description: 'Commercial banks, retail banking, branches, and financial services',
-    image: 'https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?w=400&q=80',
-  },
-  {
-    name: 'Laboratory',
-    description: 'Diagnostic labs, medical testing, clinical research, and pathology',
-    image: 'https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=400&q=80',
-  },
-  {
-    name: 'Bus Companies',
-    description: 'Intercity coaches, public transit, charter buses, and transportation',
-    image: 'https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=400&q=80',
-  },
-  {
-    name: 'Information Technology (IT) & Services',
-    description: 'IT consulting, software development, cloud computing, and tech solutions',
-    image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=400&q=80',
-  },
-  {
-    name: 'Hospital',
-    description: 'Emergency care, specialty hospitals, clinics, and surgical centers',
-    image: 'https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=400&q=80',
-  },
-  {
-    name: 'Local Shops & Traders',
-    description: 'Neighborhood markets, general stores, wholesale traders, and local shops',
-    image: 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=400&q=80',
-  },
-  {
-    name: 'Education',
-    description: 'Schools, tutoring, courses, and educational services',
-    image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=400&q=80',
-  },
-  {
-    name: 'Shopping & Retail Chains',
-    description: 'Supermarkets, hypermarkets, departmental stores, and retail brands',
-    image: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=400&q=80',
-  },
-  {
-    name: 'Real Estate',
-    description: 'Property listings, agents, and real estate services',
-    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=400&q=80',
-  },
-  {
-    name: 'Restaurants & Food Chains',
-    description: 'Fine dining, fast food chains, cafes, bakeries, and eateries',
-    image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=400&q=80',
-  },
-  {
-    name: 'Importer and Exporter',
-    description: 'Global trade, shipping merchants, customs clearance, and import/export',
-    image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=400&q=80',
-  },
-  {
-    name: 'Courier & Cargo Companies',
-    description: 'Parcel delivery, freight forwarding, logistics, and express cargo',
-    image: 'https://images.unsplash.com/photo-1616401784845-180882ba9ba8?w=400&q=80',
-  },
-  {
-    name: 'Hotels & Guest Houses',
-    description: 'Luxury hotels, boutique stays, resorts, motels, and guest houses',
-    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&q=80',
-  },
-  {
-    name: 'Telecom Companies',
-    description: 'Mobile network operators, broadband internet, fiber optics, and telecom',
-    image: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=400&q=80',
-  },
-  {
-    name: 'IT',
-    description: 'Software, web development, IT services and tech companies',
-    image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=400&q=80',
-  },
-  {
-    name: 'Restaurant',
-    description: 'Restaurants, cafes, food delivery, and catering',
-    image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=400&q=80',
-  },
-  {
-    name: 'Healthcare',
-    description: 'Clinics, hospitals, doctors, dentists, and wellness',
-    image: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=400&q=80',
-  },
-  {
-    name: 'Automotive',
-    description: 'Car dealers, repair shops, and auto services',
-    image: 'https://images.unsplash.com/photo-1503376780353-7e6692767b70?w=400&q=80',
-  },
-  {
-    name: 'Retail',
-    description: 'Shops, stores, boutiques, and online retail',
-    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&q=80',
-  },
-  {
-    name: 'Finance',
-    description: 'Banks, accountants, financial advisors, and insurance',
-    image: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400&q=80',
-  },
-  {
-    name: 'Beauty',
-    description: 'Salons, spas, barbershops, and beauty services',
-    image: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&q=80',
-  },
-  {
-    name: 'Travel',
-    description: 'Travel agencies, tours, hotels, and transport',
-    image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400&q=80',
-  },
-  {
-    name: 'Professional Services',
-    description: 'Lawyers, consultants, agencies, and professional services',
-    image: 'https://images.unsplash.com/photo-1450133064473-71024230f91b?w=400&q=80',
-  },
-  {
-    name: 'Construction',
-    description: 'Builders, contractors, and construction services',
-    image: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=400&q=80',
-  },
-  {
-    name: 'Hotels & Hospitality',
-    description: 'Hotels, resorts, luxury stays, guest houses, and hospitality services',
-    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=400&q=80',
-  },
-  {
-    name: 'Home Services',
-    description: 'Plumbing, electrical, cleaning, maintenance, and home repair services',
-    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=400&q=80',
-  },
-  {
-    name: 'Fashion & Clothing',
-    description: 'Apparel, boutiques, footwear, fashion accessories, and clothing stores',
-    image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=400&q=80',
-  },
-  {
-    name: 'Electronics & Mobiles',
-    description: 'Smartphones, laptops, home electronics, gadgets, and repair accessories',
-    image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&q=80',
-  },
-  {
-    name: 'Sports & Fitness',
-    description: 'Gyms, fitness centers, sports gear, personal trainers, and athletics',
-    image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=400&q=80',
-  },
-  {
-    name: 'Other',
-    description: 'Other local businesses and services',
-    image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=400&q=80',
-  },
-];
-
 // Verified major city images (100% unique photo IDs, verified HTTP 200)
 const CITY_IMAGES = {
   // Pakistan Major Cities
@@ -287,6 +136,9 @@ const CITY_IMAGES = {
   Faisalabad: 'https://images.unsplash.com/photo-1609137144813-7d9921338f24?w=400&q=80',
   Peshawar: 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=400&q=80',
   Quetta: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&q=80',
+  Mingora: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&q=80',
+  Hunza: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=80',
+  Mansehra: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=400&q=80',
   Hyderabad: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=400&q=80',
   Sialkot: 'https://images.unsplash.com/photo-1565008447742-97f6f38c985c?w=400&q=80',
   Gujranwala: 'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?w=400&q=80',
@@ -299,10 +151,20 @@ const CITY_IMAGES = {
   Kasur: 'https://images.unsplash.com/photo-1509356843151-3e7d96241e11?w=400&q=80',
   Sahiwal: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&q=80',
   Sargodha: 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=400&q=80',
+  'Rahim Yar Khan': 'https://images.unsplash.com/photo-1509356843151-3e7d96241e11?w=400&q=80',
+  Mardan: 'https://images.unsplash.com/photo-1513836279014-a89f7a76ae86?w=400&q=80',
   Larkana: 'https://images.unsplash.com/photo-1534447677768-be436bb09401?w=400&q=80',
   Sheikhupura: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=400&q=80',
   Jhelum: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?w=400&q=80',
   Kabirwala: 'https://images.unsplash.com/photo-1578328819058-b69f3a3b0f6b?w=400&q=80',
+  Muzaffarabad: 'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=400&q=80',
+  Skardu: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=400&q=80',
+  Gilgit: 'https://images.unsplash.com/photo-1528728329032-2972f65dfb3f?w=400&q=80',
+  Okara: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=400&q=80',
+  Jhang: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?w=400&q=80',
+  Chiniot: 'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?w=400&q=80',
+  'Dera Ghazi Khan': 'https://images.unsplash.com/photo-1548013146-72479768bada?w=400&q=80',
+  'Wah Cantt': 'https://images.unsplash.com/photo-1590073844006-33379778ae09?w=400&q=80',
 
   // UAE Major Cities
   Dubai: 'https://images.unsplash.com/photo-1580674684081-7617fbf3d745?w=400&q=80',
@@ -334,10 +196,10 @@ export default function BrowseSection({
   selectedCountry = '',
   selectedCity = '',
   selectedCategory = '',
-  onSelectCountry,
-  onSelectCity,
-  onSelectCategory,
-  onClearAll,
+  onSelectCountry = () => {},
+  onSelectCity = () => {},
+  onSelectCategory = () => {},
+  onClearAll = () => {},
   summary = null,
 }) {
   const router = useRouter();
@@ -672,7 +534,7 @@ export default function BrowseSection({
                             : 'bg-slate-100 text-slate-600 border border-slate-200'
                         }`}
                       >
-                        {count} {count === 1 ? 'Listing' : 'Listings'}
+                        {`${count} ${count === 1 ? 'Listing' : 'Listings'}`}
                       </span>
                     </div>
                   </div>
@@ -784,7 +646,7 @@ export default function BrowseSection({
                     aria-label={`Select city ${cityName} in ${effectiveCountry}`}
                   >
                     {/* Left: 100x100px rounded image */}
-                    <div className="w-[100px] h-[100px] min-w-[100px] min-h-[100px] rounded-[10px] overflow-hidden relative shrink-0 bg-slate-100 border border-slate-100 shadow-xs">
+                    <div className="w-[100px] h-[100px] min-w-[100px] min-h-[100px] rounded-[10px] overflow-hidden relative shrink-0 bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-100 shadow-xs">
                       <img
                         src={cityImg}
                         alt={cityName}
@@ -821,7 +683,7 @@ export default function BrowseSection({
                               : 'bg-slate-100 text-slate-500 border border-slate-200'
                           }`}
                         >
-                          {count} {count === 1 ? 'business' : 'businesses'}
+                          {`${count} ${count === 1 ? 'business' : 'businesses'}`}
                         </span>
                       </div>
                     </div>
@@ -1037,7 +899,7 @@ export default function BrowseSection({
                               : 'bg-slate-100 text-slate-500 border border-slate-200'
                           }`}
                         >
-                          {count} {count === 1 ? 'business' : 'businesses'}
+                          {`${count} ${count === 1 ? 'business' : 'businesses'}`}
                         </span>
                       </div>
                     </div>

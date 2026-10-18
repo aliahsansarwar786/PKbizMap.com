@@ -1,37 +1,7 @@
 const mongoose = require('mongoose');
 
-const CATEGORIES = [
-  'Bank',
-  'Laboratory',
-  'Bus Companies',
-  'Information Technology (IT) & Services',
-  'Hospital',
-  'Local Shops & Traders',
-  'Education',
-  'Shopping & Retail Chains',
-  'Real Estate',
-  'Restaurants & Food Chains',
-  'Importer and Exporter',
-  'Courier & Cargo Companies',
-  'Hotels & Guest Houses',
-  'Telecom Companies',
-  'IT',
-  'Restaurant',
-  'Healthcare',
-  'Automotive',
-  'Retail',
-  'Construction',
-  'Finance',
-  'Beauty',
-  'Travel',
-  'Professional Services',
-  'Hotels & Hospitality',
-  'Home Services',
-  'Fashion & Clothing',
-  'Electronics & Mobiles',
-  'Sports & Fitness',
-  'Other',
-];
+const { CATEGORIES, CATEGORY_MAP, normalizeCategory } = require('../utils/categories');
+const ALL_ALLOWED_CATEGORIES = Array.from(new Set([...CATEGORIES, ...Object.keys(CATEGORY_MAP)]));
 
 const businessSchema = new mongoose.Schema(
   {
@@ -53,7 +23,7 @@ const businessSchema = new mongoose.Schema(
       type: String,
       required: [true, 'Category is required'],
       enum: {
-        values: CATEGORIES,
+        values: ALL_ALLOWED_CATEGORIES,
         message: `Category must be one of: ${CATEGORIES.join(', ')}`,
       },
     },
@@ -170,6 +140,14 @@ const businessSchema = new mongoose.Schema(
     toObject: { virtuals: true },
   }
 );
+
+// Normalize category to canonical name before validation/saving
+businessSchema.pre('validate', function (next) {
+  if (this.category) {
+    this.category = normalizeCategory(this.category);
+  }
+  next();
+});
 
 // ─── Indexes ──────────────────────────────────────────────────────────────────
 businessSchema.index({ owner: 1 });

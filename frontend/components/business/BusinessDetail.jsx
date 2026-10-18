@@ -21,6 +21,67 @@ function WhatsAppIcon({ size = 15, className = '' }) {
   );
 }
 
+// Helper to format full address without duplicate city
+function formatAddress(address) {
+  if (!address) return '';
+  const street = (address.street || '').trim();
+  const area = (address.area || '').trim();
+  const city = (address.city || '').trim();
+  const country = (address.country || 'Pakistan').trim();
+  const zipCode = (address.zipCode || '').trim();
+
+  let displayStreet = street;
+  let includeCity = Boolean(city);
+
+  if (city) {
+    const cityLower = city.toLowerCase();
+    // If street ends with city name (e.g. "DHA Phase 6, Lahore" or "Gulberg Lahore") or equals city
+    const regex = new RegExp(`(?:,\\s*|\\s+)${cityLower}$`, 'i');
+    if (street.toLowerCase() === cityLower || regex.test(street)) {
+      includeCity = false;
+    }
+  }
+
+  let displayArea = area;
+  if (area && city && area.toLowerCase() === city.toLowerCase()) {
+    displayArea = '';
+  }
+
+  const parts = [
+    displayStreet,
+    displayArea,
+    includeCity ? city : '',
+    country,
+    zipCode,
+  ].filter(Boolean);
+
+  return parts.join(', ');
+}
+
+// Helper to format short address without duplicate city
+function formatShortAddress(address) {
+  if (!address) return '';
+  const street = (address.street || '').trim();
+  const area = (address.area || '').trim();
+  const city = (address.city || '').trim();
+
+  let includeCity = Boolean(city);
+  if (city) {
+    const cityLower = city.toLowerCase();
+    const regex = new RegExp(`(?:,\\s*|\\s+)${cityLower}$`, 'i');
+    if (street.toLowerCase() === cityLower || regex.test(street)) {
+      includeCity = false;
+    }
+  }
+
+  let displayArea = area;
+  if (area && city && area.toLowerCase() === city.toLowerCase()) {
+    displayArea = '';
+  }
+
+  return [street, displayArea, includeCity ? city : ''].filter(Boolean).join(', ');
+}
+
 function ReviewForm({ businessId, onSubmit, existingReview = null }) {
   const [rating, setRating] = useState(existingReview?.rating || 5);
   const [comment, setComment] = useState(existingReview?.comment || '');
@@ -243,8 +304,7 @@ export default function BusinessDetail({ id }) {
                   <div className="flex items-center gap-2 mt-2">
                     <MapPin size={14} style={{ color: '#6b7280', flexShrink: 0 }} />
                     <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                      {[business.address?.street, business.address?.city, business.address?.country || 'Pakistan', business.address?.zipCode]
-                        .filter(Boolean).join(', ')}
+                      {formatAddress(business.address)}
                     </span>
                   </div>
                   <div className="mt-2">
@@ -404,7 +464,7 @@ export default function BusinessDetail({ id }) {
                 Contact & Actions
               </h2>
 
-              {business.phone && (
+              {business.phone ? (
                 <a
                   href={`tel:${business.phone}`}
                   className="flex items-center gap-3 p-3 rounded-lg mb-2 w-full transition-colors hover:bg-blue-50"
@@ -418,6 +478,20 @@ export default function BusinessDetail({ id }) {
                     <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>{business.phone}</p>
                   </div>
                 </a>
+              ) : (
+                <div
+                  className="flex items-center gap-3 p-3 rounded-lg mb-2 w-full bg-slate-50 border border-slate-200 select-none cursor-not-allowed"
+                  title="No phone number available"
+                  aria-label="No phone number available"
+                >
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100 text-slate-400">
+                    <Phone size={15} />
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Phone</p>
+                    <p style={{ fontSize: '0.875rem', fontWeight: 500, color: '#94a3b8' }}>No phone number available</p>
+                  </div>
+                </div>
               )}
 
               {business.whatsapp && (
@@ -488,7 +562,7 @@ export default function BusinessDetail({ id }) {
 
               {business.address?.city && (
                 <a
-                  href={`https://maps.google.com/?q=${encodeURIComponent([business.address?.street, business.address?.city].filter(Boolean).join(', '))}`}
+                  href={`https://maps.google.com/?q=${encodeURIComponent(formatAddress(business.address))}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-3 p-3 rounded-lg w-full transition-colors hover:bg-blue-50"
@@ -500,7 +574,7 @@ export default function BusinessDetail({ id }) {
                   <div>
                     <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>Get Directions</p>
                     <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>
-                      {[business.address?.street, business.address?.area, business.address?.city].filter(Boolean).join(', ')}
+                      {formatShortAddress(business.address)}
                     </p>
                   </div>
                 </a>

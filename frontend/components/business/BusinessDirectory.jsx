@@ -12,39 +12,7 @@ import {
   ChevronDown,
   X,
 } from 'lucide-react';
-
-const CATEGORIES = [
-  'Bank',
-  'Laboratory',
-  'Bus Companies',
-  'Information Technology (IT) & Services',
-  'Hospital',
-  'Local Shops & Traders',
-  'Education',
-  'Shopping & Retail Chains',
-  'Real Estate',
-  'Restaurants & Food Chains',
-  'Importer and Exporter',
-  'Courier & Cargo Companies',
-  'Hotels & Guest Houses',
-  'Telecom Companies',
-  'IT',
-  'Restaurant',
-  'Healthcare',
-  'Automotive',
-  'Retail',
-  'Construction',
-  'Finance',
-  'Beauty',
-  'Travel',
-  'Professional Services',
-  'Hotels & Hospitality',
-  'Home Services',
-  'Fashion & Clothing',
-  'Electronics & Mobiles',
-  'Sports & Fitness',
-  'Other',
-];
+import { CATEGORY_NAMES as CATEGORIES } from '@/data/categories';
 
 function SkeletonCard() {
   return (
@@ -384,12 +352,12 @@ export default function BusinessDirectory() {
                 </p>
                 {(city || country) && (
                   <p className="text-[11px] text-gray-500 mb-2">
-                    Counts for <span className="font-semibold text-gray-700">{city && country ? `${city}, ${country}` : (city || country)}</span>
+                    Counts for{' '}<span className="font-semibold text-gray-700">{city && country ? `${city}, ${country}` : (city || country)}</span>
                   </p>
                 )}
               </div>
 
-              {/* Category Rows for ALL 13 categories with Live Count Pills */}
+              {/* Category Rows for ALL 17 categories with Live Count Pills */}
               <CategoryList
                 categories={CATEGORIES}
                 selectedCategory={category}
@@ -435,7 +403,7 @@ export default function BusinessDirectory() {
                     </p>
                     {(city || country) && (
                       <p className="text-[11px] text-gray-500 mb-2">
-                        Counts for <span className="font-semibold text-gray-700">{city && country ? `${city}, ${country}` : (city || country)}</span>
+                        Counts for{' '}<span className="font-semibold text-gray-700">{city && country ? `${city}, ${country}` : (city || country)}</span>
                       </p>
                     )}
                   </div>
@@ -455,7 +423,7 @@ export default function BusinessDirectory() {
             {/* ── Results Header: Found {totalResults} listings ──────── */}
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6 pb-3 border-b border-gray-200">
               <h2 className="text-xl sm:text-2xl font-extrabold text-gray-900 tracking-tight">
-                Found {pagination?.totalResults ?? businesses.length} listings
+                {`Found ${pagination?.totalResults ?? businesses.length} listings`}
               </h2>
               {(country || category || city) && (
                 <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-500">

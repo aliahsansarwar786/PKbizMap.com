@@ -1,39 +1,7 @@
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import Link from 'next/link';
-
-const CATEGORIES = [
-  { name: 'Bank', image: 'https://images.unsplash.com/photo-1541354329998-f4d9a9f9297f?w=500&q=80', description: 'Commercial banks, retail banking, branches, and financial services' },
-  { name: 'Laboratory', image: 'https://images.unsplash.com/photo-1582719471384-894fbb16e074?w=500&q=80', description: 'Diagnostic labs, medical testing, clinical research, and pathology' },
-  { name: 'Bus Companies', image: 'https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=500&q=80', description: 'Intercity coaches, public transit, charter buses, and transportation' },
-  { name: 'Information Technology (IT) & Services', image: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=500&q=80', description: 'IT consulting, software development, cloud computing, and tech solutions' },
-  { name: 'Hospital', image: 'https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?w=500&q=80', description: 'Emergency care, specialty hospitals, clinics, and surgical centers' },
-  { name: 'Local Shops & Traders', image: 'https://images.unsplash.com/photo-1534723452862-4c874018d66d?w=500&q=80', description: 'Neighborhood markets, general stores, wholesale traders, and local shops' },
-  { name: 'Education', image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=500&q=80', description: 'Schools, tutoring, courses, and educational services' },
-  { name: 'Shopping & Retail Chains', image: 'https://images.unsplash.com/photo-1555529669-e69e7aa0ba9a?w=500&q=80', description: 'Supermarkets, hypermarkets, departmental stores, and retail brands' },
-  { name: 'Real Estate', image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500&q=80', description: 'Property listings, agents, and real estate services' },
-  { name: 'Restaurants & Food Chains', image: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=500&q=80', description: 'Fine dining, fast food chains, cafes, bakeries, and eateries' },
-  { name: 'Importer and Exporter', image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=500&q=80', description: 'Global trade, shipping merchants, customs clearance, and import/export' },
-  { name: 'Courier & Cargo Companies', image: 'https://images.unsplash.com/photo-1616401784845-180882ba9ba8?w=500&q=80', description: 'Parcel delivery, freight forwarding, logistics, and express cargo' },
-  { name: 'Hotels & Guest Houses', image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500&q=80', description: 'Luxury hotels, boutique stays, resorts, motels, and guest houses' },
-  { name: 'Telecom Companies', image: 'https://images.unsplash.com/photo-1544717305-2782549b5136?w=500&q=80', description: 'Mobile network operators, broadband internet, fiber optics, and telecom' },
-  { name: 'IT', image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&q=80', description: 'Software, web development, IT services and tech companies' },
-  { name: 'Restaurant', image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500&q=80', description: 'Restaurants, cafes, food delivery, and catering' },
-  { name: 'Healthcare', image: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=500&q=80', description: 'Clinics, hospitals, doctors, dentists, and wellness' },
-  { name: 'Automotive', image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=500&q=80', description: 'Car dealers, repair shops, and auto services' },
-  { name: 'Retail', image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=500&q=80', description: 'Shops, stores, boutiques, and online retail' },
-  { name: 'Finance', image: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500&q=80', description: 'Banks, accountants, financial advisors, and insurance' },
-  { name: 'Beauty', image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500&q=80', description: 'Salons, spas, barbershops, and beauty services' },
-  { name: 'Travel', image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=500&q=80', description: 'Travel agencies, hotels, and tourism services' },
-  { name: 'Professional Services', image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=500&q=80', description: 'Lawyers, consultants, and professional services' },
-  { name: 'Construction', image: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80', description: 'Contractors, builders, and construction companies' },
-  { name: 'Hotels & Hospitality', image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500&q=80', description: 'Hotels, resorts, luxury stays, guest houses, and hospitality services' },
-  { name: 'Home Services', image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500&q=80', description: 'Plumbing, electrical, cleaning, maintenance, and home repair services' },
-  { name: 'Fashion & Clothing', image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=500&q=80', description: 'Apparel, boutiques, footwear, fashion accessories, and clothing stores' },
-  { name: 'Electronics & Mobiles', image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&q=80', description: 'Smartphones, laptops, home electronics, gadgets, and repair accessories' },
-  { name: 'Sports & Fitness', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=500&q=80', description: 'Gyms, fitness centers, sports gear, personal trainers, and athletics' },
-  { name: 'Other', image: 'https://images.unsplash.com/photo-1512314889357-e157c22f938d?w=500&q=80', description: 'All other business types not listed above' },
-];
+import { CATEGORIES } from '@/data/categories';
 
 export const metadata = {
   title: 'Browse Categories - BizPrimeHub',

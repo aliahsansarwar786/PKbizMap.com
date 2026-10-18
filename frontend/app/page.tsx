@@ -27,26 +27,7 @@ import {
   Users,
   TrendingUp,
 } from 'lucide-react';
-
-const CATEGORIES = [
-  { name: 'IT', image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?w=500&q=80' },
-  { name: 'Real Estate', image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500&q=80' },
-  { name: 'Restaurant', image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500&q=80' },
-  { name: 'Healthcare', image: 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=500&q=80' },
-  { name: 'Education', image: 'https://images.unsplash.com/photo-1497633762265-9d179a990aa6?w=500&q=80' },
-  { name: 'Automotive', image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=500&q=80' },
-  { name: 'Retail', image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=500&q=80' },
-  { name: 'Finance', image: 'https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=500&q=80' },
-  { name: 'Beauty', image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500&q=80' },
-  { name: 'Travel', image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=500&q=80' },
-  { name: 'Professional Services', image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?w=500&q=80' },
-  { name: 'Construction', image: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80' },
-  { name: 'Hotels & Hospitality', image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500&q=80' },
-  { name: 'Home Services', image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=500&q=80' },
-  { name: 'Fashion & Clothing', image: 'https://images.unsplash.com/photo-1445205170230-053b83016050?w=500&q=80' },
-  { name: 'Electronics & Mobiles', image: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=500&q=80' },
-  { name: 'Sports & Fitness', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=500&q=80' },
-];
+import { CATEGORIES } from '@/data/categories';
 
 const HOW_IT_WORKS = [
   {
@@ -156,7 +137,7 @@ export default async function HomePage() {
 
         {/* ── Elevated Search Section ──────────────────────────────────────────────── */}
         <section className="relative z-20 -mt-16 max-w-5xl mx-auto px-4 mb-16">
-          <HeroSearch categories={CATEGORIES} />
+          <HeroSearch categories={CATEGORIES as any} />
         </section>
 
         {/* ── Stats ──────────────────────────────────────────────────────── */}

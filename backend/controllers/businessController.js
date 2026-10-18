@@ -9,6 +9,7 @@ const { getNewListingNotificationHtml } = require('../utils/emailTemplates');
 const getFrontendUrl = require('../utils/getFrontendUrl');
 const PaymentSetting = require('../models/PaymentSetting');
 const { validate, businessValidator, updateBusinessValidator, objectIdValidator } = require('../utils/validators');
+const { normalizeCategory, getCategorySearchValues } = require('../utils/categories');
 
 // ─── GET /api/businesses ──────────────────────────────────────────────────────
 // Public: Returns only approved businesses with search, filter, pagination
@@ -65,9 +66,16 @@ const getBusinesses = asyncHandler(async (req, res) => {
     });
   }
 
-  // ─── Category filter ──────────────────────────────────────────────────────
+  // ─── Category filter (supports canonical categories & legacy aliases) ───
   if (category && category.trim() && category.trim().toLowerCase() !== 'all') {
-    andConditions.push({ category: category.trim() });
+    const searchValues = getCategorySearchValues(category.trim());
+    if (searchValues.length > 1) {
+      andConditions.push({ category: { $in: searchValues } });
+    } else if (searchValues.length === 1) {
+      andConditions.push({ category: searchValues[0] });
+    } else {
+      andConditions.push({ category: category.trim() });
+    }
   }
 
   // ─── Rating filter (5, 4+, 3+) ────────────────────────────────────────────
@@ -698,7 +706,8 @@ const getBusinessSummary = asyncHandler(async (req, res) => {
       cities[bCountry][rawCity] = (cities[bCountry][rawCity] || 0) + 1;
     }
 
-    const cat = (b.category || '').trim();
+    const rawCat = (b.category || '').trim();
+    const cat = normalizeCategory(rawCat);
     if (cat) {
       if (!categories[bCountry]) categories[bCountry] = {};
       categories[bCountry][cat] = (categories[bCountry][cat] || 0) + 1;

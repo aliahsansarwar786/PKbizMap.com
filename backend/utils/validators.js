@@ -161,6 +161,7 @@ const updateProfileValidator = [
 
 // ─── Business Validators ──────────────────────────────────────────────────────
 const { CATEGORIES } = require('../models/Business');
+const { normalizeCategory } = require('./categories');
 const { COUNTRIES, isValidCity } = require('./locations');
 
 const timeFormatRegex = /^([01]\d|2[0-3]):([0-5]\d)$/;
@@ -206,6 +207,7 @@ const businessValidator = [
     .isLength({ min: 20, max: 2000 }).withMessage('Description must be 20-2000 characters'),
   body('category')
     .notEmpty().withMessage('Category is required')
+    .customSanitizer((val) => normalizeCategory(val))
     .isIn(CATEGORIES).withMessage(`Category must be one of: ${CATEGORIES.join(', ')}`),
   body('subcategory')
     .optional({ checkFalsy: true })
@@ -284,6 +286,7 @@ const updateBusinessValidator = [
     .isLength({ min: 20, max: 2000 }).withMessage('Description must be 20-2000 characters'),
   body('category')
     .optional()
+    .customSanitizer((val) => normalizeCategory(val))
     .isIn(CATEGORIES).withMessage(`Category must be one of: ${CATEGORIES.join(', ')}`),
   body('contactPerson')
     .optional({ checkFalsy: true })
