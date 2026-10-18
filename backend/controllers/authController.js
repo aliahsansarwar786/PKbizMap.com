@@ -304,7 +304,7 @@ const resendOtp = [
     };
 
     const user = await User.findOne({ email: normalizedEmail }).select(
-      '+emailVerificationLastResend +emailVerificationOTPBlockedUntil'
+      '+emailVerificationLastResend +emailVerificationOTPBlockedUntil +emailVerificationOTPAttempts'
     );
 
     if (!user) {
@@ -316,16 +316,22 @@ const resendOtp = [
     }
 
     // Check account lockout
-    if (user.emailVerificationOTPBlockedUntil && user.emailVerificationOTPBlockedUntil.getTime() > Date.now()) {
-      const retryAfterSeconds = Math.ceil(
-        (user.emailVerificationOTPBlockedUntil.getTime() - Date.now()) / 1000
-      );
-      return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
-        success: false,
-        isBlocked: true,
-        retryAfter: retryAfterSeconds,
-        message: 'Account verification is temporarily locked for 30 minutes due to too many failed attempts.',
-      });
+    if (user.emailVerificationOTPBlockedUntil) {
+      if (user.emailVerificationOTPBlockedUntil.getTime() > Date.now()) {
+        const retryAfterSeconds = Math.ceil(
+          (user.emailVerificationOTPBlockedUntil.getTime() - Date.now()) / 1000
+        );
+        return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+          success: false,
+          isBlocked: true,
+          retryAfter: retryAfterSeconds,
+          message: 'Account verification is temporarily locked for 30 minutes due to too many failed attempts.',
+        });
+      } else {
+        // 30-minute block has expired: reset running count and clear lock
+        user.emailVerificationOTPAttempts = 0;
+        user.emailVerificationOTPBlockedUntil = undefined;
+      }
     }
 
     // 60-second cooldown check
@@ -341,11 +347,10 @@ const resendOtp = [
       }
     }
 
-    // Generate fresh OTP
+    // Generate fresh OTP (running failed attempts count is preserved)
     const otp = generate6DigitOtp();
     user.emailVerificationOTP = hashOtp(otp);
     user.emailVerificationOTPExpires = new Date(Date.now() + OTP_EXPIRY_MS);
-    user.emailVerificationOTPAttempts = 0;
     user.emailVerificationLastResend = new Date();
     await user.save({ validateBeforeSave: false });
 
