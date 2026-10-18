@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const User = require('../models/User');
 const asyncHandler = require('../utils/asyncHandler');
 const generateTokenAndSend = require('../utils/generateToken');
+const { setCsrfToken } = require('../middlewares/csrfProtection');
 const cloudinary = require('../config/cloudinary');
 const sendEmail = require('../utils/sendEmail');
 const {
@@ -36,23 +37,7 @@ const {
   changePasswordValidator,
   updateProfileValidator,
 } = require('../utils/validators');
-
-// ─── Resolve active frontend URL safely ───────────────────────────────────────
-const getFrontendUrl = (req) => {
-  try {
-    const origin = req?.headers?.origin || (req?.headers?.referer ? new URL(req.headers.referer).origin : null);
-    if (origin && !origin.includes('pkbizmap-com.vercel.app')) {
-      return origin.replace(/\/$/, '');
-    }
-  } catch (e) {}
-
-  const envUrl = process.env.FRONTEND_URL;
-  if (envUrl && !envUrl.includes('pkbizmap-com.vercel.app')) {
-    return envUrl.replace(/\/$/, '');
-  }
-
-  return 'https://bizprimehub.vercel.app';
-};
+const getFrontendUrl = require('../utils/getFrontendUrl');
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
 // Creates unverified user, generates 3-min OTP, sends OTP email, returns requiresVerification: true
@@ -136,7 +121,7 @@ const verifyEmail = [
 
     // 2. Find user including hidden OTP fields
     const user = await User.findOne({ email: normalizedEmail }).select(
-      '+emailVerificationOTP +emailVerificationOTPExpires +emailVerificationOTPAttempts'
+      '+emailVerificationOTP +emailVerificationOTPExpires +emailVerificationOTPAttempts +emailVerificationOTPBlockedUntil'
     );
 
     if (!user) {
@@ -154,6 +139,25 @@ const verifyEmail = [
         attemptsRemaining: fail.attemptsRemaining,
         message: 'Invalid verification code.',
       });
+    }
+
+    // Check if account is locked due to 5 failed OTP attempts
+    if (user.emailVerificationOTPBlockedUntil) {
+      if (user.emailVerificationOTPBlockedUntil.getTime() > Date.now()) {
+        const retryAfterSeconds = Math.ceil(
+          (user.emailVerificationOTPBlockedUntil.getTime() - Date.now()) / 1000
+        );
+        return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+          success: false,
+          isBlocked: true,
+          retryAfter: retryAfterSeconds,
+          message: 'Too many failed verification attempts for this account. Account verification locked for 30 minutes.',
+        });
+      } else {
+        // Block expired: reset attempts and clear lock
+        user.emailVerificationOTPAttempts = 0;
+        user.emailVerificationOTPBlockedUntil = undefined;
+      }
     }
 
     // If user is already verified
@@ -179,6 +183,17 @@ const verifyEmail = [
 
     if (!isMatch) {
       user.emailVerificationOTPAttempts = (user.emailVerificationOTPAttempts || 0) + 1;
+      if (user.emailVerificationOTPAttempts >= 5) {
+        user.emailVerificationOTPBlockedUntil = new Date(Date.now() + 30 * 60 * 1000);
+        await user.save({ validateBeforeSave: false });
+        await recordFailedAttempt(ip, 'email-verification');
+        return res.status(429).set('Retry-After', '1800').json({
+          success: false,
+          isBlocked: true,
+          retryAfter: 1800,
+          message: 'Too many failed verification attempts for this account. Account verification locked for 30 minutes.',
+        });
+      }
       await user.save({ validateBeforeSave: false });
 
       const fail = await recordFailedAttempt(ip, 'email-verification');
@@ -191,10 +206,11 @@ const verifyEmail = [
         });
       }
 
+      const userAttemptsRemaining = Math.max(0, 5 - user.emailVerificationOTPAttempts);
       return res.status(400).json({
         success: false,
-        attemptsRemaining: fail.attemptsRemaining,
-        message: `Invalid verification code. ${fail.attemptsRemaining} attempt${fail.attemptsRemaining === 1 ? '' : 's'} remaining before temporary lockout.`,
+        attemptsRemaining: Math.min(fail.attemptsRemaining, userAttemptsRemaining),
+        message: `Invalid verification code. ${userAttemptsRemaining} attempt${userAttemptsRemaining === 1 ? '' : 's'} remaining before account lockout.`,
       });
     }
 
@@ -205,6 +221,7 @@ const verifyEmail = [
     user.emailVerificationOTP = undefined;
     user.emailVerificationOTPExpires = undefined;
     user.emailVerificationOTPAttempts = 0;
+    user.emailVerificationOTPBlockedUntil = undefined;
     await user.save({ validateBeforeSave: false });
 
     // Capture request context before sending response
@@ -281,16 +298,34 @@ const resendOtp = [
       });
     }
 
+    const genericResponse = {
+      success: true,
+      message: 'If an account exists for this email, a verification code has been sent.',
+    };
+
     const user = await User.findOne({ email: normalizedEmail }).select(
-      '+emailVerificationLastResend'
+      '+emailVerificationLastResend +emailVerificationOTPBlockedUntil'
     );
 
     if (!user) {
-      return res.status(404).json({ success: false, message: 'Account not found.' });
+      return res.status(200).json(genericResponse);
     }
 
     if (user.emailVerified) {
       return res.status(400).json({ success: false, message: 'Email is already verified.' });
+    }
+
+    // Check account lockout
+    if (user.emailVerificationOTPBlockedUntil && user.emailVerificationOTPBlockedUntil.getTime() > Date.now()) {
+      const retryAfterSeconds = Math.ceil(
+        (user.emailVerificationOTPBlockedUntil.getTime() - Date.now()) / 1000
+      );
+      return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+        success: false,
+        isBlocked: true,
+        retryAfter: retryAfterSeconds,
+        message: 'Account verification is temporarily locked for 30 minutes due to too many failed attempts.',
+      });
     }
 
     // 60-second cooldown check
@@ -326,10 +361,7 @@ const resendOtp = [
       console.error('⚠️ [Auth:ResendOtp] Unexpected error sending OTP:', e.message);
     }
 
-    res.status(200).json({
-      success: true,
-      message: 'A new 6-digit verification code has been sent to your email.',
-    });
+    res.status(200).json(genericResponse);
   }),
 ];
 
@@ -373,6 +405,7 @@ const updateEmail = [
     user.emailVerificationOTP = hashOtp(otp);
     user.emailVerificationOTPExpires = new Date(Date.now() + OTP_EXPIRY_MS);
     user.emailVerificationOTPAttempts = 0;
+    user.emailVerificationOTPBlockedUntil = undefined;
     user.emailVerificationLastResend = new Date();
     await user.save({ validateBeforeSave: false });
 
@@ -435,6 +468,19 @@ const forgotPassword = [
 
     if (!user) {
       return res.status(200).json(genericResponse);
+    }
+
+    // 60-second cooldown check
+    if (user.resetPasswordLastResend) {
+      const elapsed = Date.now() - new Date(user.resetPasswordLastResend).getTime();
+      if (elapsed < RESEND_COOLDOWN_MS) {
+        const retryAfter = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
+        return res.status(429).set('Retry-After', String(retryAfter)).json({
+          success: false,
+          retryAfter,
+          message: `Please wait ${retryAfter} seconds before requesting a new code.`,
+        });
+      }
     }
 
     // Generate fresh OTP
@@ -743,10 +789,33 @@ const logout = asyncHandler(async (req, res) => {
 
 // ─── GET /api/auth/me ─────────────────────────────────────────────────────────
 const getMe = asyncHandler(async (req, res) => {
+  let csrfToken = req.cookies?.['XSRF-TOKEN'] || req.cookies?.csrfToken;
+  if (!csrfToken) {
+    csrfToken = setCsrfToken(res);
+  } else {
+    res.set('X-CSRF-Token', csrfToken);
+  }
+
   res.status(200).json({
     success: true,
     message: 'User retrieved successfully.',
-    data: { user: req.user },
+    csrfToken,
+    data: { user: req.user, csrfToken },
+  });
+});
+
+// ─── GET /api/auth/csrf-token ─────────────────────────────────────────────────
+const getCsrfToken = asyncHandler(async (req, res) => {
+  let csrfToken = req.cookies?.['XSRF-TOKEN'] || req.cookies?.csrfToken;
+  if (!csrfToken) {
+    csrfToken = setCsrfToken(res);
+  } else {
+    res.set('X-CSRF-Token', csrfToken);
+  }
+
+  res.status(200).json({
+    success: true,
+    csrfToken,
   });
 });
 
@@ -828,6 +897,7 @@ module.exports = {
   login,
   logout,
   getMe,
+  getCsrfToken,
   forgotPassword,
   verifyResetOtp,
   resetPassword,

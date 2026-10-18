@@ -1,6 +1,7 @@
 const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('../config/cloudinary');
+const { sanitizeBody } = require('./sanitize');
 
 // ─── Cloudinary Storage: Avatars ──────────────────────────────────────────────
 const avatarStorage = new CloudinaryStorage({
@@ -84,7 +85,7 @@ const handleAvatarUpload = (req, res, next) => {
     if (err) {
       return res.status(400).json({ success: false, message: err.message });
     }
-    next();
+    sanitizeBody(req, res, next);
   });
 };
 
@@ -102,7 +103,7 @@ const handleBusinessImageUpload = (req, res, next) => {
     if (err) {
       return res.status(400).json({ success: false, message: err.message });
     }
-    next();
+    sanitizeBody(req, res, next);
   });
 };
 
@@ -136,7 +137,7 @@ const handleQrCodeUpload = (req, res, next) => {
     if (err) {
       return res.status(400).json({ success: false, message: err.message });
     }
-    next();
+    sanitizeBody(req, res, next);
   });
 };
 
@@ -170,7 +171,7 @@ const handlePaymentCardImageUpload = (req, res, next) => {
     if (err) {
       return res.status(400).json({ success: false, message: err.message });
     }
-    next();
+    sanitizeBody(req, res, next);
   });
 };
 

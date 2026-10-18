@@ -68,6 +68,10 @@ const userSchema = new mongoose.Schema(
       default: 0,
       select: false,
     },
+    emailVerificationOTPBlockedUntil: {
+      type: Date,
+      select: false,
+    },
     emailVerificationLastResend: {
       type: Date,
       select: false,
@@ -156,6 +160,7 @@ userSchema.methods.toJSON = function () {
   delete obj.emailVerificationOTP;
   delete obj.emailVerificationOTPExpires;
   delete obj.emailVerificationOTPAttempts;
+  delete obj.emailVerificationOTPBlockedUntil;
   delete obj.emailVerificationLastResend;
   delete obj.resetPasswordOTP;
   delete obj.resetPasswordOTPExpires;

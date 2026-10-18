@@ -66,10 +66,15 @@ const errorHandler = (err, req, res, next) => {
       ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
     });
   } else {
-    // In production, only log non-sensitive info
+    // In production, log full error details server-side only
     if (statusCode >= 500) {
-      console.error(`🔴 Server Error [${req.method} ${req.path}]:`, message);
+      console.error(`🔴 Server Error [${req.method} ${req.path}]:`, err.message, err.stack);
     }
+  }
+
+  // In production, send generic message for server errors; keep detailed messages server-side
+  if (process.env.NODE_ENV === 'production' && statusCode >= 500) {
+    message = 'Internal Server Error';
   }
 
   // ─── Consistent error response ────────────────────────────────────────────

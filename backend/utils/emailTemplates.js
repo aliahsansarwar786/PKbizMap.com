@@ -2,6 +2,19 @@
  * Email templates for BizPrimeHub transactional emails.
  */
 
+/**
+ * Helper to escape HTML special characters to prevent phishing/injection in emails
+ */
+const escapeHtml = (str) => {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+};
+
 const getBaseStyles = () => `
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   color: #1f2937;
@@ -19,7 +32,7 @@ const getBaseStyles = () => `
  * @returns {string} HTML string
  */
 const getWelcomeEmailHtml = ({ name, loginUrl }) => {
-  const safeName = name || 'there';
+  const safeName = escapeHtml(name || 'there');
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -94,7 +107,7 @@ const getWelcomeEmailHtml = ({ name, loginUrl }) => {
  * @returns {string} HTML string
  */
 const getPasswordResetEmailHtml = ({ name, resetUrl }) => {
-  const safeName = name || 'there';
+  const safeName = escapeHtml(name || 'there');
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -194,13 +207,13 @@ const getNewListingNotificationHtml = ({
   submittedByEmail,
   pendingUrl,
 }) => {
-  const safeTitle = businessTitle || 'Untitled Business';
-  const safeCategory = category || 'General';
-  const safeCity = city || 'N/A';
-  const safeCountry = country || 'Pakistan';
-  const safeSubmitterName = submittedByName || 'Registered User';
-  const safeSubmitterEmail = submittedByEmail || 'N/A';
-  const safeUrl = pendingUrl || 'https://bizprimehub.vercel.app/folder/new/admin';
+  const safeTitle = escapeHtml(businessTitle || 'Untitled Business');
+  const safeCategory = escapeHtml(category || 'General');
+  const safeCity = escapeHtml(city || 'N/A');
+  const safeCountry = escapeHtml(country || 'Pakistan');
+  const safeSubmitterName = escapeHtml(submittedByName || 'Registered User');
+  const safeSubmitterEmail = escapeHtml(submittedByEmail || 'N/A');
+  const safeUrl = escapeHtml(pendingUrl || 'https://bizprimehub.vercel.app/folder/new/admin');
 
   return `
 <!DOCTYPE html>
@@ -305,9 +318,9 @@ const getNewListingNotificationHtml = ({
  * @returns {string} HTML string
  */
 const getNewUserNotificationHtml = ({ name, email, date }) => {
-  const safeName = name || 'New User';
-  const safeEmail = email || 'N/A';
-  const safeDate = date || new Date().toUTCString();
+  const safeName = escapeHtml(name || 'New User');
+  const safeEmail = escapeHtml(email || 'N/A');
+  const safeDate = escapeHtml(date || new Date().toUTCString());
 
   return `
 <!DOCTYPE html>
@@ -397,8 +410,8 @@ const getNewUserNotificationHtml = ({ name, email, date }) => {
  * @returns {string} HTML string
  */
 const getEmailVerificationOtpHtml = ({ name, otp }) => {
-  const safeName = name || 'there';
-  const safeOtp = String(otp || '').trim();
+  const safeName = escapeHtml(name || 'there');
+  const safeOtp = escapeHtml(String(otp || '').trim());
 
   return `
 <!DOCTYPE html>
@@ -488,8 +501,8 @@ const getEmailVerificationOtpHtml = ({ name, otp }) => {
  * @returns {string} HTML string
  */
 const getPasswordResetOtpHtml = ({ name, otp }) => {
-  const safeName = name || 'there';
-  const safeOtp = String(otp || '').trim();
+  const safeName = escapeHtml(name || 'there');
+  const safeOtp = escapeHtml(String(otp || '').trim());
 
   return `
 <!DOCTYPE html>
@@ -577,7 +590,7 @@ const getPasswordResetOtpHtml = ({ name, otp }) => {
  * @returns {string} HTML string
  */
 const getPasswordChangedSuccessEmailHtml = ({ name }) => {
-  const safeName = name || 'there';
+  const safeName = escapeHtml(name || 'there');
 
   return `
 <!DOCTYPE html>
@@ -641,6 +654,7 @@ const getPasswordChangedSuccessEmailHtml = ({ name }) => {
 };
 
 module.exports = {
+  escapeHtml,
   getWelcomeEmailHtml,
   getPasswordResetEmailHtml,
   getNewListingNotificationHtml,

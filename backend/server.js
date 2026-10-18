@@ -4,7 +4,6 @@ const cors = require('cors');
 const helmet = require('helmet');
 const cookieParser = require('cookie-parser');
 const mongoSanitize = require('express-mongo-sanitize');
-const sanitizeHtml = require('sanitize-html');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
 const path = require('path');
@@ -68,7 +67,15 @@ const corsOptions = {
   },
   credentials: true, // Required for cookies
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-CSRF-Token',
+    'x-csrf-token',
+    'X-XSRF-Token',
+    'x-xsrf-token',
+  ],
+  exposedHeaders: ['X-CSRF-Token', 'x-csrf-token', 'Retry-After'],
 };
 
 app.use(cors(corsOptions));
@@ -81,42 +88,13 @@ app.use(cookieParser());
 
 // ─── Security: Input Sanitization ────────────────────────────────────────────
 app.use(mongoSanitize()); // Prevent NoSQL injection ($, . stripping)
-// Fields exempt from HTML entity encoding / sanitization:
-// - Whitelisted enum fields (category, country): strictly validated against exact safe string lists
-// - Password fields: must preserve raw characters (including &, <, >) and are never rendered in HTML
-// - OTP, tokens, and email fields
-const SANITIZE_EXEMPT_FIELDS = new Set([
-  'category',
-  'country',
-  'password',
-  'currentPassword',
-  'newPassword',
-  'confirmPassword',
-  'otp',
-  'resetToken',
-  'email',
-  'newEmail',
-]);
+const { sanitizeBody } = require('./middlewares/sanitize');
+app.use(sanitizeBody); // Prevent XSS attacks in request body
 
-// ─── Security: XSS Protection (sanitize string fields in body) ───────────────
-app.use((req, res, next) => {
-  if (req.body && typeof req.body === 'object') {
-    const sanitize = (obj) => {
-      for (const key of Object.keys(obj)) {
-        if (SANITIZE_EXEMPT_FIELDS.has(key)) {
-          continue;
-        }
-        if (typeof obj[key] === 'string') {
-          obj[key] = sanitizeHtml(obj[key], { allowedTags: [], allowedAttributes: {} });
-        } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-          sanitize(obj[key]);
-        }
-      }
-    };
-    sanitize(req.body);
-  }
-  next();
-}); // Prevent XSS attacks
+// ─── Security: Double-Submit Cookie CSRF Protection ──────────────────────────
+const { csrfProtection } = require('./middlewares/csrfProtection');
+app.use(csrfProtection);
+
 
 // ─── Logging ──────────────────────────────────────────────────────────────────
 if (process.env.NODE_ENV === 'development') {
@@ -131,10 +109,13 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // ─── Rate Limiters ────────────────────────────────────────────────────────────
+const { getClientIp } = require('./utils/otpManager');
+
 // General API rate limit
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 200,
+  keyGenerator: (req) => getClientIp(req),
   message: {
     success: false,
     message: 'Too many requests from this IP. Please try again after 15 minutes.',
@@ -147,6 +128,7 @@ const generalLimiter = rateLimit({
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 30,
+  keyGenerator: (req) => getClientIp(req),
   message: {
     success: false,
     message: 'Too many authentication attempts. Please try again after 15 minutes.',
@@ -159,6 +141,7 @@ const authLimiter = rateLimit({
 const passwordResetLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 25,
+  keyGenerator: (req) => getClientIp(req),
   message: {
     success: false,
     message: 'Too many password reset attempts. Please try again after 15 minutes.',

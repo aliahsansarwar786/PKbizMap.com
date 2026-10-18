@@ -12,9 +12,10 @@ const RESEND_COOLDOWN_MS = 60 * 1000; // 60 seconds
 const getClientIp = (req) => {
   const forwarded = req.headers['x-forwarded-for'];
   if (forwarded) {
-    return forwarded.split(',')[0].trim();
+    const parts = forwarded.split(',');
+    return parts[parts.length - 1].trim();
   }
-  return req.socket?.remoteAddress || req.ip || 'unknown';
+  return req.ip || req.socket?.remoteAddress || 'unknown';
 };
 
 /**

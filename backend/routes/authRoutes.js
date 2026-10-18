@@ -8,6 +8,7 @@ const {
   login,
   logout,
   getMe,
+  getCsrfToken,
   forgotPassword,
   verifyResetOtp,
   resetPassword,
@@ -19,6 +20,7 @@ const { protect } = require('../middlewares/auth');
 const { handleAvatarUpload } = require('../middlewares/upload');
 
 // Public routes
+router.get('/csrf-token', getCsrfToken);
 router.post('/register', register);
 router.post('/verify-email', verifyEmail);
 router.post('/resend-otp', resendOtp);

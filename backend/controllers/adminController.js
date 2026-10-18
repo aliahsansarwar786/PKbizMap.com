@@ -344,35 +344,43 @@ const updateUserRole = [
       });
     }
 
-    const updateData = { role };
+    const targetUser = await User.findById(req.params.id);
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    // Operational lockout guard: block demoting the LAST remaining admin
+    if (targetUser.role === 'admin' && role !== 'admin') {
+      const adminCount = await User.countDocuments({ role: 'admin' });
+      if (adminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot demote the last remaining admin.',
+        });
+      }
+    }
+
+    targetUser.role = role;
     if (role === 'subadmin') {
-      updateData.permissions = {
+      targetUser.permissions = {
         canApproveListings: Boolean(permissions?.canApproveListings),
         canDeleteListings: Boolean(permissions?.canDeleteListings),
         canModerateReviews: Boolean(permissions?.canModerateReviews),
       };
     } else {
-      updateData.permissions = {
+      targetUser.permissions = {
         canApproveListings: false,
         canDeleteListings: false,
         canModerateReviews: false,
       };
     }
 
-    const user = await User.findByIdAndUpdate(
-      req.params.id,
-      updateData,
-      { new: true, runValidators: true }
-    );
-
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found.' });
-    }
+    await targetUser.save();
 
     res.status(200).json({
       success: true,
       message: `User role updated to "${role}" successfully.`,
-      data: { user },
+      data: { user: targetUser },
     });
   }),
 ];
@@ -446,6 +454,17 @@ const deleteUser = [
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    // Operational lockout guard: block deleting the LAST remaining admin
+    if (user.role === 'admin') {
+      const adminCount = await User.countDocuments({ role: 'admin' });
+      if (adminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot delete the last remaining admin.',
+        });
+      }
     }
 
     // Delete user's avatar from Cloudinary

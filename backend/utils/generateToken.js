@@ -1,13 +1,16 @@
 const jwt = require('jsonwebtoken');
+const { setCsrfToken } = require('../middlewares/csrfProtection');
 
 /**
  * Generate a JWT token and send it as a secure HttpOnly cookie.
  * JWT payload contains ONLY the minimum required information.
+ * Also sets a double-submit CSRF cookie.
  *
  * @param {Object} user - Mongoose User document
  * @param {number} statusCode - HTTP status code
  * @param {Object} res - Express response object
  * @param {string} message - Success message
+ * @param {Object} extraData - Optional additional response payload
  */
 const generateTokenAndSend = (user, statusCode, res, message, extraData = {}) => {
   // Minimal JWT payload - never include password or sensitive data
@@ -20,7 +23,7 @@ const generateTokenAndSend = (user, statusCode, res, message, extraData = {}) =>
     expiresIn: process.env.JWT_EXPIRE || '7d',
   });
 
-  // Cookie options
+  // Session Cookie options
   const cookieOptions = {
     httpOnly: true, // Cannot be accessed by JavaScript (XSS protection)
     secure: process.env.NODE_ENV === 'production', // HTTPS only in production
@@ -28,6 +31,9 @@ const generateTokenAndSend = (user, statusCode, res, message, extraData = {}) =>
     maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in milliseconds
     path: '/',
   };
+
+  // Set double-submit CSRF token (cookie & header)
+  const csrfToken = setCsrfToken(res);
 
   // Safe user object (no password, no reset token)
   const safeUser = {
@@ -47,8 +53,8 @@ const generateTokenAndSend = (user, statusCode, res, message, extraData = {}) =>
     .json({
       success: true,
       message,
-      token,
-      data: { user: safeUser, ...extraData },
+      csrfToken,
+      data: { user: safeUser, csrfToken, ...extraData },
       ...extraData,
     });
 };

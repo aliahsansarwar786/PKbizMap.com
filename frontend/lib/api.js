@@ -17,6 +17,14 @@ class ApiError extends Error {
   }
 }
 
+let cachedCsrfToken = null;
+
+const getCookie = (name) => {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+  return match ? decodeURIComponent(match[1]) : null;
+};
+
 /**
  * Core fetch wrapper
  */
@@ -43,9 +51,38 @@ async function fetchAPI(endpoint, options = {}) {
     },
   };
 
+  const method = (config.method || 'GET').toUpperCase();
+  const isStateChanging = ['POST', 'PATCH', 'PUT', 'DELETE'].includes(method);
+
+  if (isStateChanging) {
+    if (!cachedCsrfToken) {
+      cachedCsrfToken = getCookie('XSRF-TOKEN') || getCookie('csrfToken');
+    }
+
+    if (!cachedCsrfToken && !endpoint.includes('/auth/csrf-token')) {
+      try {
+        const csrfRes = await fetch(`${API_URL}/auth/csrf-token`, { credentials: 'include' });
+        const csrfData = await csrfRes.json();
+        const headerToken = csrfRes.headers.get('X-CSRF-Token') || csrfRes.headers.get('x-csrf-token');
+        cachedCsrfToken = csrfData?.csrfToken || headerToken || getCookie('XSRF-TOKEN');
+      } catch (e) {}
+    }
+
+    if (cachedCsrfToken) {
+      config.headers['X-CSRF-Token'] = cachedCsrfToken;
+    }
+  }
+
   try {
     const response = await fetch(url, config);
     const data = await response.json();
+
+    const csrfHeader = response.headers.get('X-CSRF-Token') || response.headers.get('x-csrf-token');
+    if (csrfHeader) {
+      cachedCsrfToken = csrfHeader;
+    } else if (data?.csrfToken || data?.data?.csrfToken) {
+      cachedCsrfToken = data.csrfToken || data.data?.csrfToken;
+    }
 
     if (!response.ok) {
       const retryAfterHeader = response.headers.get('Retry-After');
