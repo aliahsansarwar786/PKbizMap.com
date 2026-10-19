@@ -33,6 +33,14 @@ const connectDB = async () => {
       console.warn('User migration warning:', migErr.message);
     }
 
+    // INITIALIZATION: Ensure payment settings document is initialized and repaired on startup
+    try {
+      const PaymentSetting = require('../models/PaymentSetting');
+      await PaymentSetting.initOrRepairSettings();
+    } catch (psErr) {
+      console.warn('PaymentSetting startup init warning:', psErr.message);
+    }
+
     // Handle connection events
     mongoose.connection.on('error', (err) => {
       lastDbError = err.message;

@@ -75,7 +75,7 @@ async function fetchAPI(endpoint, options = {}) {
 
   try {
     const response = await fetch(url, config);
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
 
     const csrfHeader = response.headers.get('X-CSRF-Token') || response.headers.get('x-csrf-token');
     if (csrfHeader) {
@@ -85,6 +85,44 @@ async function fetchAPI(endpoint, options = {}) {
     }
 
     if (!response.ok) {
+      // FIX 7: on 403 from a state-changing request, fetch a fresh CSRF token and retry ONCE
+      if (
+        response.status === 403 &&
+        isStateChanging &&
+        !options._retryCsrf &&
+        !endpoint.includes('/auth/csrf-token')
+      ) {
+        try {
+          const csrfRes = await fetch(`${API_URL}/auth/csrf-token`, { credentials: 'include' });
+          const csrfData = await csrfRes.json().catch(() => ({}));
+          const headerToken = csrfRes.headers.get('X-CSRF-Token') || csrfRes.headers.get('x-csrf-token');
+          const freshToken = csrfData?.csrfToken || headerToken || getCookie('XSRF-TOKEN');
+          if (freshToken) {
+            cachedCsrfToken = freshToken;
+            return await fetchAPI(endpoint, {
+              ...options,
+              _retryCsrf: true,
+              headers: {
+                ...(options.headers || {}),
+                'X-CSRF-Token': freshToken,
+              },
+            });
+          }
+        } catch (e) {
+          // If CSRF fetch fails, continue to global auth interceptor
+        }
+      }
+
+      // FIX 6: Global 401/403 interceptor - on 401/403, redirect to /login (except on /login and /register)
+      if (response.status === 401 || response.status === 403) {
+        if (typeof window !== 'undefined') {
+          const p = window.location.pathname.replace(/\/+$/, '') || '/';
+          if (p !== '/login' && p !== '/register') {
+            window.location.href = '/login';
+          }
+        }
+      }
+
       const retryAfterHeader = response.headers.get('Retry-After');
       const err = new ApiError(
         data.message || 'Something went wrong',
@@ -142,11 +180,7 @@ export const authAPI = {
   verifyResetOtp: (data) => api.post('/auth/verify-reset-otp', data),
   resendResetOtp: (data) => api.post('/auth/resend-reset-otp', data),
   resetPasswordWithToken: (data) => api.post('/auth/reset-password', data),
-  resetPassword: (tokenOrData, payload) => {
-    if (typeof tokenOrData === 'string') {
-      const newPassword = typeof payload === 'object' ? (payload?.newPassword || payload?.password) : payload;
-      return api.post(`/auth/reset-password/${tokenOrData}`, { newPassword, password: newPassword });
-    }
+  resetPassword: (tokenOrData) => {
     const token = tokenOrData?.token || tokenOrData?.resetToken;
     const newPassword = tokenOrData?.newPassword || tokenOrData?.password;
     if (token) {

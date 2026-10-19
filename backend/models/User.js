@@ -113,6 +113,9 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false, // Legacy field
     },
+    passwordChangedAt: {
+      type: Date,
+    },
   },
   {
     timestamps: true,

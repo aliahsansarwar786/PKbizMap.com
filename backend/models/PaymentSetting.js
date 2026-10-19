@@ -179,8 +179,17 @@ paymentSettingSchema.methods.getFeeForCountry = function (countryName) {
   };
 };
 
-// Singleton helper: always fetch or initialize the single configuration document
+// Singleton helper: read-only retrieval of the single configuration document
 paymentSettingSchema.statics.getSettings = async function () {
+  let settings = await this.findOne();
+  if (!settings) {
+    settings = await this.create({});
+  }
+  return settings;
+};
+
+// Startup migration & repair helper: runs strictly on server startup, not on public GET requests
+paymentSettingSchema.statics.initOrRepairSettings = async function () {
   let settings = await this.findOne();
   if (!settings) {
     settings = await this.create({});

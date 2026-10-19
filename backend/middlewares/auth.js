@@ -44,6 +44,17 @@ const protect = asyncHandler(async (req, res, next) => {
     });
   }
 
+  // Reject tokens issued before password was changed
+  if (user.passwordChangedAt) {
+    const changedTimestamp = parseInt(user.passwordChangedAt.getTime() / 1000, 10);
+    if (decoded.iat && decoded.iat < changedTimestamp) {
+      return res.status(401).json({
+        success: false,
+        message: 'Password was recently changed. Please log in again.',
+      });
+    }
+  }
+
   // Attach authenticated user to request - this is the source of truth for authorization
   req.user = user;
   next();

@@ -136,8 +136,7 @@ const verifyEmail = [
       }
       return res.status(400).json({
         success: false,
-        attemptsRemaining: fail.attemptsRemaining,
-        message: 'Invalid verification code.',
+        message: 'Invalid or expired verification code.',
       });
     }
 
@@ -162,10 +161,9 @@ const verifyEmail = [
 
     // If user is already verified
     if (user.emailVerified) {
-      return res.status(200).json({
-        success: true,
-        message: 'Email is already verified. You can proceed.',
-        data: { user },
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired verification code.',
       });
     }
 
@@ -173,8 +171,7 @@ const verifyEmail = [
     if (!user.emailVerificationOTPExpires || user.emailVerificationOTPExpires.getTime() < Date.now()) {
       return res.status(400).json({
         success: false,
-        isExpired: true,
-        message: 'Verification code has expired. Please request a new code.',
+        message: 'Invalid or expired verification code.',
       });
     }
 
@@ -206,11 +203,9 @@ const verifyEmail = [
         });
       }
 
-      const userAttemptsRemaining = Math.max(0, 5 - user.emailVerificationOTPAttempts);
       return res.status(400).json({
         success: false,
-        attemptsRemaining: Math.min(fail.attemptsRemaining, userAttemptsRemaining),
-        message: `Invalid verification code. ${userAttemptsRemaining} attempt${userAttemptsRemaining === 1 ? '' : 's'} remaining before account lockout.`,
+        message: 'Invalid or expired verification code.',
       });
     }
 
@@ -257,7 +252,7 @@ const verifyEmail = [
         if (isOwnerNotificationsEnabled && ownerEmail) {
           sendEmail({
             to: ownerEmail,
-            subject: `New user registered: ${verifiedUserName}`,
+            subject: `New user registered: ${String(verifiedUserName || '').replace(/[\r\n]+/g, ' ').trim()}`,
             html: getNewUserNotificationHtml({
               name: verifiedUserName,
               email: verifiedUserEmail,
@@ -690,6 +685,7 @@ const resetPassword = [
 
     // Set new password (pre-save hook hashes with bcrypt)
     user.password = newPassword;
+    user.passwordChangedAt = new Date(Date.now() - 1000);
     user.resetPasswordTokenHash = undefined;
     user.resetPasswordTokenExpires = undefined;
     user.resetPasswordOTP = undefined;
@@ -920,6 +916,7 @@ const changePassword = [
     }
 
     user.password = newPassword;
+    user.passwordChangedAt = new Date(Date.now() - 1000);
     await user.save();
 
     generateTokenAndSend(user, 200, res, 'Password changed successfully.');

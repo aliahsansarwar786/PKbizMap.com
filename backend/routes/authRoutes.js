@@ -32,9 +32,6 @@ router.post('/verify-reset-otp', verifyResetOtp);
 router.post('/reset-password', resetPassword);
 router.post('/resend-reset-otp', resendResetOtp);
 
-// Legacy backward-compatibility for any in-flight /reset-password/:token calls
-router.post('/reset-password/:token', resetPassword);
-
 // Protected routes (require authentication)
 router.patch('/email', protect, updateEmail);
 router.post('/logout', protect, logout);

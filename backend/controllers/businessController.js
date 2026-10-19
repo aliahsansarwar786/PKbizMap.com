@@ -346,7 +346,7 @@ const createBusiness = [
 
         await sendEmail({
           to: ownerEmail,
-          subject: `New listing submitted: ${business.title}`,
+          subject: `New listing submitted: ${String(business.title || '').replace(/[\r\n]+/g, ' ').trim()}`,
           html: getNewListingNotificationHtml({
             businessTitle: business.title,
             category: business.category,
