@@ -284,39 +284,6 @@ export default async function HomePage() {
         {/* ── FAQ Section ("Got Questions?") ──────────────────────────────── */}
         <FaqSection />
 
-        {/* ── Newsletter ──────────────────────────────────────────────────── */}
-        <section className="section" style={{ background: '#f8fafc', borderTop: '1px solid #f1f5f9' }} aria-labelledby="newsletter-heading">
-          <div className="container-max max-w-4xl text-center">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-6" style={{ background: '#e0e7ff', color: '#4f46e5' }}>
-              <TrendingUp size={32} />
-            </div>
-            <h2 id="newsletter-heading" style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1f2937', marginBottom: '0.75rem' }}>
-              Stay Updated with Local Trends
-            </h2>
-            <p style={{ color: '#6b7280', marginBottom: '2.5rem', fontSize: '1.0625rem' }}>
-              Subscribe to our newsletter to receive weekly updates on the best new businesses, exclusive offers, and local events.
-            </p>
-            
-            <form className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
-              <input 
-                type="email" 
-                placeholder="Enter your email address" 
-                className="input-field flex-1"
-                style={{ height: '3rem' }}
-                required
-              />
-              <button 
-                type="submit" 
-                className="btn-primary"
-                style={{ height: '3rem', padding: '0 2rem' }}
-              >
-                Subscribe
-              </button>
-            </form>
-            <p style={{ fontSize: '0.75rem', color: '#9ca3af', marginTop: '1rem' }}>We respect your privacy. Unsubscribe at any time.</p>
-          </div>
-        </section>
-
         {/* ── CTA ─────────────────────────────────────────────────────────── */}
         <section
           style={{ background: '#2563eb', padding: '4rem 0' }}
