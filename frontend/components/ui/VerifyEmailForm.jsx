@@ -169,7 +169,9 @@ export default function VerifyEmailForm() {
         updateUser(res.data.user);
       }
       setTimeout(() => {
-        const nextUrl = searchParams.get('next') || '/dashboard';
+        const rawNext = searchParams.get('next');
+        const isValidNext = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//');
+        const nextUrl = isValidNext ? rawNext : '/dashboard';
         router.push(nextUrl);
       }, 1500);
     } catch (err) {

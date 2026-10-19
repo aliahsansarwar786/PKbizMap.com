@@ -746,49 +746,6 @@ const deleteBusinessReceipt = [
   }),
 ];
 
-// ─── POST /api/admin/migrate-locations ───────────────────────────────────────
-// Admin: One-time migration to set address.country = 'Pakistan' & fix typos
-const migrateLocations = asyncHandler(async (req, res) => {
-  const locationsData = require('../data/locations.json');
-  const pakistanCities = (locationsData.Pakistan || []).map((c) => c.toLowerCase());
-
-  // 1. Fix typo 'multsn' -> 'Multan'
-  const typoResult = await Business.updateMany(
-    { 'address.city': { $regex: /^multsn$/i } },
-    { $set: { 'address.city': 'Multan' } }
-  );
-
-  // 2. Find businesses where address.country is missing / null / empty
-  const businesses = await Business.find({
-    $or: [
-      { 'address.country': { $exists: false } },
-      { 'address.country': null },
-      { 'address.country': '' },
-    ],
-  });
-
-  let updatedCount = 0;
-  for (const b of businesses) {
-    const city = (b.address?.city || '').trim().toLowerCase();
-    if (pakistanCities.includes(city) || city === 'multan' || city === 'multsn') {
-      b.address = b.address || {};
-      b.address.country = 'Pakistan';
-      if (city === 'multsn') b.address.city = 'Multan';
-      await b.save({ validateBeforeSave: false });
-      updatedCount++;
-    }
-  }
-
-  res.status(200).json({
-    success: true,
-    message: `Locations migration finished. Fixed ${typoResult.modifiedCount || 0} typo(s) and updated ${updatedCount} business(es).`,
-    data: {
-      typoFixedCount: typoResult.modifiedCount || 0,
-      countryUpdatedCount: updatedCount,
-    },
-  });
-});
-
 module.exports = {
   getDashboard,
   getUsers,
@@ -806,5 +763,5 @@ module.exports = {
   adminUpdateBusiness,
   getPaymentHistory,
   deleteBusinessReceipt,
-  migrateLocations,
 };
+

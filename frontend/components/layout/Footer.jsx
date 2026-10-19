@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Mail, Phone, MapPin, Heart, ArrowRight } from 'lucide-react';
+import { CATEGORIES } from '@/data/categories';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -111,10 +112,10 @@ export default function Footer() {
           <div className="lg:col-span-4">
             <h4 className="!text-white font-semibold mb-6 tracking-wide uppercase text-sm border-b border-slate-800 pb-2 w-max">Popular Categories</h4>
             <div className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm font-medium">
-              {['IT & Services', 'Real Estate', 'Restaurants', 'Healthcare', 'Education', 'Automotive', 'Beauty', 'Retail'].map((cat) => (
-                <Link key={cat} href={`/businesses?category=${encodeURIComponent(cat)}`} className="!text-slate-300 hover:!text-white transition-colors truncate pr-2 flex items-center gap-2 group">
+              {CATEGORIES.slice(0, 8).map((cat) => (
+                <Link key={cat.name} href={`/businesses?category=${encodeURIComponent(cat.name)}`} className="!text-slate-300 hover:!text-white transition-colors truncate pr-2 flex items-center gap-2 group">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500/0 group-hover:bg-blue-500 transition-colors shrink-0"></span>
-                  <span className="truncate">{cat}</span>
+                  <span className="truncate">{cat.name}</span>
                 </Link>
               ))}
             </div>

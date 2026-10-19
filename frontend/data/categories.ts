@@ -12,11 +12,6 @@ export const CATEGORIES: Category[] = [
     description: 'Software, web development, IT services and tech companies',
   },
   {
-    name: 'Real Estate',
-    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500&q=80',
-    description: 'Property listings, agents, and real estate services',
-  },
-  {
     name: 'Restaurant',
     image: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=500&q=80',
     description: 'Restaurants, cafes, food delivery, and catering',
@@ -32,11 +27,6 @@ export const CATEGORIES: Category[] = [
     description: 'Schools, tutoring, courses, and educational services',
   },
   {
-    name: 'Automotive',
-    image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=500&q=80',
-    description: 'Car dealers, repair shops, and auto services',
-  },
-  {
     name: 'Retail',
     image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=500&q=80',
     description: 'Shops, stores, boutiques, and online retail',
@@ -47,14 +37,29 @@ export const CATEGORIES: Category[] = [
     description: 'Banks, accountants, financial advisors, and insurance',
   },
   {
-    name: 'Beauty',
-    image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500&q=80',
-    description: 'Salons, spas, barbershops, and beauty services',
+    name: 'Hotels & Hospitality',
+    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500&q=80',
+    description: 'Hotels, resorts, luxury stays, guest houses, and hospitality services',
   },
   {
     name: 'Travel',
     image: 'https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=500&q=80',
     description: 'Travel agencies, hotels, and tourism services',
+  },
+  {
+    name: 'Real Estate',
+    image: 'https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=500&q=80',
+    description: 'Property listings, agents, and real estate services',
+  },
+  {
+    name: 'Automotive',
+    image: 'https://images.unsplash.com/photo-1533473359331-0135ef1b58bf?w=500&q=80',
+    description: 'Car dealers, repair shops, and auto services',
+  },
+  {
+    name: 'Beauty',
+    image: 'https://images.unsplash.com/photo-1522337360788-8b13dee7a37e?w=500&q=80',
+    description: 'Salons, spas, barbershops, and beauty services',
   },
   {
     name: 'Professional Services',
@@ -65,11 +70,6 @@ export const CATEGORIES: Category[] = [
     name: 'Construction',
     image: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=500&q=80',
     description: 'Contractors, builders, and construction companies',
-  },
-  {
-    name: 'Hotels & Hospitality',
-    image: 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=500&q=80',
-    description: 'Hotels, resorts, luxury stays, guest houses, and hospitality services',
   },
   {
     name: 'Home Services',

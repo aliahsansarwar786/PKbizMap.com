@@ -468,11 +468,30 @@ const forgotPassword = [
     };
 
     const user = await User.findOne({ email: normalizedEmail }).select(
-      '+resetPasswordLastResend'
+      '+resetPasswordLastResend +resetPasswordOTPBlockedUntil +resetPasswordOTPAttempts'
     );
 
     if (!user) {
       return res.status(200).json(genericResponse);
+    }
+
+    // Check account lockout
+    if (user.resetPasswordOTPBlockedUntil) {
+      if (user.resetPasswordOTPBlockedUntil.getTime() > Date.now()) {
+        const retryAfterSeconds = Math.ceil(
+          (user.resetPasswordOTPBlockedUntil.getTime() - Date.now()) / 1000
+        );
+        return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+          success: false,
+          isBlocked: true,
+          retryAfter: retryAfterSeconds,
+          message: 'Password reset is temporarily locked for 30 minutes due to too many failed attempts.',
+        });
+      } else {
+        // 30-minute block has expired: reset running count and clear lock
+        user.resetPasswordOTPAttempts = 0;
+        user.resetPasswordOTPBlockedUntil = undefined;
+      }
     }
 
     // 60-second cooldown check
@@ -539,7 +558,7 @@ const verifyResetOtp = [
 
     // 2. Find user
     const user = await User.findOne({ email: normalizedEmail }).select(
-      '+resetPasswordOTP +resetPasswordOTPExpires +resetPasswordOTPAttempts'
+      '+resetPasswordOTP +resetPasswordOTPExpires +resetPasswordOTPAttempts +resetPasswordOTPBlockedUntil'
     );
 
     if (!user) {
@@ -559,6 +578,25 @@ const verifyResetOtp = [
       });
     }
 
+    // Check if account is locked due to 5 failed OTP attempts
+    if (user.resetPasswordOTPBlockedUntil) {
+      if (user.resetPasswordOTPBlockedUntil.getTime() > Date.now()) {
+        const retryAfterSeconds = Math.ceil(
+          (user.resetPasswordOTPBlockedUntil.getTime() - Date.now()) / 1000
+        );
+        return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+          success: false,
+          isBlocked: true,
+          retryAfter: retryAfterSeconds,
+          message: 'Too many failed verification attempts for this account. Password reset locked for 30 minutes.',
+        });
+      } else {
+        // Block expired: reset attempts and clear lock
+        user.resetPasswordOTPAttempts = 0;
+        user.resetPasswordOTPBlockedUntil = undefined;
+      }
+    }
+
     // 3. Expiry check
     if (!user.resetPasswordOTPExpires || user.resetPasswordOTPExpires.getTime() < Date.now()) {
       return res.status(400).json({
@@ -573,6 +611,17 @@ const verifyResetOtp = [
 
     if (!isMatch) {
       user.resetPasswordOTPAttempts = (user.resetPasswordOTPAttempts || 0) + 1;
+      if (user.resetPasswordOTPAttempts >= 5) {
+        user.resetPasswordOTPBlockedUntil = new Date(Date.now() + 30 * 60 * 1000);
+        await user.save({ validateBeforeSave: false });
+        await recordFailedAttempt(ip, 'password-reset');
+        return res.status(429).set('Retry-After', '1800').json({
+          success: false,
+          isBlocked: true,
+          retryAfter: 1800,
+          message: 'Too many failed verification attempts for this account. Password reset locked for 30 minutes.',
+        });
+      }
       await user.save({ validateBeforeSave: false });
 
       const fail = await recordFailedAttempt(ip, 'password-reset');
@@ -585,10 +634,11 @@ const verifyResetOtp = [
         });
       }
 
+      const userAttemptsRemaining = Math.max(0, 5 - user.resetPasswordOTPAttempts);
       return res.status(400).json({
         success: false,
-        attemptsRemaining: fail.attemptsRemaining,
-        message: `Invalid verification code. ${fail.attemptsRemaining} attempt${fail.attemptsRemaining === 1 ? '' : 's'} remaining before temporary lockout.`,
+        attemptsRemaining: Math.min(fail.attemptsRemaining, userAttemptsRemaining),
+        message: `Invalid verification code. ${userAttemptsRemaining} attempt${userAttemptsRemaining === 1 ? '' : 's'} remaining before account lockout.`,
       });
     }
 
@@ -598,6 +648,7 @@ const verifyResetOtp = [
     user.resetPasswordOTP = undefined;
     user.resetPasswordOTPExpires = undefined;
     user.resetPasswordOTPAttempts = 0;
+    user.resetPasswordOTPBlockedUntil = undefined;
 
     const rawResetToken = crypto.randomBytes(32).toString('hex');
     user.resetPasswordTokenHash = crypto.createHash('sha256').update(rawResetToken).digest('hex');
@@ -644,6 +695,8 @@ const resetPassword = [
     user.resetPasswordTokenExpires = undefined;
     user.resetPasswordOTP = undefined;
     user.resetPasswordOTPExpires = undefined;
+    user.resetPasswordOTPAttempts = 0;
+    user.resetPasswordOTPBlockedUntil = undefined;
     user.resetPasswordToken = undefined; // Clear legacy field
     user.resetPasswordExpire = undefined;
     await user.save();
@@ -695,11 +748,30 @@ const resendResetOtp = [
     };
 
     const user = await User.findOne({ email: normalizedEmail }).select(
-      '+resetPasswordLastResend'
+      '+resetPasswordLastResend +resetPasswordOTPBlockedUntil +resetPasswordOTPAttempts'
     );
 
     if (!user) {
       return res.status(200).json(genericResponse);
+    }
+
+    // Check account lockout
+    if (user.resetPasswordOTPBlockedUntil) {
+      if (user.resetPasswordOTPBlockedUntil.getTime() > Date.now()) {
+        const retryAfterSeconds = Math.ceil(
+          (user.resetPasswordOTPBlockedUntil.getTime() - Date.now()) / 1000
+        );
+        return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+          success: false,
+          isBlocked: true,
+          retryAfter: retryAfterSeconds,
+          message: 'Password reset is temporarily locked for 30 minutes due to too many failed attempts.',
+        });
+      } else {
+        // 30-minute block has expired: reset running count and clear lock
+        user.resetPasswordOTPAttempts = 0;
+        user.resetPasswordOTPBlockedUntil = undefined;
+      }
     }
 
     // 60-second cooldown check
@@ -718,7 +790,6 @@ const resendResetOtp = [
     const otp = generate6DigitOtp();
     user.resetPasswordOTP = hashOtp(otp);
     user.resetPasswordOTPExpires = new Date(Date.now() + OTP_EXPIRY_MS);
-    user.resetPasswordOTPAttempts = 0;
     user.resetPasswordLastResend = new Date();
     await user.save({ validateBeforeSave: false });
 

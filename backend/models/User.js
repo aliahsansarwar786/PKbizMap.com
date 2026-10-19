@@ -89,6 +89,10 @@ const userSchema = new mongoose.Schema(
       default: 0,
       select: false,
     },
+    resetPasswordOTPBlockedUntil: {
+      type: Date,
+      select: false,
+    },
     resetPasswordLastResend: {
       type: Date,
       select: false,
@@ -165,6 +169,7 @@ userSchema.methods.toJSON = function () {
   delete obj.resetPasswordOTP;
   delete obj.resetPasswordOTPExpires;
   delete obj.resetPasswordOTPAttempts;
+  delete obj.resetPasswordOTPBlockedUntil;
   delete obj.resetPasswordLastResend;
   delete obj.resetPasswordTokenHash;
   delete obj.resetPasswordTokenExpires;
