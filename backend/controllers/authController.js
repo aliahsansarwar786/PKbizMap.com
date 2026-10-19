@@ -507,11 +507,10 @@ const forgotPassword = [
       }
     }
 
-    // Generate fresh OTP
+    // Generate fresh OTP (running failed attempts count is preserved)
     const otp = generate6DigitOtp();
     user.resetPasswordOTP = hashOtp(otp);
     user.resetPasswordOTPExpires = new Date(Date.now() + OTP_EXPIRY_MS);
-    user.resetPasswordOTPAttempts = 0;
     user.resetPasswordLastResend = new Date();
     // Clear any previous reset tokens
     user.resetPasswordTokenHash = undefined;
