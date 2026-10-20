@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 import { getAllPosts } from '@/data/blogPosts';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://bizprimehub.vercel.app';
+  const baseUrl = 'https://www.bizprimehub.com';
   const blogPosts = getAllPosts();
 
   const staticRoutes: MetadataRoute.Sitemap = [

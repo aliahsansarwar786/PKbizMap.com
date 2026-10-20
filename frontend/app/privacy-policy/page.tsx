@@ -24,7 +24,7 @@ export const metadata = {
   description:
     'BizPrimeHub Privacy Policy explains how we collect, process, store, and safeguard your personal information when using our online business directory services.',
   alternates: {
-    canonical: 'https://bizprimehub.vercel.app/privacy-policy',
+    canonical: 'https://www.bizprimehub.com/privacy-policy',
   },
 };
 
@@ -59,8 +59,8 @@ export default function PrivacyPolicyPage() {
                   This Privacy Policy for <strong>Ahsan Ali, trading as BizPrimeHub</strong> (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;),
                   describes how and why we might access, collect, store, use, and/or share (&quot;process&quot;) your personal
                   information when you use our services (&quot;Services&quot;), including when you visit{' '}
-                  <a href="https://bizprimehub.vercel.app" className="text-blue-600 hover:underline font-medium">
-                    https://bizprimehub.vercel.app
+                  <a href="https://www.bizprimehub.com" className="text-blue-600 hover:underline font-medium">
+                    https://www.bizprimehub.com
                   </a>
                   .
                 </p>
@@ -121,11 +121,11 @@ export default function PrivacyPolicyPage() {
                     <strong>How do you exercise your rights?</strong> The easiest way to exercise your rights is by submitting a data
                     subject access request through our contact form at{' '}
                     <Link href="/contact" className="text-blue-600 hover:underline font-medium">
-                      https://bizprimehub.vercel.app/contact
+                      https://www.bizprimehub.com/contact
                     </Link>
                     , or by contacting us at{' '}
-                    <a href="mailto:bizprimehuboffical@gmail.com" className="text-blue-600 hover:underline font-medium">
-                      bizprimehuboffical@gmail.com
+                    <a href="mailto:info@bizprimehub.com" className="text-blue-600 hover:underline font-medium">
+                      info@bizprimehub.com
                     </a>
                     . We will consider and act upon any request in accordance with applicable data protection laws.
                   </p>
@@ -380,8 +380,8 @@ export default function PrivacyPolicyPage() {
                   represent that you are at least 18 years of age. If we learn that personal information from users less than 18 years of
                   age has been collected, we will deactivate the account and take reasonable measures to promptly delete such data from
                   our records. If you become aware of any data we may have collected from children under age 18, please contact us at{' '}
-                  <a href="mailto:bizprimehuboffical@gmail.com" className="text-blue-600 hover:underline font-medium">
-                    bizprimehuboffical@gmail.com
+                  <a href="mailto:info@bizprimehub.com" className="text-blue-600 hover:underline font-medium">
+                    info@bizprimehub.com
                   </a>
                   .
                 </p>
@@ -419,12 +419,12 @@ export default function PrivacyPolicyPage() {
                       <li>Log in to your account settings and update your user account, or</li>
                       <li>
                         Contact us at{' '}
-                        <a href="mailto:bizprimehuboffical@gmail.com" className="text-blue-600 hover:underline">
-                          bizprimehuboffical@gmail.com
+                        <a href="mailto:info@bizprimehub.com" className="text-blue-600 hover:underline">
+                          info@bizprimehub.com
                         </a>{' '}
                         or through our contact form at{' '}
                         <Link href="/contact" className="text-blue-600 hover:underline">
-                          https://bizprimehub.vercel.app/contact
+                          https://www.bizprimehub.com/contact
                         </Link>
                         .
                       </li>
@@ -444,8 +444,8 @@ export default function PrivacyPolicyPage() {
                   </p>
                   <p>
                     If you have questions or comments about your privacy rights, you may email us at{' '}
-                    <a href="mailto:bizprimehuboffical@gmail.com" className="text-blue-600 hover:underline font-medium">
-                      bizprimehuboffical@gmail.com
+                    <a href="mailto:info@bizprimehub.com" className="text-blue-600 hover:underline font-medium">
+                      info@bizprimehub.com
                     </a>
                     .
                   </p>
@@ -502,8 +502,8 @@ export default function PrivacyPolicyPage() {
                     <p className="font-semibold text-slate-900">Ahsan Ali, trading as BizPrimeHub</p>
                     <p>
                       Email:{' '}
-                      <a href="mailto:bizprimehuboffical@gmail.com" className="text-blue-600 hover:underline font-medium">
-                        bizprimehuboffical@gmail.com
+                      <a href="mailto:info@bizprimehub.com" className="text-blue-600 hover:underline font-medium">
+                        info@bizprimehub.com
                       </a>
                     </p>
                     <p>Multan, Punjab 60000, Pakistan</p>
@@ -524,11 +524,11 @@ export default function PrivacyPolicyPage() {
                   These rights may be limited in some circumstances by applicable law. To request to review, update, or delete your
                   personal information, please log in to your account settings or submit a request through our contact form at{' '}
                   <Link href="/contact" className="text-blue-600 hover:underline font-medium">
-                    https://bizprimehub.vercel.app/contact
+                    https://www.bizprimehub.com/contact
                   </Link>
                   , or email us at{' '}
-                  <a href="mailto:bizprimehuboffical@gmail.com" className="text-blue-600 hover:underline font-medium">
-                    bizprimehuboffical@gmail.com
+                  <a href="mailto:info@bizprimehub.com" className="text-blue-600 hover:underline font-medium">
+                    info@bizprimehub.com
                   </a>
                   .
                 </p>

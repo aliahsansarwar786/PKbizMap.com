@@ -622,13 +622,15 @@ const getMyBusinesses = asyncHandler(async (req, res) => {
   const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
   const skip = (pageNum - 1) * limitNum;
 
-  const [businesses, total] = await Promise.all([
+  const [businesses, total, approvedCount, pendingCount] = await Promise.all([
     Business.find({ owner: req.user._id })
       .sort('-createdAt')
       .skip(skip)
       .limit(limitNum)
       .lean(),
     Business.countDocuments({ owner: req.user._id }),
+    Business.countDocuments({ owner: req.user._id, isApproved: true }),
+    Business.countDocuments({ owner: req.user._id, isApproved: false }),
   ]);
 
   res.status(200).json({
@@ -636,6 +638,8 @@ const getMyBusinesses = asyncHandler(async (req, res) => {
     message: 'Your businesses retrieved successfully.',
     data: {
       businesses,
+      approvedCount,
+      pendingCount,
       pagination: {
         currentPage: pageNum,
         totalPages: Math.ceil(total / limitNum),

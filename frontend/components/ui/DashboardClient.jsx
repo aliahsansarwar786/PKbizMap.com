@@ -31,6 +31,8 @@ export default function DashboardClient() {
   const router = useRouter();
   const [businesses, setBusinesses] = useState([]);
   const [pagination, setPagination] = useState(null);
+  const [approvedCount, setApprovedCount] = useState(null);
+  const [pendingCount, setPendingCount] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,8 +45,14 @@ export default function DashboardClient() {
     if (!isAuthenticated) return;
     businessAPI.getMyBusinesses()
       .then((res) => {
-        setBusinesses(res.data.businesses);
-        setPagination(res.data.pagination);
+        setBusinesses(res.data?.businesses || []);
+        setPagination(res.data?.pagination || null);
+        if (typeof res.data?.approvedCount === 'number') {
+          setApprovedCount(res.data.approvedCount);
+        }
+        if (typeof res.data?.pendingCount === 'number') {
+          setPendingCount(res.data.pendingCount);
+        }
       })
       .catch(() => toast.error('Failed to load your businesses.'))
       .finally(() => setLoading(false));
@@ -54,7 +62,16 @@ export default function DashboardClient() {
     if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
     try {
       await businessAPI.delete(id);
+      const deleted = businesses.find((b) => b._id === id);
       setBusinesses((prev) => prev.filter((b) => b._id !== id));
+      setPagination((prev) => (prev ? { ...prev, totalResults: Math.max(0, (prev.totalResults ?? 1) - 1) } : prev));
+      if (deleted) {
+        if (deleted.isApproved) {
+          setApprovedCount((prev) => (typeof prev === 'number' ? Math.max(0, prev - 1) : prev));
+        } else {
+          setPendingCount((prev) => (typeof prev === 'number' ? Math.max(0, prev - 1) : prev));
+        }
+      }
       toast.success('Business deleted successfully.');
     } catch (err) {
       toast.error(err.message || 'Failed to delete business.');
@@ -72,8 +89,15 @@ export default function DashboardClient() {
     );
   }
 
-  const approved = businesses.filter((b) => b.isApproved).length;
-  const pending = businesses.filter((b) => !b.isApproved).length;
+  const totalListed = typeof pagination?.totalResults === 'number'
+    ? pagination.totalResults
+    : businesses.length;
+  const approved = typeof approvedCount === 'number'
+    ? approvedCount
+    : businesses.filter((b) => b.isApproved).length;
+  const pending = typeof pendingCount === 'number'
+    ? pendingCount
+    : businesses.filter((b) => !b.isApproved).length;
 
   const avatarUrl = user?.avatar?.url ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'U')}&background=2563eb&color=fff&size=64`;
@@ -116,7 +140,7 @@ export default function DashboardClient() {
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <StatCard label="My Listed Businesses" value={businesses.length} icon={LayoutGrid} color="#2563eb" />
+          <StatCard label="My Listed Businesses" value={totalListed} icon={LayoutGrid} color="#2563eb" />
           <StatCard label="Approved" value={approved} icon={CheckCircle2} color="#059669" />
           <StatCard label="Pending Review" value={pending} icon={Clock} color="#d97706" />
           <StatCard

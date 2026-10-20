@@ -27,7 +27,7 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
     };
   }
 
-  const postUrl = `https://bizprimehub.vercel.app/blog/${post.slug}`;
+  const postUrl = `https://www.bizprimehub.com/blog/${post.slug}`;
 
   return {
     title: `${post.metaTitle} | BizPrimeHub`,
@@ -135,15 +135,15 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     publisher: {
       '@type': 'Organization',
       name: 'BizPrimeHub',
-      url: 'https://bizprimehub.vercel.app',
+      url: 'https://www.bizprimehub.com',
       logo: {
         '@type': 'ImageObject',
-        url: 'https://bizprimehub.vercel.app/logo-transparent.png',
+        url: 'https://www.bizprimehub.com/logo-transparent.png',
       },
     },
     mainEntityOfPage: {
       '@type': 'WebPage',
-      '@id': `https://bizprimehub.vercel.app/blog/${post.slug}`,
+      '@id': `https://www.bizprimehub.com/blog/${post.slug}`,
     },
   };
 

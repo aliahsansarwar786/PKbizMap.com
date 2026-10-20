@@ -26,7 +26,7 @@ export const metadata = {
   description:
     'Terms and Conditions governing the use of BizPrimeHub online business directory, covering user accounts, business listings, listing fees, content moderation, reviews, and legal policies.',
   alternates: {
-    canonical: 'https://bizprimehub.vercel.app/terms',
+    canonical: 'https://www.bizprimehub.com/terms',
   },
 };
 
@@ -62,8 +62,8 @@ export default function TermsPage() {
                   between you (whether as an individual visitor or an authorized representative of a business)
                   and <strong>Ahsan Ali, trading as BizPrimeHub</strong> (&quot;we&quot;, &quot;us&quot;, or &quot;our&quot;),
                   regarding your use of{' '}
-                  <a href="https://bizprimehub.vercel.app" className="text-blue-600 hover:underline font-medium">
-                    https://bizprimehub.vercel.app
+                  <a href="https://www.bizprimehub.com" className="text-blue-600 hover:underline font-medium">
+                    https://www.bizprimehub.com
                   </a>{' '}
                   (the &quot;Services&quot;).
                 </p>
@@ -154,8 +154,8 @@ export default function TermsPage() {
                   <p>
                     You are responsible for maintaining the confidentiality of your password and for all
                     activity under your account. Notify us immediately at{' '}
-                    <a href="mailto:bizprimehuboffical@gmail.com" className="text-blue-600 hover:underline font-medium">
-                      bizprimehuboffical@gmail.com
+                    <a href="mailto:info@bizprimehub.com" className="text-blue-600 hover:underline font-medium">
+                      info@bizprimehub.com
                     </a>{' '}
                     if you suspect unauthorized access.
                   </p>
@@ -215,8 +215,8 @@ export default function TermsPage() {
                   <p>
                     If you are the authorized representative of a listed business and wish to update, claim, or
                     remove your listing, contact us at{' '}
-                    <a href="mailto:bizprimehuboffical@gmail.com" className="text-blue-600 hover:underline font-medium">
-                      bizprimehuboffical@gmail.com
+                    <a href="mailto:info@bizprimehub.com" className="text-blue-600 hover:underline font-medium">
+                      info@bizprimehub.com
                     </a>{' '}
                     with proof of ownership. Requests are typically processed within 3 to 5 business days.
                   </p>
@@ -287,8 +287,7 @@ export default function TermsPage() {
                 <ul className="list-disc pl-6 space-y-2.5 text-slate-600">
                   <li>
                     Publishing a business listing may require a one-time listing fee, depending on your
-                    country. The current fee for Pakistan is Rs. 50. Listings from the UAE and the USA are
-                    currently free of charge.
+                    country. The exact fee for your region is always shown before you submit your listing.
                   </li>
                   <li>
                     BizPrimeHub does not process payments on this website. You pay directly through your own
@@ -320,7 +319,7 @@ export default function TermsPage() {
                   <p>
                     Your privacy matters to us. Our Privacy Policy, available at{' '}
                     <Link href="/privacy-policy" className="text-blue-600 hover:underline font-medium">
-                      https://bizprimehub.vercel.app/privacy-policy
+                      https://www.bizprimehub.com/privacy-policy
                     </Link>
                     , forms part of these Terms and explains what personal information we collect, how we use
                     it, and your rights. By using the Services, you consent to the data practices described in
@@ -342,11 +341,11 @@ export default function TermsPage() {
                       You may request access to, correction of, or deletion of your personal information at any
                       time via{' '}
                       <Link href="/contact" className="text-blue-600 hover:underline">
-                        https://bizprimehub.vercel.app/contact
+                        https://www.bizprimehub.com/contact
                       </Link>{' '}
                       or{' '}
-                      <a href="mailto:bizprimehuboffical@gmail.com" className="text-blue-600 hover:underline">
-                        bizprimehuboffical@gmail.com
+                      <a href="mailto:info@bizprimehub.com" className="text-blue-600 hover:underline">
+                        info@bizprimehub.com
                       </a>
                       .
                     </li>
@@ -471,15 +470,15 @@ export default function TermsPage() {
                     <p className="font-semibold text-slate-900">Ahsan Ali, trading as BizPrimeHub</p>
                     <p>
                       Email:{' '}
-                      <a href="mailto:bizprimehuboffical@gmail.com" className="text-blue-600 hover:underline font-medium">
-                        bizprimehuboffical@gmail.com
+                      <a href="mailto:info@bizprimehub.com" className="text-blue-600 hover:underline font-medium">
+                        info@bizprimehub.com
                       </a>
                     </p>
                     <p>Multan, Punjab 60000, Pakistan</p>
                     <p>
                       Contact form:{' '}
                       <Link href="/contact" className="text-blue-600 hover:underline font-medium">
-                        https://bizprimehub.vercel.app/contact
+                        https://www.bizprimehub.com/contact
                       </Link>
                     </p>
                   </div>

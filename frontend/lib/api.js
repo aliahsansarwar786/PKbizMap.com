@@ -113,11 +113,20 @@ async function fetchAPI(endpoint, options = {}) {
         }
       }
 
-      // FIX 6: Global 401/403 interceptor - on 401/403, redirect to /login (except on /login and /register)
-      if (response.status === 401 || response.status === 403) {
-        if (typeof window !== 'undefined') {
+      // FIX 6: Global 401 interceptor - redirect to /login on 401 ONLY when the current page is protected.
+      // Never redirect for /auth/me or /auth/csrf-token, never redirect on 403, and never redirect on /login or /register.
+      if (response.status === 401) {
+        const cleanEndpoint = (endpoint || '').split('?')[0];
+        const isAuthCheck = cleanEndpoint === '/auth/me' || cleanEndpoint === '/auth/csrf-token';
+
+        if (!isAuthCheck && typeof window !== 'undefined') {
           const p = window.location.pathname.replace(/\/+$/, '') || '/';
-          if (p !== '/login' && p !== '/register') {
+          const isAuthPage = p === '/login' || p === '/register';
+          const isProtectedPage = ['/dashboard', '/admin', '/add-business', '/profile', '/folder/new/admin'].some(
+            (prefix) => p === prefix || p.startsWith(`${prefix}/`)
+          );
+
+          if (!isAuthPage && isProtectedPage) {
             window.location.href = '/login';
           }
         }

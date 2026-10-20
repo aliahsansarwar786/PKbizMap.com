@@ -58,11 +58,11 @@ export default function Footer() {
                 </div>
                 <span>+92 310 6131361</span>
               </a>
-              <a href="mailto:ahsanalisarwar555@gmail.com" className="flex items-center gap-3 !text-slate-200 hover:!text-blue-400 transition-colors w-fit group">
+              <a href="mailto:info@bizprimehub.com" className="flex items-center gap-3 !text-slate-200 hover:!text-blue-400 transition-colors w-fit group">
                 <div className="w-8 h-8 rounded-full bg-slate-800 group-hover:bg-blue-900/50 flex items-center justify-center shrink-0 transition-colors">
                   <Mail size={14} className="text-blue-400" />
                 </div>
-                <span>ahsanalisarwar555@gmail.com</span>
+                <span>info@bizprimehub.com</span>
               </a>
             </div>
 

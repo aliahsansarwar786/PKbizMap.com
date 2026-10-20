@@ -37,7 +37,7 @@ export default function ContactPage() {
                     </div>
                     <div>
                       <p style={{ fontWeight: 500, color: '#374151' }}>Email Us</p>
-                      <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>ahsanalisarwar555@gmail.com</p>
+                      <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>info@bizprimehub.com</p>
                     </div>
                   </div>
 

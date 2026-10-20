@@ -8,12 +8,12 @@ export const metadata = {
   title: 'Business Growth & Local SEO Blog | BizPrimeHub Pakistan',
   description: 'Expert business tips, marketing guides, Google Maps ranking tactics, and digital tools tailored for local shopkeepers and SMEs across Pakistan.',
   alternates: {
-    canonical: 'https://bizprimehub.vercel.app/blog',
+    canonical: 'https://www.bizprimehub.com/blog',
   },
   openGraph: {
     title: 'Business Growth & Local SEO Blog | BizPrimeHub',
     description: 'Expert business tips, marketing guides, Google Maps ranking tactics, and digital tools tailored for local shops across Pakistan.',
-    url: 'https://bizprimehub.vercel.app/blog',
+    url: 'https://www.bizprimehub.com/blog',
     siteName: 'BizPrimeHub',
     type: 'website',
   },

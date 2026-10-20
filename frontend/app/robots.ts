@@ -9,6 +9,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ['/dashboard/', '/admin/', '/folder/'],
       },
     ],
-    sitemap: 'https://bizprimehub.vercel.app/sitemap.xml',
+    sitemap: 'https://www.bizprimehub.com/sitemap.xml',
   };
 }

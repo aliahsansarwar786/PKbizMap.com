@@ -2307,7 +2307,7 @@ export default function AdminDashboardClient() {
                       <div className="w-full">
                         <label htmlFor="ownerNotificationEmail" className="form-label flex flex-wrap items-center justify-between gap-1 mb-1.5">
                           <span className="font-bold text-gray-800">Owner Notification Email</span>
-                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Default: ahsanalisarwar555@gmail.com</span>
+                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Default: info@bizprimehub.com</span>
                         </label>
                         <input
                           id="ownerNotificationEmail"
@@ -2320,7 +2320,7 @@ export default function AdminDashboardClient() {
                             })
                           }
                           className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm sm:text-base text-gray-900 font-mono sm:font-sans focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-                          placeholder="e.g. ahsanalisarwar555@gmail.com"
+                          placeholder="e.g. info@bizprimehub.com"
                         />
                         <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
                           If left blank or disabled, notification emails will be skipped. Both new listing submissions and new user registrations will notify this inbox.
