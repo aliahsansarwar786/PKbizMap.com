@@ -1701,9 +1701,11 @@ export default function BusinessForm({
                                       {isIban ? 'IBAN' : 'ACCOUNT NUMBER'}
                                     </span>
                                     <div className="flex items-center justify-between gap-2 mt-0.5">
-                                      <span className="font-mono font-black text-sm sm:text-base md:text-lg tracking-wider text-white [text-shadow:_0_1px_3px_rgba(0,0,0,0.95)] select-all break-all">
-                                        {method.accountValue}
-                                      </span>
+                                      <div className="flex-1 min-w-0 px-2.5 py-1 sm:py-1.5 rounded-lg bg-slate-900 border border-slate-700/80 shadow-sm">
+                                        <span className="font-mono font-black text-xs sm:text-sm md:text-base tracking-wider text-white select-all break-all block">
+                                          {method.accountValue}
+                                        </span>
+                                      </div>
 
                                       <button
                                         type="button"

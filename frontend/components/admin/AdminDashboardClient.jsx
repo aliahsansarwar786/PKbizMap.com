@@ -2140,7 +2140,7 @@ export default function AdminDashboardClient() {
                                       <div className="text-[9px] uppercase font-bold text-white/80 [text-shadow:_0_1px_2px_rgba(0,0,0,0.9)]">
                                         {method.kind === 'iban' ? 'IBAN' : 'Account Number'}
                                       </div>
-                                      <div className="font-mono font-black text-xs sm:text-sm text-white [text-shadow:_0_1px_3px_rgba(0,0,0,0.95)] break-all">
+                                      <div className="font-mono font-black text-xs sm:text-sm text-white break-all px-2 py-0.5 rounded bg-slate-900 border border-slate-700/80">
                                         {method.accountValue}
                                       </div>
                                     </div>
