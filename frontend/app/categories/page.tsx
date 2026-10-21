@@ -1,11 +1,22 @@
+import type { Metadata } from 'next';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import Link from 'next/link';
 import { CATEGORIES } from '@/data/categories';
 
-export const metadata = {
-  title: 'Browse Categories - BizPrimeHub',
+export const metadata: Metadata = {
+  title: 'Browse Categories',
   description: 'Explore all business categories on BizPrimeHub and find the services you need.',
+  alternates: {
+    canonical: 'https://www.bizprimehub.com/categories',
+  },
+  openGraph: {
+    title: 'Browse Categories | BizPrimeHub',
+    description: 'Explore all business categories on BizPrimeHub and find the services you need.',
+    url: 'https://www.bizprimehub.com/categories',
+    type: 'website',
+    images: ['/og-default.jpg'],
+  },
 };
 
 export default function CategoriesPage() {

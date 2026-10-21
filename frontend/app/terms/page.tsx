@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import Link from 'next/link';
@@ -21,12 +22,20 @@ import {
   ExternalLink,
 } from 'lucide-react';
 
-export const metadata = {
-  title: 'Terms and Conditions | BizPrimeHub',
+export const metadata: Metadata = {
+  title: 'Terms and Conditions',
   description:
     'Terms and Conditions governing the use of BizPrimeHub online business directory, covering user accounts, business listings, listing fees, content moderation, reviews, and legal policies.',
   alternates: {
     canonical: 'https://www.bizprimehub.com/terms',
+  },
+  openGraph: {
+    title: 'Terms and Conditions | BizPrimeHub',
+    description:
+      'Terms and Conditions governing the use of BizPrimeHub online business directory, covering user accounts, business listings, listing fees, content moderation, reviews, and legal policies.',
+    url: 'https://www.bizprimehub.com/terms',
+    type: 'website',
+    images: ['/og-default.jpg'],
   },
 };
 

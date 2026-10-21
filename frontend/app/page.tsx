@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/layout/Navbar';
@@ -57,17 +58,54 @@ const STATS = [
   { label: 'Categories', value: '13', icon: TrendingUp },
 ];
 
-export const metadata = {
-  title: 'BizPrimeHub - Find Trusted Local Businesses Near You',
+export const metadata: Metadata = {
+  title: {
+    absolute: 'Free Business Listing & Local Business Directory in Pakistan | BizPrimeHub',
+  },
   description:
-    'Discover and connect with local businesses. Browse by category and find services in your area.',
+    "List your business for free on BizPrimeHub, Pakistan's trusted local business directory. Find shops, hotels, restaurants, clinics and services near you in Multan, Lahore, Karachi and across Pakistan, UAE and the USA.",
+  keywords:
+    'free business listing, business directory Pakistan, list your business free, local businesses near me, Pakistan business directory, free listing site, add your business, trusted local businesses, businesses in Multan, find businesses in Pakistan',
+  alternates: {
+    canonical: 'https://www.bizprimehub.com',
+  },
+  openGraph: {
+    title: 'Free Business Listing & Local Business Directory in Pakistan | BizPrimeHub',
+    description:
+      "List your business for free on BizPrimeHub, Pakistan's trusted local business directory. Find shops, hotels, restaurants, clinics and services near you in Multan, Lahore, Karachi and across Pakistan, UAE and the USA.",
+    url: 'https://www.bizprimehub.com',
+    siteName: 'BizPrimeHub',
+    type: 'website',
+    images: [
+      {
+        url: '/og-default.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Free Business Listing & Local Business Directory in Pakistan | BizPrimeHub',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Free Business Listing & Local Business Directory in Pakistan | BizPrimeHub',
+    description:
+      "List your business for free on BizPrimeHub, Pakistan's trusted local business directory. Find shops, hotels, restaurants, clinics and services near you in Multan, Lahore, Karachi and across Pakistan, UAE and the USA.",
+    images: ['/og-default.jpg'],
+  },
 };
 
 export default async function HomePage() {
   let businessCount = 0;
   try {
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://pkbizmap-backend.vercel.app/api'}/businesses?limit=1`, { next: { revalidate: 60 } });
-    if (res.ok) {
+    const primaryApi = process.env.NEXT_PUBLIC_API_URL || 'https://pkbizmap-backend.vercel.app/api';
+    const fallbackApi = 'https://pkbizmap-backend.vercel.app/api';
+    let res = await fetch(`${primaryApi}/businesses?limit=1`, { next: { revalidate: 60 } }).catch(() => null);
+    if (!res || !res.ok) {
+      if (primaryApi !== fallbackApi) {
+        res = await fetch(`${fallbackApi}/businesses?limit=1`, { next: { revalidate: 60 } }).catch(() => null);
+      }
+    }
+    if (res && res.ok) {
       const resData = await res.json();
       businessCount = resData.data?.pagination?.totalResults || 0;
     }
@@ -82,8 +120,43 @@ export default async function HomePage() {
     { label: 'Community', value: 'Growing', icon: Star },
   ];
 
+  const homeJsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'BizPrimeHub',
+      url: 'https://www.bizprimehub.com',
+      logo: 'https://www.bizprimehub.com/logo-transparent.png',
+      description: 'Free business listing and local business directory for Pakistan, UAE and the USA.',
+      slogan: 'List Your Business for Free',
+      contactPoint: [
+        {
+          '@type': 'ContactPoint',
+          telephone: '+92-310-6131361',
+          contactType: 'customer service',
+          email: 'info@bizprimehub.com',
+        },
+      ],
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'BizPrimeHub',
+      url: 'https://www.bizprimehub.com',
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: 'https://www.bizprimehub.com/businesses?keyword={search_term_string}',
+        'query-input': 'required name=search_term_string',
+      },
+    },
+  ];
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
+      />
       <Navbar />
       <main>
         {/* ── Hero Section ──────────────────────────────────────────────── */}
@@ -117,13 +190,11 @@ export default async function HomePage() {
                 id="hero-heading"
                 className="text-4xl sm:text-5xl lg:text-[4rem] font-extrabold text-slate-900 mb-5 leading-[1.1] tracking-tight"
               >
-                Find Your Best<br />
-                <span className="text-blue-600">Business</span> Today
+                Find Trusted Local Businesses in Pakistan
               </h1>
 
               <p className="text-lg sm:text-xl text-slate-700 mb-8 leading-relaxed font-medium max-w-xl">
-                Discover, compare, and connect with local businesses across Pakistan. Find
-                the best services for every need.
+                Pakistan&apos;s free business listing directory — list your business for free and get found by customers near you.
               </p>
             </div>
           </div>
@@ -312,6 +383,15 @@ export default async function HomePage() {
                 Browse Directory
               </Link>
             </div>
+          </div>
+        </section>
+
+        {/* ── SEO Overview / About Section ────────────────────────────────── */}
+        <section className="py-12 bg-white border-t border-slate-100">
+          <div className="container-max">
+            <p className="text-slate-600 text-sm sm:text-base leading-relaxed max-w-4xl mx-auto text-center">
+              BizPrimeHub is a free business listing directory where local businesses in Pakistan, the UAE and the USA can list their business for free and get found by customers searching online. Browse trusted shops, hotels, restaurants, clinics, salons and services near you — or add your own business listing today and grow with BizPrimeHub.
+            </p>
           </div>
         </section>
       </main>

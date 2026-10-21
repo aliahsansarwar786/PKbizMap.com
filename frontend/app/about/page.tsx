@@ -1,9 +1,20 @@
+import type { Metadata } from 'next';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
-export const metadata = {
-  title: 'About Us - BizPrimeHub',
+export const metadata: Metadata = {
+  title: 'About Us',
   description: 'Learn more about BizPrimeHub, our mission, and our team.',
+  alternates: {
+    canonical: 'https://www.bizprimehub.com/about',
+  },
+  openGraph: {
+    title: 'About Us | BizPrimeHub',
+    description: 'Learn more about BizPrimeHub, our mission, and our team.',
+    url: 'https://www.bizprimehub.com/about',
+    type: 'website',
+    images: ['/og-default.jpg'],
+  },
 };
 
 export default function AboutPage() {

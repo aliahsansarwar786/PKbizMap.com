@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/contexts/AuthContext';
@@ -14,7 +15,8 @@ export const viewport = {
   userScalable: false,
 };
 
-export const metadata = {
+export const metadata: Metadata = {
+  metadataBase: new URL('https://www.bizprimehub.com'),
   title: {
     default: 'BizPrimeHub - Find Local Businesses',
     template: '%s | BizPrimeHub',
@@ -26,7 +28,22 @@ export const metadata = {
   openGraph: {
     title: 'BizPrimeHub - Find Local Businesses',
     description: 'Discover and connect with trusted local businesses.',
+    siteName: 'BizPrimeHub',
     type: 'website',
+    images: [
+      {
+        url: '/og-default.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'BizPrimeHub - List Your Business for Free',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'BizPrimeHub - Find Local Businesses',
+    description: 'Discover and connect with trusted local businesses.',
+    images: ['/og-default.jpg'],
   },
 };
 

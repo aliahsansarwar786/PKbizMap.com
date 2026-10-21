@@ -1,11 +1,22 @@
+import type { Metadata } from 'next';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { Mail, Phone, MapPin } from 'lucide-react';
 import ContactForm from '@/components/ui/ContactForm';
 
-export const metadata = {
-  title: 'Contact Us - BizPrimeHub',
+export const metadata: Metadata = {
+  title: 'Contact Us',
   description: 'Get in touch with the BizPrimeHub support team.',
+  alternates: {
+    canonical: 'https://www.bizprimehub.com/contact',
+  },
+  openGraph: {
+    title: 'Contact Us | BizPrimeHub',
+    description: 'Get in touch with the BizPrimeHub support team.',
+    url: 'https://www.bizprimehub.com/contact',
+    type: 'website',
+    images: ['/og-default.jpg'],
+  },
 };
 
 export default function ContactPage() {

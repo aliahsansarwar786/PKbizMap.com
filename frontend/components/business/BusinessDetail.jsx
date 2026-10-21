@@ -263,7 +263,7 @@ export default function BusinessDetail({ id }) {
               <div className="relative" style={{ height: 340, background: '#f3f4f6' }}>
                 <Image
                   src={displayImage}
-                  alt={business.title}
+                  alt={`${business.title} — ${business.category || 'Business'}${business.address?.city ? ` in ${business.address.city}` : ''}`}
                   fill
                   className="object-cover"
                   priority
@@ -284,7 +284,13 @@ export default function BusinessDetail({ id }) {
                       }}
                       aria-label={`View image ${i + 1}`}
                     >
-                      <Image src={img.url} alt={`${business.title} image ${i + 1}`} width={60} height={60} className="object-cover w-full h-full" />
+                      <Image
+                        src={img.url}
+                        alt={`${business.title} — ${business.category || 'Business'}${business.address?.city ? ` in ${business.address.city}` : ''}`}
+                        width={60}
+                        height={60}
+                        className="object-cover w-full h-full"
+                      />
                     </button>
                   ))}
                 </div>

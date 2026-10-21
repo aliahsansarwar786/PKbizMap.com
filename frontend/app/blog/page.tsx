@@ -1,11 +1,12 @@
+import type { Metadata } from 'next';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import BlogClient from './BlogClient';
 import { getAllPosts } from '@/data/blogPosts';
 import { BookOpen, Sparkles } from 'lucide-react';
 
-export const metadata = {
-  title: 'Business Growth & Local SEO Blog | BizPrimeHub Pakistan',
+export const metadata: Metadata = {
+  title: 'Business Growth & Local SEO Blog',
   description: 'Expert business tips, marketing guides, Google Maps ranking tactics, and digital tools tailored for local shopkeepers and SMEs across Pakistan.',
   alternates: {
     canonical: 'https://www.bizprimehub.com/blog',
@@ -16,6 +17,7 @@ export const metadata = {
     url: 'https://www.bizprimehub.com/blog',
     siteName: 'BizPrimeHub',
     type: 'website',
+    images: ['/og-default.jpg'],
   },
 };
 

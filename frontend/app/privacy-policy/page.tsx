@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import Link from 'next/link';
@@ -19,12 +20,20 @@ import {
   Info,
 } from 'lucide-react';
 
-export const metadata = {
-  title: 'Privacy Policy | BizPrimeHub',
+export const metadata: Metadata = {
+  title: 'Privacy Policy',
   description:
     'BizPrimeHub Privacy Policy explains how we collect, process, store, and safeguard your personal information when using our online business directory services.',
   alternates: {
     canonical: 'https://www.bizprimehub.com/privacy-policy',
+  },
+  openGraph: {
+    title: 'Privacy Policy | BizPrimeHub',
+    description:
+      'BizPrimeHub Privacy Policy explains how we collect, process, store, and safeguard your personal information when using our online business directory services.',
+    url: 'https://www.bizprimehub.com/privacy-policy',
+    type: 'website',
+    images: ['/og-default.jpg'],
   },
 };
 

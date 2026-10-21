@@ -1,11 +1,32 @@
+import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import BusinessDirectory from '@/components/business/BusinessDirectory';
 
-export const metadata = {
-  title: 'Business Directory - Find Local Businesses',
-  description: 'Browse all verified local businesses. Filter by category, city, and rating.',
+export const metadata: Metadata = {
+  title: 'Business Directory — Find Local Businesses in Pakistan',
+  description:
+    'Browse 1,100+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
+  alternates: {
+    canonical: 'https://www.bizprimehub.com/businesses',
+  },
+  openGraph: {
+    title: 'Business Directory — Find Local Businesses in Pakistan | BizPrimeHub',
+    description:
+      'Browse 1,100+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
+    url: 'https://www.bizprimehub.com/businesses',
+    siteName: 'BizPrimeHub',
+    type: 'website',
+    images: ['/og-default.jpg'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Business Directory — Find Local Businesses in Pakistan | BizPrimeHub',
+    description:
+      'Browse 1,100+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
+    images: ['/og-default.jpg'],
+  },
 };
 
 export default function BusinessesPage() {

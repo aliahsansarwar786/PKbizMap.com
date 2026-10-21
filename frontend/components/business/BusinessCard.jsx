@@ -96,7 +96,7 @@ export default function BusinessCard({ business }) {
       >
         <Image
           src={firstImage || defaultImage}
-          alt={`${business.title} image`}
+          alt={`${business.title} — ${business.category || 'Business'}${cityName ? ` in ${cityName}` : ''}`}
           fill
           className="object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"

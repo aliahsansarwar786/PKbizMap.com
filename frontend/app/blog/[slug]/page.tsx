@@ -23,14 +23,14 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
 
   if (!post) {
     return {
-      title: 'Post Not Found | BizPrimeHub',
+      title: 'Post Not Found',
     };
   }
 
   const postUrl = `https://www.bizprimehub.com/blog/${post.slug}`;
 
   return {
-    title: `${post.metaTitle} | BizPrimeHub`,
+    title: post.metaTitle,
     description: post.metaDescription,
     keywords: post.keywords,
     alternates: {
@@ -290,6 +290,22 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
                   </p>
                 );
               })}
+
+              {/* Explore BizPrimeHub internal links */}
+              <p className="text-slate-700 text-sm sm:text-base leading-relaxed pt-6 border-t border-slate-100">
+                Explore BizPrimeHub:{' '}
+                <Link href="/businesses" className="text-blue-600 hover:underline font-medium">
+                  Businesses
+                </Link>
+                {' • '}
+                <Link href="/categories" className="text-blue-600 hover:underline font-medium">
+                  Categories
+                </Link>
+                {' • '}
+                <Link href="/add-business" className="text-blue-600 hover:underline font-medium">
+                  Add Business
+                </Link>
+              </p>
             </div>
 
             {/* Direct Action Callout inside Blog */}

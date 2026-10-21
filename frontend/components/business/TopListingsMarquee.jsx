@@ -57,7 +57,13 @@ export default function TopListingsMarquee() {
                 className="flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow min-w-[300px]"
               >
                 <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0" style={{ background: '#f3f4f6' }}>
-                  <Image src={img} alt={biz.title} width={56} height={56} className="object-cover w-full h-full" />
+                  <Image
+                    src={img}
+                    alt={`${biz.title} — ${biz.category || 'Business'}${biz.address?.city ? ` in ${biz.address.city}` : ''}`}
+                    width={56}
+                    height={56}
+                    className="object-cover w-full h-full"
+                  />
                 </div>
                 <div className="flex flex-col overflow-hidden text-left">
                   <h3 className="font-semibold text-gray-800 text-sm truncate">{biz.title}</h3>
