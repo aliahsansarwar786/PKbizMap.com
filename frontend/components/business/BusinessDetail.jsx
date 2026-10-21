@@ -316,6 +316,42 @@ export default function BusinessDetail({ id }) {
   return (
     <div className="section-sm">
       <div className="container-max">
+        {/* Visible Breadcrumb Trail */}
+        <nav aria-label="Breadcrumb" className="mb-3 text-xs sm:text-sm text-gray-500">
+          <ol className="flex items-center flex-wrap gap-1.5 leading-normal">
+            <li className="flex items-center gap-1.5">
+              <Link href="/" className="hover:text-blue-600 transition-colors">
+                Home
+              </Link>
+              <span className="text-gray-400 select-none">›</span>
+            </li>
+            <li className="flex items-center gap-1.5">
+              <Link href="/businesses" className="hover:text-blue-600 transition-colors">
+                Businesses
+              </Link>
+              <span className="text-gray-400 select-none">›</span>
+            </li>
+            {business.category && (
+              <li className="flex items-center gap-1.5">
+                <Link
+                  href={`/businesses?category=${encodeURIComponent(business.category)}`}
+                  className="hover:text-blue-600 transition-colors"
+                >
+                  {business.category}
+                </Link>
+                <span className="text-gray-400 select-none">›</span>
+              </li>
+            )}
+            <li
+              className="text-gray-700 font-medium truncate max-w-[200px] sm:max-w-xs md:max-w-md lg:max-w-lg"
+              title={business.title}
+              aria-current="page"
+            >
+              {business.title}
+            </li>
+          </ol>
+        </nav>
+
         {/* Back link */}
         <Link
           href="/businesses"

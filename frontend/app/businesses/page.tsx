@@ -3,6 +3,7 @@ import { Suspense } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import BusinessDirectory from '@/components/business/BusinessDirectory';
+import CategoryBreadcrumbs from '@/components/business/CategoryBreadcrumbs';
 
 export const metadata: Metadata = {
   title: 'Business Directory — Find Local Businesses in Pakistan',
@@ -29,13 +30,56 @@ export const metadata: Metadata = {
   },
 };
 
-export default function BusinessesPage() {
+interface BusinessesPageProps {
+  searchParams?: Promise<{ category?: string; [key: string]: string | string[] | undefined }>;
+}
+
+export default async function BusinessesPage({ searchParams }: BusinessesPageProps) {
+  const resolvedParams = searchParams ? await searchParams : undefined;
+  const categoryParam = typeof resolvedParams?.category === 'string' ? resolvedParams.category : undefined;
+
+  const breadcrumbJsonLd = categoryParam
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          {
+            '@type': 'ListItem',
+            position: 1,
+            name: 'Home',
+            item: 'https://www.bizprimehub.com/',
+          },
+          {
+            '@type': 'ListItem',
+            position: 2,
+            name: 'Categories',
+            item: 'https://www.bizprimehub.com/categories',
+          },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: categoryParam,
+            item: `https://www.bizprimehub.com/businesses?category=${encodeURIComponent(categoryParam)}`,
+          },
+        ],
+      }
+    : null;
+
   return (
     <>
+      {breadcrumbJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+        />
+      )}
       <Navbar />
       <main>
         <div className="page-header">
           <div className="container-max">
+            <Suspense fallback={null}>
+              <CategoryBreadcrumbs initialCategory={categoryParam} />
+            </Suspense>
             <h1 style={{ fontSize: '1.75rem', fontWeight: 700, color: '#1f2937' }}>
               Business Directory
             </h1>

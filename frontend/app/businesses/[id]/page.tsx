@@ -115,6 +115,7 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
   }
 
   let jsonLd = null;
+  let breadcrumbJsonLd = null;
   if (business) {
     const city = (business.address?.city || '').trim();
     const country = (business.address?.country || 'Pakistan').trim();
@@ -183,6 +184,38 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
     }
 
     jsonLd = schema;
+
+    const categoryName = (business.category || 'Business').trim();
+    breadcrumbJsonLd = {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        {
+          '@type': 'ListItem',
+          position: 1,
+          name: 'Home',
+          item: 'https://www.bizprimehub.com/',
+        },
+        {
+          '@type': 'ListItem',
+          position: 2,
+          name: 'Businesses',
+          item: 'https://www.bizprimehub.com/businesses',
+        },
+        {
+          '@type': 'ListItem',
+          position: 3,
+          name: categoryName,
+          item: `https://www.bizprimehub.com/businesses?category=${encodeURIComponent(categoryName)}`,
+        },
+        {
+          '@type': 'ListItem',
+          position: 4,
+          name: business.title,
+          item: `https://www.bizprimehub.com/businesses/${slug}`,
+        },
+      ],
+    };
   }
 
   return (
@@ -191,6 +224,12 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      )}
+      {breadcrumbJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
         />
       )}
       <Navbar />
