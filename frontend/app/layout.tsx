@@ -28,9 +28,6 @@ export const metadata = {
     description: 'Discover and connect with trusted local businesses.',
     type: 'website',
   },
-  icons: {
-    icon: '/logo-transparent.png',
-  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
