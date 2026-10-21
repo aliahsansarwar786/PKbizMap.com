@@ -1,38 +1,36 @@
+const mongoose = require('mongoose');
 const Review = require('../models/Review');
 const Business = require('../models/Business');
 const asyncHandler = require('../utils/asyncHandler');
 const { validate, reviewValidator, objectIdValidator } = require('../utils/validators');
 
 // ─── GET /api/businesses/:id/reviews ─────────────────────────────────────────
-// Public: Get paginated reviews for a business
+// Public: Get paginated reviews for a business (accepts slug or ID)
 const getReviews = [
-  ...objectIdValidator('id'),
   asyncHandler(async (req, res) => {
-    validate(req);
-
     const { page = 1, limit = 10 } = req.query;
     const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.min(50, Math.max(1, parseInt(limit, 10) || 10));
     const skip = (pageNum - 1) * limitNum;
 
-    // Verify business exists and is approved (public view)
-    const business = await Business.findOne({
-      _id: req.params.id,
-      isApproved: true,
-    });
+    const identifier = (req.params.id || '').trim();
+    let business = await Business.findOne({ slug: identifier, isApproved: true });
+    if (!business && mongoose.Types.ObjectId.isValid(identifier)) {
+      business = await Business.findOne({ _id: identifier, isApproved: true });
+    }
 
     if (!business) {
       return res.status(404).json({ success: false, message: 'Business not found.' });
     }
 
     const [reviews, total] = await Promise.all([
-      Review.find({ business: req.params.id })
+      Review.find({ business: business._id })
         .populate('user', 'name avatar')
         .sort('-createdAt')
         .skip(skip)
         .limit(limitNum)
         .lean(),
-      Review.countDocuments({ business: req.params.id }),
+      Review.countDocuments({ business: business._id }),
     ]);
 
     res.status(200).json({
@@ -54,18 +52,17 @@ const getReviews = [
 // ─── POST /api/businesses/:id/reviews ────────────────────────────────────────
 // Protected: Authenticated users leave a review (1 per user per business)
 const createReview = [
-  ...objectIdValidator('id'),
   ...reviewValidator,
   asyncHandler(async (req, res) => {
     validate(req);
 
     const { rating, comment } = req.body;
 
-    // Verify business exists and is approved
-    const business = await Business.findOne({
-      _id: req.params.id,
-      isApproved: true,
-    });
+    const identifier = (req.params.id || '').trim();
+    let business = await Business.findOne({ slug: identifier, isApproved: true });
+    if (!business && mongoose.Types.ObjectId.isValid(identifier)) {
+      business = await Business.findOne({ _id: identifier, isApproved: true });
+    }
 
     if (!business) {
       return res.status(404).json({ success: false, message: 'Business not found.' });

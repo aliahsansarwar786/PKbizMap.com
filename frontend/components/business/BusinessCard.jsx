@@ -86,12 +86,14 @@ export default function BusinessCard({ business }) {
     `Hi, I found ${business.title} on BizPrimeHub and would like to inquire about your services.`
   )}`;
 
+  const detailUrl = `/businesses/${business.slug || business._id}`;
+
   return (
     <article className="group flex flex-col bg-white rounded-2xl overflow-hidden border border-slate-200/80 shadow-xs hover:shadow-xl hover:-translate-y-1 transition-all duration-300 relative">
       
       {/* Image Section */}
       <Link
-        href={`/businesses/${business._id}`}
+        href={detailUrl}
         className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 block"
       >
         <Image
@@ -126,7 +128,7 @@ export default function BusinessCard({ business }) {
         {/* Title & Badge */}
         <div className="flex items-start justify-between gap-3 mb-1.5">
           <h2 className="font-bold text-lg text-slate-900 leading-tight line-clamp-1 group-hover:text-blue-600 transition-colors">
-            <Link href={`/businesses/${business._id}`} className="hover:text-blue-600 transition-colors">
+            <Link href={detailUrl} className="hover:text-blue-600 transition-colors">
               {business.title}
             </Link>
           </h2>
@@ -192,7 +194,7 @@ export default function BusinessCard({ business }) {
 
           {/* View Details button */}
           <Link
-            href={`/businesses/${business._id}`}
+            href={detailUrl}
             className="flex items-center justify-between w-full px-4 py-2.5 bg-slate-50 hover:bg-slate-900 text-slate-700 hover:text-white rounded-xl text-xs sm:text-sm font-semibold transition-colors duration-200 group/btn"
           >
             <span>View Details</span>

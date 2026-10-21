@@ -128,24 +128,47 @@ const getBusinesses = asyncHandler(async (req, res) => {
 });
 
 // ─── GET /api/businesses/:id ──────────────────────────────────────────────────
-// Public: Returns single approved business with reviews
+// Public: Returns single approved business with reviews (accepts slug or Mongo ID)
 const getBusiness = [
-  ...objectIdValidator('id'),
   asyncHandler(async (req, res) => {
-    validate(req);
+    const identifier = (req.params.id || '').trim();
+    if (!identifier) {
+      return res.status(400).json({
+        success: false,
+        message: 'Business identifier is required.',
+      });
+    }
 
-    const business = await Business.findOne({
-      _id: req.params.id,
+    // 1. Try slug lookup first
+    let business = await Business.findOne({
+      slug: identifier,
       isApproved: true,
     })
       .populate('owner', 'name avatar createdAt')
       .select('-__v');
+
+    // 2. Fall back to Mongo ID lookup if not found by slug
+    if (!business && mongoose.Types.ObjectId.isValid(identifier)) {
+      business = await Business.findOne({
+        _id: identifier,
+        isApproved: true,
+      })
+        .populate('owner', 'name avatar createdAt')
+        .select('-__v');
+    }
 
     if (!business) {
       return res.status(404).json({
         success: false,
         message: 'Business not found.',
       });
+    }
+
+    // Self-healing fallback: if slug is missing, generate and save on the fly
+    if (!business.slug) {
+      const { generateUniqueSlug } = require('../utils/slugify');
+      business.slug = await generateUniqueSlug(business.title, business.address?.city, business._id, Business);
+      await business.save();
     }
 
     // Get reviews for this business

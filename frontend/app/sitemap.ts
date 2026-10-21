@@ -5,6 +5,7 @@ export const revalidate = 86400;
 
 interface BusinessSitemapItem {
   _id: string;
+  slug?: string;
   updatedAt?: string;
   createdAt?: string;
 }
@@ -138,7 +139,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
 
       businessRoutes = allBusinesses.map((b) => ({
-        url: `${baseUrl}/businesses/${b._id}`,
+        url: `${baseUrl}/businesses/${b.slug || b._id}`,
         lastModified: b.updatedAt ? new Date(b.updatedAt) : b.createdAt ? new Date(b.createdAt) : new Date(),
         changeFrequency: 'weekly',
         priority: 0.8,

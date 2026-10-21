@@ -1279,7 +1279,7 @@ export default function AdminDashboardClient() {
                             </button>
                           )}
                           <Link
-                            href={biz.isApproved ? `/businesses/${biz._id}` : '#'}
+                            href={biz.isApproved ? `/businesses/${biz.slug || biz._id}` : '#'}
                             className={`p-2.5 rounded-lg transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center ${!biz.isApproved ? 'opacity-30 cursor-not-allowed' : 'hover:bg-gray-200 text-gray-600'}`}
                             aria-label={`View ${biz.title}`}
                             onClick={(e) => !biz.isApproved && e.preventDefault()}

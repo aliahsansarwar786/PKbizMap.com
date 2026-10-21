@@ -248,7 +248,7 @@ export default function DashboardClient() {
                   <div className="flex items-center gap-2 flex-shrink-0">
                     {business.isApproved && (
                       <Link
-                        href={`/businesses/${business._id}`}
+                        href={`/businesses/${business.slug || business._id}`}
                         className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
                         aria-label={`View ${business.title}`}
                         style={{ color: '#6b7280' }}

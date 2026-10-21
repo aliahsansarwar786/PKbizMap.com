@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { permanentRedirect } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import BusinessDetail from '@/components/business/BusinessDetail';
@@ -61,7 +62,8 @@ export async function generateMetadata({ params }: BusinessDetailPageProps): Pro
   const city = (business.address?.city || '').trim();
   const category = (business.category || 'Business').trim();
   const title = `${business.title} — ${category}${city ? ` in ${city}` : ''}`;
-  const canonicalUrl = `https://www.bizprimehub.com/businesses/${id}`;
+  const slug = business.slug || id;
+  const canonicalUrl = `https://www.bizprimehub.com/businesses/${slug}`;
 
   let rawDesc = (business.description || '').replace(/\s+/g, ' ').trim();
   let description = '';
@@ -106,6 +108,12 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
   const { id } = await params;
   const business = await getBusiness(id);
 
+  // TASK 4: If opened with an old Mongo ID (or anything other than its slug),
+  // permanently redirect (HTTP 308) to the slug URL BEFORE rendering
+  if (business?.slug && id !== business.slug) {
+    permanentRedirect(`/businesses/${business.slug}`);
+  }
+
   let jsonLd = null;
   if (business) {
     const city = (business.address?.city || '').trim();
@@ -113,12 +121,13 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
     const street = (business.address?.street || '').trim();
     const zip = (business.address?.zipCode || '').trim();
     const rawDesc = (business.description || '').replace(/\s+/g, ' ').trim();
+    const slug = business.slug || id;
 
     const schema: Record<string, any> = {
       '@context': 'https://schema.org',
       '@type': 'LocalBusiness',
       name: business.title,
-      url: `https://www.bizprimehub.com/businesses/${id}`,
+      url: `https://www.bizprimehub.com/businesses/${slug}`,
     };
 
     if (rawDesc) {
@@ -186,7 +195,7 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
       )}
       <Navbar />
       <main>
-        <BusinessDetail id={id} />
+        <BusinessDetail id={business?.slug || id} />
       </main>
       <Footer />
     </>

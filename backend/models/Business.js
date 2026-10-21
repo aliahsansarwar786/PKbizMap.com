@@ -133,6 +133,11 @@ const businessSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    slug: {
+      type: String,
+      trim: true,
+      lowercase: true,
+    },
   },
   {
     timestamps: true,
@@ -141,15 +146,25 @@ const businessSchema = new mongoose.Schema(
   }
 );
 
-// Normalize category to canonical name before validation/saving
-businessSchema.pre('validate', function (next) {
+// Normalize category to canonical name and generate unique slug if missing before validation/saving
+businessSchema.pre('validate', async function (next) {
   if (this.category) {
     this.category = normalizeCategory(this.category);
+  }
+  // Once a business HAS a slug, NEVER change it automatically (even if the name is edited later)
+  if (!this.slug && this.title) {
+    try {
+      const { generateUniqueSlug } = require('../utils/slugify');
+      this.slug = await generateUniqueSlug(this.title, this.address?.city, this._id, this.constructor);
+    } catch (err) {
+      return next(err);
+    }
   }
   next();
 });
 
 // ─── Indexes ──────────────────────────────────────────────────────────────────
+businessSchema.index({ slug: 1 }, { unique: true });
 businessSchema.index({ owner: 1 });
 businessSchema.index({ category: 1 });
 businessSchema.index({ 'address.country': 1 });

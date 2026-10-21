@@ -53,7 +53,7 @@ export default function TopListingsMarquee() {
             return (
               <Link 
                 key={`${biz._id}-${idx}`}
-                href={`/businesses/${biz._id}`}
+                href={`/businesses/${biz.slug || biz._id}`}
                 className="flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow min-w-[300px]"
               >
                 <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0" style={{ background: '#f3f4f6' }}>
