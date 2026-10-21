@@ -11,8 +11,8 @@ const getFrontendUrl = () => {
     return envUrl.replace(/\/$/, '');
   }
 
-  // Fallback to active live frontend
-  return 'https://bizprimehub.vercel.app';
+  // Fallback to active live domain
+  return 'https://www.bizprimehub.com';
 };
 
 module.exports = getFrontendUrl;

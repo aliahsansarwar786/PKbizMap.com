@@ -50,13 +50,14 @@ const getReviews = [
 ];
 
 // ─── POST /api/businesses/:id/reviews ────────────────────────────────────────
-// Protected: Authenticated users leave a review (1 per user per business)
+// Public/Optional Auth: Logged in or guest users leave a review
 const createReview = [
   ...reviewValidator,
   asyncHandler(async (req, res) => {
     validate(req);
 
     const { rating, comment } = req.body;
+    let reviewerName = (req.body.name || req.body.guestName || '').trim();
 
     const identifier = (req.params.id || '').trim();
     let business = await Business.findOne({ slug: identifier, isApproved: true });
@@ -68,35 +69,68 @@ const createReview = [
       return res.status(404).json({ success: false, message: 'Business not found.' });
     }
 
-    // Business owner cannot review their own business
-    if (business.owner.toString() === req.user._id.toString()) {
-      return res.status(403).json({
-        success: false,
-        message: 'You cannot review your own business.',
+    // Authenticated path
+    if (req.user) {
+      // Business owner cannot review their own business
+      if (business.owner && business.owner.toString() === req.user._id.toString()) {
+        return res.status(403).json({
+          success: false,
+          message: 'You cannot review your own business.',
+        });
+      }
+
+      // Check if user already reviewed this business
+      const existingReview = await Review.findOne({
+        business: business._id,
+        user: req.user._id,
+      });
+
+      if (existingReview) {
+        return res.status(409).json({
+          success: false,
+          message: 'You have already reviewed this business. You can edit your existing review.',
+        });
+      }
+
+      const review = await Review.create({
+        business: business._id,
+        user: req.user._id,
+        guestName: reviewerName || req.user.name,
+        rating,
+        comment,
+      });
+
+      await review.populate('user', 'name avatar');
+
+      return res.status(201).json({
+        success: true,
+        message: 'Review submitted successfully.',
+        data: { review },
       });
     }
 
-    // Check if user already reviewed this business
-    const existingReview = await Review.findOne({
-      business: req.params.id,
-      user: req.user._id,
-    });
-
-    if (existingReview) {
-      return res.status(409).json({
+    // Guest path (no auth token)
+    if (!reviewerName || reviewerName.length < 2) {
+      return res.status(400).json({
         success: false,
-        message: 'You have already reviewed this business. You can edit your existing review.',
+        message: 'Reviewer name is required (at least 2 characters).',
+      });
+    }
+
+    if (reviewerName.length > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reviewer name cannot exceed 100 characters.',
       });
     }
 
     const review = await Review.create({
-      business: req.params.id,
-      user: req.user._id, // Always from server - never trust body
+      business: business._id,
+      user: null,
+      guestName: reviewerName,
       rating,
       comment,
     });
-
-    await review.populate('user', 'name avatar');
 
     res.status(201).json({
       success: true,

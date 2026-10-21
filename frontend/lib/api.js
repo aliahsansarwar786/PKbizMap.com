@@ -292,6 +292,14 @@ export const adminAPI = {
   updatePaymentMethod: (methodId, formData) => api.patch(`/admin/settings/payment/methods/${methodId}`, formData),
   deletePaymentMethod: (methodId) => api.delete(`/admin/settings/payment/methods/${methodId}`),
   togglePaymentMethod: (methodId) => api.patch(`/admin/settings/payment/methods/${methodId}/toggle`),
+  getClaims: () => api.get('/admin/claims'),
+};
+
+// ─── Claim API ────────────────────────────────────────────────────────────────
+export const claimAPI = {
+  requestClaim: (businessId, data) => api.post(`/businesses/${businessId}/claim`, data),
+  verify: (data) => api.post('/claims/verify', data),
+  complete: (data) => api.post('/claims/complete', data),
 };
 
 // ─── Settings API ─────────────────────────────────────────────────────────────

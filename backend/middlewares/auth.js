@@ -76,5 +76,41 @@ const requireVerifiedEmail = (req, res, next) => {
   next();
 };
 
-module.exports = { protect, requireVerifiedEmail };
+/**
+ * Optional Auth middleware - verifies JWT from HttpOnly cookie if present.
+ * If valid, attaches user to req.user.
+ * If absent or invalid, sets req.user = null and continues without failing.
+ */
+const optionalAuth = asyncHandler(async (req, res, next) => {
+  const token = req.cookies?.token;
+
+  if (!token) {
+    req.user = null;
+    return next();
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('-password -resetPasswordToken -resetPasswordExpire');
+
+    if (user) {
+      if (user.passwordChangedAt) {
+        const changedTimestamp = parseInt(user.passwordChangedAt.getTime() / 1000, 10);
+        if (decoded.iat && decoded.iat < changedTimestamp) {
+          req.user = null;
+          return next();
+        }
+      }
+      req.user = user;
+    } else {
+      req.user = null;
+    }
+  } catch {
+    req.user = null;
+  }
+
+  next();
+});
+
+module.exports = { protect, optionalAuth, requireVerifiedEmail };
 

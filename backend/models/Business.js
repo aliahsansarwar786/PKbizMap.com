@@ -138,6 +138,23 @@ const businessSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
     },
+    isClaimed: {
+      type: Boolean,
+      default: false,
+    },
+    claimed: {
+      type: Boolean,
+      default: false,
+    },
+    claimedAt: {
+      type: Date,
+      default: null,
+    },
+    claimedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      default: null,
+    },
   },
   {
     timestamps: true,

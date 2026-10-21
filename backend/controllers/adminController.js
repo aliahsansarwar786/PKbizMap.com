@@ -746,6 +746,22 @@ const deleteBusinessReceipt = [
   }),
 ];
 
+// ─── GET /api/admin/claims ──────────────────────────────────────────────────
+// Admin: Get all claim requests (view only, for dispute reference)
+const getClaimRequests = asyncHandler(async (req, res) => {
+  const ClaimRequest = require('../models/ClaimRequest');
+  const claims = await ClaimRequest.find()
+    .populate('business', 'title slug address.city address.country isClaimed')
+    .sort('-createdAt')
+    .lean();
+
+  res.status(200).json({
+    success: true,
+    message: 'Claim requests retrieved successfully.',
+    data: { claims },
+  });
+});
+
 module.exports = {
   getDashboard,
   getUsers,
@@ -763,5 +779,7 @@ module.exports = {
   adminUpdateBusiness,
   getPaymentHistory,
   deleteBusinessReceipt,
+  getClaimRequests,
 };
+
 

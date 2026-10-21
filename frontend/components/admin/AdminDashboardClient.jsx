@@ -13,7 +13,7 @@ import {
   CreditCard, Eye, Image as ImageIcon, Save, ExternalLink,
   DollarSign, CheckCircle, AlertCircle, Phone, ArrowUpRight,
   QrCode, Upload, MessageSquare, Search, Filter, Plus, Mail, Bell,
-  ArrowLeft, AlertTriangle
+  ArrowLeft, AlertTriangle, ShieldCheck
 } from 'lucide-react';
 import BusinessForm from '@/components/business/BusinessForm';
 
@@ -111,6 +111,13 @@ const TAB_META = {
     borderColor: '#bbf7d0',
     desc: 'Raast QR & cards',
   },
+  claims: {
+    icon: ShieldCheck,
+    color: '#0284c7',
+    bgColor: '#f0f9ff',
+    borderColor: '#bae6fd',
+    desc: 'Ownership claims',
+  },
 };
 
 export default function AdminDashboardClient() {
@@ -132,6 +139,7 @@ export default function AdminDashboardClient() {
   const [dashStats, setDashStats] = useState(null);
   const [businesses, setBusinesses] = useState([]);
   const [users, setUsers] = useState([]);
+  const [claimRequests, setClaimRequests] = useState([]);
   const [pagination, setPagination] = useState(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -227,6 +235,9 @@ export default function AdminDashboardClient() {
     }
     if (isSuperAdmin || perms.canModerateReviews) {
       list.push({ id: 'reviews', label: 'Reviews', badge: dashStats?.totalReviews });
+    }
+    if (isSuperAdmin || perms.canApproveListings) {
+      list.push({ id: 'claims', label: 'Claim Requests', badge: claimRequests.length > 0 ? claimRequests.length : undefined });
     }
     if (isSuperAdmin) {
       list.push({ id: 'users', label: 'Users' });
@@ -347,6 +358,11 @@ export default function AdminDashboardClient() {
         } finally {
           setLoadingPaymentConfig(false);
         }
+        setPagination(null);
+      } else if (tab === 'claims') {
+        if (!isSuperAdmin && !perms.canApproveListings) return;
+        const res = await adminAPI.getClaims();
+        setClaimRequests(res.data?.claims || []);
         setPagination(null);
       }
     } catch {
@@ -2342,10 +2358,103 @@ export default function AdminDashboardClient() {
                   </div>
                 </form>
               </div>
+            ) : tab === 'claims' ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900">
+                      Claim Requests (Dispute Reference)
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Audit log of business ownership claims for verification and dispute resolution.
+                    </p>
+                  </div>
+                  <span className="badge badge-blue">
+                    {claimRequests.length} Total Requests
+                  </span>
+                </div>
+
+                {claimRequests.length === 0 ? (
+                  <div className="text-center py-12">
+                    <ShieldCheck size={40} className="text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 text-sm">No claim requests recorded yet.</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-gray-200">
+                    <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 border-b border-gray-200 text-gray-600 font-semibold text-[11px] uppercase tracking-wider">
+                          <th className="py-3 px-4">Business</th>
+                          <th className="py-3 px-4">Claimant Name</th>
+                          <th className="py-3 px-4">Verification Email</th>
+                          <th className="py-3 px-4">Phone / WhatsApp</th>
+                          <th className="py-3 px-4">Status</th>
+                          <th className="py-3 px-4">Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 bg-white">
+                        {claimRequests.map((claim) => (
+                          <tr key={claim._id} className="hover:bg-slate-50/50 transition-colors">
+                            <td className="py-3 px-4 font-semibold text-gray-900">
+                              {claim.business ? (
+                                <Link
+                                  href={`/businesses/${claim.business.slug || claim.business._id}`}
+                                  target="_blank"
+                                  className="text-blue-600 hover:underline flex items-center gap-1 font-bold"
+                                >
+                                  {claim.business.title} <ExternalLink size={12} />
+                                </Link>
+                              ) : (
+                                <span className="text-gray-400 italic">Deleted Business</span>
+                              )}
+                              {claim.business?.address?.city && (
+                                <span className="text-[11px] text-gray-400 block font-normal">
+                                  {claim.business.address.city}
+                                </span>
+                              )}
+                            </td>
+                            <td className="py-3 px-4 text-gray-800 font-medium">
+                              {claim.claimantName}
+                            </td>
+                            <td className="py-3 px-4 text-gray-700 font-mono text-xs">
+                              {claim.chosenEmail}
+                            </td>
+                            <td className="py-3 px-4 text-gray-700">
+                              {claim.phone}
+                            </td>
+                            <td className="py-3 px-4">
+                              <span
+                                className={`badge ${
+                                  claim.status === 'completed'
+                                    ? 'badge-green'
+                                    : claim.status === 'verified'
+                                    ? 'badge-blue'
+                                    : claim.status === 'pending'
+                                    ? 'badge-yellow'
+                                    : 'badge-gray'
+                                }`}
+                                style={{ fontSize: '0.7rem', padding: '2px 8px', textTransform: 'capitalize' }}
+                              >
+                                {claim.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-gray-500 whitespace-nowrap text-xs">
+                              {new Date(claim.createdAt).toLocaleDateString()}
+                              <span className="text-[10px] text-gray-400 block">
+                                {new Date(claim.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             ) : null}
 
             {/* Pagination for businesses & users */}
-            {tab !== 'payment-settings' && pagination && pagination.totalPages > 1 && (
+            {tab !== 'payment-settings' && tab !== 'claims' && pagination && pagination.totalPages > 1 && (
               <div className="flex items-center justify-center gap-2 mt-6">
                 <button
                   onClick={() => setPage(page - 1)}

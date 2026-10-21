@@ -22,6 +22,7 @@ import {
   Newspaper,
   Globe,
   Check,
+  LayoutGrid,
 } from 'lucide-react';
 
 // ── Lightweight, Self-Contained SVG Flag Badges (No external APIs, crisp on Windows) ──
@@ -352,26 +353,26 @@ export default function Navbar() {
               )}
             </div>
 
-            {/* Blog */}
+            {/* Categories */}
             <Link
-              href="/blog"
+              href="/categories"
               style={{
-                color: pathname.startsWith('/blog') ? '#ffffff' : '#4b5563',
+                color: pathname.startsWith('/categories') ? '#ffffff' : '#4b5563',
                 fontSize: '0.84rem',
                 fontWeight: 600,
               }}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-lg whitespace-nowrap transition-all ${
-                pathname.startsWith('/blog')
+                pathname.startsWith('/categories')
                   ? 'bg-blue-600 hover:bg-blue-700 shadow-xs'
                   : 'hover:bg-gray-100 hover:text-blue-600'
               }`}
             >
-              <Newspaper
+              <LayoutGrid
                 size={15}
-                strokeWidth={pathname.startsWith('/blog') ? 2.5 : 2}
+                strokeWidth={pathname.startsWith('/categories') ? 2.5 : 2}
                 className="shrink-0"
               />
-              <span>Blog</span>
+              <span>Categories</span>
             </Link>
 
             {/* About Us */}
@@ -542,7 +543,7 @@ export default function Navbar() {
                   className="btn-primary"
                   style={{ padding: '0.5rem 1rem', fontSize: '0.8125rem' }}
                 >
-                  Register
+                  List Your Business
                 </Link>
               </div>
             )}
@@ -635,19 +636,19 @@ export default function Navbar() {
                 )}
               </div>
 
-              {/* Blog */}
+              {/* Categories */}
               <Link
-                href="/blog"
+                href="/categories"
                 onClick={() => setMobileOpen(false)}
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-colors ${
-                  pathname.startsWith('/blog')
+                  pathname.startsWith('/categories')
                     ? 'bg-blue-50 text-blue-600 font-semibold'
                     : 'hover:bg-gray-50 text-gray-700'
                 }`}
                 style={{ fontSize: '0.875rem' }}
               >
-                <Newspaper size={16} />
-                <span>Blog</span>
+                <LayoutGrid size={16} />
+                <span>Categories</span>
               </Link>
 
               {/* About Us */}
@@ -766,7 +767,7 @@ export default function Navbar() {
                     onClick={() => setMobileOpen(false)}
                     className="btn-primary w-full justify-center"
                   >
-                    Register
+                    List Your Business
                   </Link>
                 </div>
               )}

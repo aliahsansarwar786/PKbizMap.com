@@ -653,6 +653,108 @@ const getPasswordChangedSuccessEmailHtml = ({ name }) => {
   `.trim();
 };
 
+/**
+ * Generates the Claim Verification Email HTML
+ * @param {Object} params
+ * @param {string} params.businessTitle
+ * @param {string} params.claimantName
+ * @param {string} params.code
+ * @param {string} params.verifyUrl
+ * @returns {string} HTML string
+ */
+const getClaimVerificationEmailHtml = ({ businessTitle, claimantName, code, verifyUrl }) => {
+  const safeBusinessTitle = escapeHtml(businessTitle || 'Your Business Listing');
+  const safeClaimantName = escapeHtml(claimantName || 'Listing Representative');
+  const safeCode = escapeHtml(code || '');
+  const safeUrl = escapeHtml(verifyUrl || '#');
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claim Listing Verification</title>
+</head>
+<body style="${getBaseStyles()} padding: 32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">
+          BizPrimeHub
+        </h1>
+        <p style="color: #bfdbfe; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+          Business Verification &amp; Ownership
+        </p>
+      </td>
+    </tr>
+
+    <!-- Body Content -->
+    <tr>
+      <td style="padding: 32px 28px;">
+        <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #111827;">
+          Claim Request for: ${safeBusinessTitle}
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; color: #4b5563;">
+          Hello ${safeClaimantName},
+        </p>
+        <p style="margin: 0 0 20px 0; font-size: 15px; color: #4b5563; line-height: 1.6;">
+          We received a request to claim ownership of the listing <strong>${safeBusinessTitle}</strong> on BizPrimeHub.
+        </p>
+
+        <!-- 6-digit verification code -->
+        <div style="background-color: #f8fafc; border: 2px dashed #93c5fd; border-radius: 12px; padding: 24px 16px; text-align: center; margin: 24px 0;">
+          <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #64748b;">
+            Your 6-Digit Verification Code
+          </p>
+          <div style="font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace; font-size: 34px; font-weight: 800; color: #1e40af; letter-spacing: 8px; margin: 8px 0;">
+            ${safeCode}
+          </div>
+          <p style="margin: 8px 0 0 0; font-size: 12px; color: #94a3b8;">
+            ⏱ This code expires in 30 minutes. Single-use only.
+          </p>
+        </div>
+
+        <!-- 1-Click Verification Link -->
+        <p style="margin: 20px 0 12px 0; font-size: 14px; font-weight: 600; color: #374151; text-align: center;">
+          Or verify instantly with 1-click:
+        </p>
+        <div style="text-align: center; margin: 0 0 28px 0;">
+          <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #2563eb; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 10px; box-shadow: 0 2px 6px rgba(37,99,235,0.3);">
+            Verify &amp; Claim Listing
+          </a>
+          <p style="margin: 10px 0 0 0; font-size: 12px; color: #94a3b8;">
+            This 1-click link is valid for 24 hours.
+          </p>
+        </div>
+
+        <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">
+          <p style="margin: 0; font-size: 13px; color: #15803d; line-height: 1.5;">
+            <strong>Next step:</strong> Once verified, you will manage this business directly from your BizPrimeHub account dashboard.
+          </p>
+        </div>
+
+        <p style="margin: 24px 0 0 0; font-size: 12px; color: #9ca3af; line-height: 1.5;">
+          If you did not initiate this claim request, you can safely disregard this email. Listing ownership will not be transferred without this verification.
+        </p>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f9fafb; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+          &copy; ${new Date().getFullYear()} BizPrimeHub. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+};
+
 module.exports = {
   escapeHtml,
   getWelcomeEmailHtml,
@@ -662,5 +764,7 @@ module.exports = {
   getEmailVerificationOtpHtml,
   getPasswordResetOtpHtml,
   getPasswordChangedSuccessEmailHtml,
+  getClaimVerificationEmailHtml,
 };
+
 

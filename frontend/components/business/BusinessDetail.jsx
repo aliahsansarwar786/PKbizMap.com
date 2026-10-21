@@ -5,12 +5,25 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { businessAPI, reviewAPI } from '@/lib/api';
-import { StarRating } from './BusinessCard';
+import BusinessCard, { StarRating } from './BusinessCard';
+import ClaimBusinessModal from './ClaimBusinessModal';
 import toast from 'react-hot-toast';
 import {
-  MapPin, Phone, Mail, Globe, Tag, Calendar,
-  User, ChevronLeft, Star, Edit3, Trash2, Send,
-  Clock, Share2
+  MapPin,
+  Phone,
+  Mail,
+  Globe,
+  Tag,
+  User,
+  ChevronLeft,
+  Star,
+  Edit3,
+  Trash2,
+  Send,
+  Clock,
+  ShieldCheck,
+  CheckCircle2,
+  Navigation,
 } from 'lucide-react';
 
 function WhatsAppIcon({ size = 15, className = '' }) {
@@ -35,7 +48,6 @@ function formatAddress(address) {
 
   if (city) {
     const cityLower = city.toLowerCase();
-    // If street ends with city name (e.g. "DHA Phase 6, Lahore" or "Gulberg Lahore") or equals city
     const regex = new RegExp(`(?:,\\s*|\\s+)${cityLower}$`, 'i');
     if (street.toLowerCase() === cityLower || regex.test(street)) {
       includeCity = false;
@@ -82,23 +94,36 @@ function formatShortAddress(address) {
   return [street, displayArea, includeCity ? city : ''].filter(Boolean).join(', ');
 }
 
-function ReviewForm({ businessId, onSubmit, existingReview = null }) {
+// Review form accepting both guest and authenticated users
+function ReviewForm({ businessId, onSubmit, existingReview = null, currentUser = null }) {
+  const [name, setName] = useState(existingReview?.guestName || currentUser?.name || '');
   const [rating, setRating] = useState(existingReview?.rating || 5);
   const [comment, setComment] = useState(existingReview?.comment || '');
   const [hover, setHover] = useState(0);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (!name && currentUser?.name) {
+      setName(currentUser.name);
+    }
+  }, [currentUser, name]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!name.trim()) {
+      toast.error('Please enter your name.');
+      return;
+    }
     if (comment.trim().length < 10) {
       toast.error('Comment must be at least 10 characters.');
       return;
     }
     setLoading(true);
     try {
-      await onSubmit({ rating, comment });
+      await onSubmit({ name: name.trim(), rating, comment });
       if (!existingReview) {
         setComment('');
+        if (!currentUser) setName('');
         setRating(5);
       }
     } catch (err) {
@@ -109,10 +134,25 @@ function ReviewForm({ businessId, onSubmit, existingReview = null }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4 rounded-xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+    <form onSubmit={handleSubmit} className="p-4 sm:p-5 rounded-xl bg-slate-50/80 border border-gray-200">
       <h3 style={{ fontSize: '0.9375rem', fontWeight: 600, marginBottom: '0.75rem', color: '#1f2937' }}>
         {existingReview ? 'Edit Your Review' : 'Write a Review'}
       </h3>
+
+      {/* Reviewer Name */}
+      <div className="mb-3">
+        <label className="block text-xs font-semibold text-gray-700 mb-1">
+          Your Name <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="text"
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Enter your name (e.g. Ali Ahmed)"
+          className="input-field text-sm"
+        />
+      </div>
 
       {/* Star picker */}
       <div className="flex gap-1 mb-3">
@@ -167,8 +207,10 @@ export default function BusinessDetail({ id }) {
   const [error, setError] = useState(null);
   const [activeImage, setActiveImage] = useState(0);
   const [editingReview, setEditingReview] = useState(null);
+  const [claimModalOpen, setClaimModalOpen] = useState(false);
+  const [similarBusinesses, setSimilarBusinesses] = useState([]);
 
-  const userReview = reviews.find((r) => r.user?._id === user?._id);
+  const userReview = reviews.find((r) => r.user?._id && user?._id && r.user._id === user._id);
 
   useEffect(() => {
     businessAPI.getById(id)
@@ -180,21 +222,48 @@ export default function BusinessDetail({ id }) {
       .finally(() => setLoading(false));
   }, [id]);
 
+  // Fetch similar businesses in same category and city
+  useEffect(() => {
+    if (business?.category && business?.address?.city) {
+      businessAPI.getAll({
+        category: business.category,
+        city: business.address.city,
+        limit: 6,
+      })
+        .then((res) => {
+          const list = (res.data?.businesses || res.businesses || [])
+            .filter((b) => b._id !== business._id && b.slug !== business.slug)
+            .slice(0, 4);
+          setSimilarBusinesses(list);
+        })
+        .catch(() => setSimilarBusinesses([]));
+    }
+  }, [business]);
+
   const handleCreateReview = async (data) => {
-    const res = await reviewAPI.create(id, data);
-    setReviews((prev) => [res.data.review, ...prev]);
-    // Update average on business
-    setBusiness((prev) => ({
-      ...prev,
-      reviewCount: (prev.reviewCount || 0) + 1,
-      averageRating: ((prev.averageRating * (prev.reviewCount || 0)) + data.rating) / ((prev.reviewCount || 0) + 1),
-    }));
-    toast.success('Review submitted!');
+    const res = await reviewAPI.create(business?.slug || id, data);
+    const newRev = res.data?.review || res.review;
+    setReviews((prev) => [newRev, ...prev]);
+
+    // Update average and count on business
+    setBusiness((prev) => {
+      const currentCount = prev.reviewCount || 0;
+      const currentAvg = prev.averageRating || 0;
+      const nextCount = currentCount + 1;
+      const nextAvg = (currentAvg * currentCount + data.rating) / nextCount;
+      return {
+        ...prev,
+        reviewCount: nextCount,
+        averageRating: Math.round(nextAvg * 10) / 10,
+      };
+    });
+
+    toast.success('Review submitted successfully!');
   };
 
   const handleUpdateReview = async (data) => {
     const res = await reviewAPI.update(editingReview._id, data);
-    setReviews((prev) => prev.map((r) => r._id === editingReview._id ? res.data.review : r));
+    setReviews((prev) => prev.map((r) => r._id === editingReview._id ? (res.data?.review || res.review) : r));
     setEditingReview(null);
     toast.success('Review updated!');
   };
@@ -241,7 +310,8 @@ export default function BusinessDetail({ id }) {
   const displayImage = allImages[activeImage]?.url ||
     `https://ui-avatars.com/api/?name=${encodeURIComponent(business.title)}&background=2563eb&color=fff&size=800&bold=true&format=png`;
 
-  const isOwner = user?._id === business.owner?._id;
+  const isOwner = user?._id && business.owner?._id && user._id === business.owner._id;
+  const isClaimed = Boolean(business.isClaimed || business.claimed);
 
   return (
     <div className="section-sm">
@@ -258,38 +328,45 @@ export default function BusinessDetail({ id }) {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* ── Left: Main content ────────────────────────────── */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Image gallery */}
-            <div className="card overflow-hidden">
-              <div className="relative" style={{ height: 340, background: '#f3f4f6' }}>
-                <Image
-                  src={displayImage}
-                  alt={`${business.title} — ${business.category || 'Business'}${business.address?.city ? ` in ${business.address.city}` : ''}`}
-                  fill
-                  className="object-cover"
-                  priority
-                />
+            {/* Image gallery / Logo: Shown at NATURAL size & aspect ratio, centered in soft background */}
+            <div className="card overflow-hidden border border-gray-100">
+              <div
+                className="relative w-full flex items-center justify-center bg-slate-50/90 p-4 sm:p-6"
+                style={{ minHeight: 220, maxHeight: 280, height: 260 }}
+              >
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <Image
+                    src={displayImage}
+                    alt={`${business.title} — ${business.category || 'Business'}${business.address?.city ? ` in ${business.address.city}` : ''}`}
+                    fill
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 66vw, 800px"
+                    className="object-contain p-2 max-h-[250px] drop-shadow-2xs"
+                    priority
+                  />
+                </div>
               </div>
 
               {allImages.length > 1 && (
-                <div className="flex gap-2 p-3" style={{ overflowX: 'auto' }}>
+                <div className="flex gap-2 p-3 bg-white border-t border-gray-100" style={{ overflowX: 'auto' }}>
                   {allImages.map((img, i) => (
                     <button
-                      key={img.publicId}
+                      key={img.publicId || i}
                       onClick={() => setActiveImage(i)}
-                      className="flex-shrink-0 rounded-lg overflow-hidden transition-all"
+                      className="flex-shrink-0 rounded-lg overflow-hidden transition-all bg-slate-50 p-1 cursor-pointer"
                       style={{
-                        width: 60, height: 60,
-                        border: i === activeImage ? '2px solid #2563eb' : '2px solid transparent',
-                        opacity: i === activeImage ? 1 : 0.7,
+                        width: 60,
+                        height: 60,
+                        border: i === activeImage ? '2px solid #2563eb' : '1px solid #e5e7eb',
+                        opacity: i === activeImage ? 1 : 0.6,
                       }}
                       aria-label={`View image ${i + 1}`}
                     >
                       <Image
                         src={img.url}
-                        alt={`${business.title} — ${business.category || 'Business'}${business.address?.city ? ` in ${business.address.city}` : ''}`}
-                        width={60}
-                        height={60}
-                        className="object-cover w-full h-full"
+                        alt={`${business.title} thumbnail ${i + 1}`}
+                        width={56}
+                        height={56}
+                        className="object-contain w-full h-full"
                       />
                     </button>
                   ))}
@@ -301,19 +378,38 @@ export default function BusinessDetail({ id }) {
             <div className="card p-6">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex flex-wrap items-center gap-2 mb-2">
                     <span className="badge badge-blue"><Tag size={11} /> {business.category}</span>
+                    {!isClaimed && (
+                      <button
+                        type="button"
+                        onClick={() => setClaimModalOpen(true)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200 hover:bg-amber-100 transition-colors cursor-pointer"
+                      >
+                        <ShieldCheck size={13} className="text-amber-600" />
+                        <span>Claim This Business</span>
+                      </button>
+                    )}
+                    {isClaimed && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <CheckCircle2 size={13} className="text-emerald-600" />
+                        <span>Verified Listing</span>
+                      </span>
+                    )}
                   </div>
+
                   <h1 style={{ fontSize: '1.625rem', fontWeight: 700, color: '#1f2937' }}>
                     {business.title}
                   </h1>
+
                   <div className="flex items-center gap-2 mt-2">
                     <MapPin size={14} style={{ color: '#6b7280', flexShrink: 0 }} />
                     <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                       {formatAddress(business.address)}
                     </span>
                   </div>
-                  <div className="mt-2">
+
+                  <div className="mt-2.5">
                     <StarRating rating={business.averageRating || 0} count={business.reviewCount || 0} size={16} />
                   </div>
                 </div>
@@ -345,13 +441,13 @@ export default function BusinessDetail({ id }) {
                     Location
                   </h2>
                   <div className="w-full h-64 rounded-xl overflow-hidden shadow-sm" style={{ border: '1px solid #e5e7eb' }}>
-                    <iframe 
-                      width="100%" 
-                      height="100%" 
-                      frameBorder="0" 
-                      scrolling="no" 
-                      marginHeight="0" 
-                      marginWidth="0" 
+                    <iframe
+                      width="100%"
+                      height="100%"
+                      frameBorder="0"
+                      scrolling="no"
+                      marginHeight="0"
+                      marginWidth="0"
                       src={`https://maps.google.com/maps?q=${encodeURIComponent([business.address.street, business.address.city, business.address.zipCode].filter(Boolean).join(', '))}&t=&z=14&ie=UTF8&iwloc=&output=embed`}
                       title={`${business.title} Location`}
                       style={{ filter: 'contrast(1.05)' }}
@@ -361,42 +457,53 @@ export default function BusinessDetail({ id }) {
               )}
             </div>
 
-            {/* Reviews */}
+            {/* Customer Reviews */}
             <div className="card p-6">
               <h2 style={{ fontSize: '1rem', fontWeight: 600, color: '#1f2937', marginBottom: '1rem' }}>
                 Customer Reviews ({reviews.length})
               </h2>
 
-              {/* Review form */}
-              {isAuthenticated && !isOwner && !userReview && (
+              {/* Review form: ALWAYS VISIBLE - guests and authenticated visitors can write reviews */}
+              {!editingReview && (!userReview || !isAuthenticated) && (
                 <div className="mb-6">
-                  <ReviewForm businessId={id} onSubmit={handleCreateReview} />
+                  <ReviewForm
+                    businessId={id}
+                    onSubmit={handleCreateReview}
+                    currentUser={user}
+                  />
                 </div>
               )}
 
-              {isAuthenticated && !isOwner && userReview && !editingReview && (
-                <div className="mb-6 p-4 rounded-xl" style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}>
-                  <p style={{ fontSize: '0.875rem', color: '#1d4ed8', marginBottom: '0.5rem' }}>
+              {/* Logged in user who already reviewed: show edit option */}
+              {isAuthenticated && userReview && !editingReview && (
+                <div className="mb-6 p-4 rounded-xl bg-blue-50/70 border border-blue-200 flex items-center justify-between gap-3">
+                  <p className="text-xs sm:text-sm text-blue-900 font-medium">
                     You have already reviewed this business.
                   </p>
-                  <button onClick={() => setEditingReview(userReview)} className="btn-secondary" style={{ fontSize: '0.8125rem', padding: '0.375rem 0.75rem' }}>
+                  <button
+                    onClick={() => setEditingReview(userReview)}
+                    className="btn-secondary text-xs py-1.5 px-3 shrink-0"
+                  >
                     <Edit3 size={13} /> Edit My Review
                   </button>
                 </div>
               )}
 
+              {/* Editing review form */}
               {editingReview && (
                 <div className="mb-6">
-                  <ReviewForm businessId={id} onSubmit={handleUpdateReview} existingReview={editingReview} />
-                  <button onClick={() => setEditingReview(null)} className="text-sm mt-2" style={{ color: '#6b7280' }}>Cancel</button>
-                </div>
-              )}
-
-              {!isAuthenticated && (
-                <div className="mb-6 p-4 rounded-xl" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
-                  <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                    <Link href="/login" style={{ color: '#2563eb' }}>Log in</Link> to leave a review.
-                  </p>
+                  <ReviewForm
+                    businessId={id}
+                    onSubmit={handleUpdateReview}
+                    existingReview={editingReview}
+                    currentUser={user}
+                  />
+                  <button
+                    onClick={() => setEditingReview(null)}
+                    className="text-sm mt-2 text-gray-500 hover:text-gray-700 cursor-pointer"
+                  >
+                    Cancel Edit
+                  </button>
                 </div>
               )}
 
@@ -404,36 +511,36 @@ export default function BusinessDetail({ id }) {
               {reviews.length === 0 ? (
                 <div className="text-center py-8">
                   <Star size={32} style={{ color: '#d1d5db', margin: '0 auto 0.75rem' }} />
-                  <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>No reviews yet. Be the first!</p>
+                  <p style={{ color: '#9ca3af', fontSize: '0.875rem' }}>No reviews yet. Be the first to leave a review!</p>
                 </div>
               ) : (
                 <div className="space-y-4">
                   {reviews.map((review) => {
+                    const reviewerName = review.guestName || review.user?.name || 'Anonymous';
                     const reviewerAvatar = review.user?.avatar?.url ||
-                      `https://ui-avatars.com/api/?name=${encodeURIComponent(review.user?.name || 'U')}&background=2563eb&color=fff&size=40`;
-                    const isAuthor = user?._id === review.user?._id;
-                    const isAdmin = user?.role === 'admin';
+                      `https://ui-avatars.com/api/?name=${encodeURIComponent(reviewerName)}&background=2563eb&color=fff&size=40`;
+                    const isAuthor = user?._id && review.user?._id && user._id === review.user._id;
+                    const isAdmin = user?.role === 'admin' || user?.role === 'subadmin';
 
                     return (
                       <div
                         key={review._id}
-                        className="p-4 rounded-xl"
-                        style={{ background: '#f9fafb', border: '1px solid #f3f4f6' }}
+                        className="p-4 rounded-xl bg-slate-50/60 border border-gray-100"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex items-center gap-3">
                             <Image
                               src={reviewerAvatar}
-                              alt={review.user?.name || 'Reviewer'}
+                              alt={reviewerName}
                               width={36}
                               height={36}
-                              className="rounded-full object-cover"
+                              className="rounded-full object-cover shrink-0"
                             />
                             <div>
                               <p style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1f2937' }}>
-                                {review.user?.name || 'Anonymous'}
+                                {reviewerName}
                               </p>
-                              <StarRating rating={review.rating} size={12} />
+                              <StarRating rating={review.rating} count={1} size={12} />
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -451,7 +558,7 @@ export default function BusinessDetail({ id }) {
                             )}
                           </div>
                         </div>
-                        <p className="break-words" style={{ fontSize: '0.875rem', color: '#4b5563', marginTop: '0.75rem', lineHeight: 1.6, wordBreak: 'break-word' }}>
+                        <p className="break-words mt-3 text-sm text-gray-700 leading-relaxed">
                           {review.comment}
                         </p>
                       </div>
@@ -460,135 +567,184 @@ export default function BusinessDetail({ id }) {
                 </div>
               )}
             </div>
+
+            {/* Task 6: Similar Businesses Section */}
+            {similarBusinesses.length > 0 && (
+              <div className="card p-6 border border-gray-100">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1f2937' }}>
+                    Similar {business.category} in {business.address?.city || 'Pakistan'}
+                  </h2>
+                  <Link
+                    href={`/businesses?category=${encodeURIComponent(business.category)}&city=${encodeURIComponent(business.address?.city || '')}`}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                  >
+                    View All
+                  </Link>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {similarBusinesses.map((simBiz) => (
+                    <BusinessCard key={simBiz._id} business={simBiz} />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* ── Right: Contact sidebar ────────────────────────── */}
+          {/* ── Right: Sidebar ────────────────────────────────── */}
           <div className="space-y-4">
-            {/* Quick actions */}
-            <div className="card p-5">
-              <h2 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#1f2937', marginBottom: '1rem' }}>
-                Contact & Actions
-              </h2>
+            {/* Professional Details (Contact & Location Card) */}
+            <div className="card p-5 space-y-3 border border-gray-100">
+              <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                <h2 style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#1f2937' }}>
+                  Professional Details
+                </h2>
+                {isClaimed && (
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Verified Owner
+                  </span>
+                )}
+              </div>
 
-              {business.phone ? (
-                <a
-                  href={`tel:${business.phone}`}
-                  className="flex items-center gap-3 p-3 rounded-lg mb-2 w-full transition-colors hover:bg-blue-50"
-                  style={{ border: '1px solid #e5e7eb', color: '#1f2937', textDecoration: 'none' }}
-                >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#eff6ff' }}>
-                    <Phone size={15} style={{ color: '#2563eb' }} />
+              {/* Address with Map/Directions link */}
+              {business.address && (business.address.street || business.address.city || business.address.area) && (
+                <div className="p-3 rounded-xl border border-gray-200 bg-gray-50/50 space-y-1.5">
+                  <div className="flex items-start gap-2.5">
+                    <MapPin size={16} className="text-blue-600 mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] text-gray-500 font-medium">Address</p>
+                      <p className="text-xs font-semibold text-gray-900 leading-snug">
+                        {formatAddress(business.address)}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>Phone</p>
-                    <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>{business.phone}</p>
-                  </div>
-                </a>
-              ) : (
-                <div
-                  className="flex items-center gap-3 p-3 rounded-lg mb-2 w-full bg-slate-50 border border-slate-200 select-none cursor-not-allowed"
-                  title="No phone number available"
-                  aria-label="No phone number available"
-                >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-slate-100 text-slate-400">
-                    <Phone size={15} />
-                  </div>
-                  <div>
-                    <p style={{ fontSize: '0.75rem', color: '#94a3b8' }}>Phone</p>
-                    <p style={{ fontSize: '0.875rem', fontWeight: 500, color: '#94a3b8' }}>No phone number available</p>
+                  <div className="pt-1 pl-6">
+                    <a
+                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(formatAddress(business.address))}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline"
+                    >
+                      <Navigation size={12} /> Get Directions
+                    </a>
                   </div>
                 </div>
               )}
 
-              {business.whatsapp && (
+              {/* Phone as a call row */}
+              {business.phone && (
                 <a
-                  href={`https://wa.me/${business.whatsapp.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-lg mb-2 w-full transition-colors hover:bg-emerald-50"
-                  style={{ border: '1px solid #bbf7d0', color: '#1f2937', textDecoration: 'none' }}
+                  href={`tel:${business.phone}`}
+                  className="flex items-center justify-between p-3 rounded-xl border border-gray-200 bg-white hover:bg-blue-50/60 transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-emerald-50 text-emerald-600">
-                    <WhatsAppIcon size={16} />
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600 shrink-0">
+                      <Phone size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] text-gray-500 font-medium">Phone</p>
+                      <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate">{business.phone}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>WhatsApp</p>
-                    <p style={{ fontSize: '0.875rem', fontWeight: 600 }} className="text-emerald-700">{business.whatsapp}</p>
-                  </div>
+                  <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded shrink-0">Call</span>
                 </a>
               )}
 
+              {/* WhatsApp as a green "Chat" button */}
+              {business.whatsapp && (
+                <a
+                  href={`https://wa.me/${business.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(
+                    `Hi, I found ${business.title} on BizPrimeHub and would like to inquire about your services.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-between p-3 rounded-xl border border-emerald-200 bg-emerald-500 hover:bg-emerald-600 text-white transition-all shadow-xs group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                      <WhatsAppIcon size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] text-emerald-100 font-medium">WhatsApp</p>
+                      <p className="text-xs sm:text-sm font-bold text-white truncate">{business.whatsapp}</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold bg-white text-emerald-700 px-3 py-1 rounded-lg group-hover:bg-emerald-50 transition-colors shrink-0">
+                    Chat
+                  </span>
+                </a>
+              )}
+
+              {/* Contact Person (if exists) */}
               {business.contactPerson && (
-                <div className="flex items-center gap-3 p-3 rounded-lg mb-2 w-full bg-gray-50/70 border border-gray-200">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600">
+                <div className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-gray-50/40">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600 shrink-0">
                     <User size={15} />
                   </div>
                   <div>
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>Contact Person</p>
-                    <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1f2937' }}>{business.contactPerson}</p>
+                    <p className="text-[11px] text-gray-500 font-medium">Contact Person</p>
+                    <p className="text-xs sm:text-sm font-semibold text-gray-900">{business.contactPerson}</p>
                   </div>
                 </div>
               )}
 
+              {/* Email row (if exists) */}
               {business.email && (
                 <a
                   href={`mailto:${business.email}`}
-                  className="flex items-center gap-3 p-3 rounded-lg mb-2 w-full transition-colors hover:bg-blue-50"
-                  style={{ border: '1px solid #e5e7eb', color: '#1f2937', textDecoration: 'none' }}
+                  className="flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:bg-blue-50/60 transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#eff6ff' }}>
-                    <Mail size={15} style={{ color: '#2563eb' }} />
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600 shrink-0">
+                    <Mail size={15} />
                   </div>
-                  <div>
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>Email</p>
-                    <p style={{ fontSize: '0.875rem', fontWeight: 500 }} className="truncate">{business.email}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] text-gray-500 font-medium">Email</p>
+                    <p className="text-xs sm:text-sm font-semibold text-gray-900 truncate">{business.email}</p>
                   </div>
                 </a>
               )}
 
+              {/* Website "Visit" row (if exists) */}
               {business.website && (
                 <a
                   href={business.website.startsWith('http') ? business.website : `https://${business.website}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-lg mb-2 w-full transition-colors hover:bg-blue-50"
-                  style={{ border: '1px solid #e5e7eb', color: '#1f2937', textDecoration: 'none' }}
+                  className="flex items-center justify-between p-3 rounded-xl border border-gray-200 bg-white hover:bg-blue-50/60 transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#eff6ff' }}>
-                    <Globe size={15} style={{ color: '#2563eb' }} />
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600 shrink-0">
+                      <Globe size={15} />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-[11px] text-gray-500 font-medium">Website</p>
+                      <p className="text-xs sm:text-sm font-semibold text-blue-600 truncate">{business.website}</p>
+                    </div>
                   </div>
-                  <div className="overflow-hidden">
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>Website</p>
-                    <p style={{ fontSize: '0.875rem', fontWeight: 500, color: '#2563eb' }} className="truncate">
-                      {business.website}
-                    </p>
-                  </div>
+                  <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded shrink-0">Visit</span>
                 </a>
               )}
 
-              {business.address?.city && (
-                <a
-                  href={`https://maps.google.com/?q=${encodeURIComponent(formatAddress(business.address))}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-lg w-full transition-colors hover:bg-blue-50"
-                  style={{ border: '1px solid #e5e7eb', color: '#1f2937', textDecoration: 'none' }}
-                >
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: '#eff6ff' }}>
-                    <MapPin size={15} style={{ color: '#2563eb' }} />
-                  </div>
-                  <div>
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>Get Directions</p>
-                    <p style={{ fontSize: '0.875rem', fontWeight: 500 }}>
-                      {formatShortAddress(business.address)}
-                    </p>
-                  </div>
-                </a>
+              {/* Prominent Claim This Business button if not claimed */}
+              {!isClaimed && (
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setClaimModalOpen(true)}
+                    className="w-full flex items-center justify-center gap-2 p-3 rounded-xl font-bold text-xs uppercase tracking-wider bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+                  >
+                    <ShieldCheck size={16} />
+                    <span>Claim This Business</span>
+                  </button>
+                  <p className="text-[11px] text-gray-400 text-center mt-1.5">
+                    Verified owner? Claim to update information &amp; manage leads
+                  </p>
+                </div>
               )}
 
               {/* Social Links if present */}
               {(business.socialLinks?.facebook || business.socialLinks?.youtube || business.socialLinks?.googleBusiness) && (
-                <div className="pt-3 border-t border-gray-100 flex flex-wrap gap-2">
+                <div className="pt-2 border-t border-gray-100 flex flex-wrap gap-2">
                   {business.socialLinks.facebook && (
                     <a
                       href={business.socialLinks.facebook}
@@ -623,8 +779,8 @@ export default function BusinessDetail({ id }) {
               )}
             </div>
 
-            {/* Business meta */}
-            <div className="card p-5">
+            {/* Business Details (NO "Listed: <date>" row) */}
+            <div className="card p-5 border border-gray-100">
               <h2 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#1f2937', marginBottom: '0.75rem' }}>
                 Business Details
               </h2>
@@ -651,17 +807,11 @@ export default function BusinessDetail({ id }) {
                     <span style={{ fontSize: '0.875rem', color: '#4b5563' }}>ZIP: <strong>{business.address.zipCode}</strong></span>
                   </div>
                 )}
-                <div className="flex items-center gap-2">
-                  <Calendar size={14} style={{ color: '#6b7280', flexShrink: 0 }} />
-                  <span style={{ fontSize: '0.875rem', color: '#4b5563' }}>
-                    Listed: <strong>{new Date(business.createdAt).toLocaleDateString()}</strong>
-                  </span>
-                </div>
               </div>
             </div>
 
-            {/* Weekly Opening Hours Card (Backward Compatible: "Hours not specified" if missing) */}
-            <div className="card p-5">
+            {/* Weekly Opening Hours */}
+            <div className="card p-5 border border-gray-100">
               <h2 style={{ fontSize: '0.9375rem', fontWeight: 600, color: '#1f2937', marginBottom: '0.75rem' }} className="flex items-center gap-2">
                 <Clock size={16} className="text-amber-600" />
                 Weekly Opening Hours
@@ -691,6 +841,13 @@ export default function BusinessDetail({ id }) {
           </div>
         </div>
       </div>
+
+      {/* Claim Business Modal */}
+      <ClaimBusinessModal
+        business={business}
+        isOpen={claimModalOpen}
+        onClose={() => setClaimModalOpen(false)}
+      />
     </div>
   );
 }

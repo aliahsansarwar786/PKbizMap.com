@@ -19,10 +19,19 @@ function WhatsAppIcon({ size = 14, className = '' }) {
   );
 }
 
-// 5-Star Rating component: filled per rating + "{rating} ({reviewCount} reviews)". No reviews → empty stars + "0.0 (0 reviews)"
+// 5-Star Rating component: filled per rating + "{rating} ({reviewCount} reviews)". No reviews → "No reviews yet"
 export function StarRating({ rating = 0, count = 0, size = 14 }) {
   const numRating = Number(rating) || 0;
   const numCount = Number(count) || 0;
+
+  if (numCount === 0) {
+    return (
+      <span className="text-xs font-normal text-slate-500">
+        No reviews yet
+      </span>
+    );
+  }
+
   const filled = Math.floor(numRating);
   const hasHalf = numRating % 1 >= 0.5;
 
@@ -31,12 +40,10 @@ export function StarRating({ rating = 0, count = 0, size = 14 }) {
       <div className="flex gap-0.5" aria-label={`Rating: ${numRating.toFixed(1)} out of 5 stars`}>
         {[1, 2, 3, 4, 5].map((star) => {
           let fill = '#e2e8f0'; // empty star by default
-          if (numCount > 0) {
-            if (star <= filled) {
-              fill = '#eab308';
-            } else if (star === filled + 1 && hasHalf) {
-              fill = 'url(#half-star)';
-            }
+          if (star <= filled) {
+            fill = '#eab308';
+          } else if (star === filled + 1 && hasHalf) {
+            fill = 'url(#half-star)';
           }
 
           return (

@@ -19,6 +19,7 @@ const businessRoutes = require('./routes/businessRoutes');
 const reviewRoutes = require('./routes/reviewRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const settingRoutes = require('./routes/settingRoutes');
+const claimRoutes = require('./routes/claimRoutes');
 
 // ─── Initialize Express app ───────────────────────────────────────────────────
 const app = express();
@@ -40,6 +41,8 @@ app.use(
 // Only allow requests from configured and production frontend URLs
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  'https://www.bizprimehub.com',
+  'https://bizprimehub.com',
   'https://bizprimehub.vercel.app',
   'https://pkbizmap.vercel.app',
   'https://pkbizmap-com.vercel.app',
@@ -181,6 +184,7 @@ app.use('/api/businesses', businessRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/settings', settingRoutes);
+app.use('/api/claims', claimRoutes);
 
 // ─── Health check endpoint ────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

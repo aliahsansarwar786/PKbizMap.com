@@ -10,7 +10,14 @@ const reviewSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      required: [true, 'Review must belong to a user'],
+      required: false,
+      default: null,
+    },
+    guestName: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'Guest name cannot exceed 100 characters'],
+      default: '',
     },
     rating: {
       type: Number,
@@ -34,8 +41,8 @@ const reviewSchema = new mongoose.Schema(
 // ─── Indexes ──────────────────────────────────────────────────────────────────
 reviewSchema.index({ business: 1 });
 reviewSchema.index({ user: 1 });
-// Compound unique: one review per user per business
-reviewSchema.index({ business: 1, user: 1 }, { unique: true });
+// Compound unique: one review per user per business (only applies when user is an ObjectId, not guest)
+reviewSchema.index({ business: 1, user: 1 }, { unique: true, partialFilterExpression: { user: { $type: 'objectId' } } });
 
 // ─── Static: Recalculate business average rating ──────────────────────────────
 reviewSchema.statics.calcAverageRating = async function (businessId) {
