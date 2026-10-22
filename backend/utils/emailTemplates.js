@@ -755,6 +755,121 @@ const getClaimVerificationEmailHtml = ({ businessTitle, claimantName, code, veri
   `.trim();
 };
 
+/**
+ * Generates the Owner Notification Email HTML for a new business claim request
+ * @param {Object} params
+ * @param {string} params.businessTitle
+ * @param {string} params.claimantName
+ * @param {string} params.claimantEmail
+ * @param {string} params.claimantPhone
+ * @param {string} params.pathUsed
+ * @param {string} params.adminUrl
+ * @returns {string} HTML string
+ */
+const getNewClaimNotificationHtml = ({
+  businessTitle,
+  claimantName,
+  claimantEmail,
+  claimantPhone,
+  pathUsed,
+  adminUrl,
+}) => {
+  const safeTitle = escapeHtml(businessTitle || 'Untitled Business');
+  const safeName = escapeHtml(claimantName || 'Claimant');
+  const safeEmail = escapeHtml(claimantEmail || 'N/A');
+  const safePhone = escapeHtml(claimantPhone || 'N/A');
+  const safePath = escapeHtml(
+    pathUsed === 'registered' ? 'Registered Business Email' : 'Direct Official / Corporate Email'
+  );
+  const safeUrl = escapeHtml(adminUrl || 'https://www.bizprimehub.com/folder/new/admin');
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Claim Request: ${safeTitle}</title>
+</head>
+<body style="${getBaseStyles()} padding: 32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">
+          BizPrimeHub
+        </h1>
+        <p style="color: #bfdbfe; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+          Owner Notification • Business Ownership Claim Request
+        </p>
+      </td>
+    </tr>
+
+    <!-- Content -->
+    <tr>
+      <td style="padding: 32px 28px;">
+        <div style="display: inline-block; background-color: #eff6ff; color: #1d4ed8; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; border: 1px solid #bfdbfe;">
+          🛡️ New Claim Request
+        </div>
+
+        <h2 style="margin: 0 0 12px 0; font-size: 20px; font-weight: 700; color: #111827;">
+          A user has requested to claim "${safeTitle}"
+        </h2>
+        <p style="margin: 0 0 24px 0; font-size: 15px; color: #4b5563;">
+          A claim verification request has been initiated on <strong>BizPrimeHub</strong>. Below are the request details:
+        </p>
+
+        <!-- Claim Details Card -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 24px; overflow: hidden;">
+          <tr>
+            <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #6b7280; border-bottom: 1px solid #e5e7eb; width: 35%;">Business Name</td>
+            <td style="padding: 12px 16px; font-size: 14px; font-weight: 700; color: #111827; border-bottom: 1px solid #e5e7eb;">${safeTitle}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Claimant Name</td>
+            <td style="padding: 12px 16px; font-size: 14px; color: #1f2937; border-bottom: 1px solid #e5e7eb;">${safeName}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Claimant Email</td>
+            <td style="padding: 12px 16px; font-size: 14px; color: #2563eb; border-bottom: 1px solid #e5e7eb;">${safeEmail}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #6b7280; border-bottom: 1px solid #e5e7eb;">Claimant Phone</td>
+            <td style="padding: 12px 16px; font-size: 14px; color: #1f2937; border-bottom: 1px solid #e5e7eb;">${safePhone}</td>
+          </tr>
+          <tr>
+            <td style="padding: 12px 16px; font-size: 13px; font-weight: 600; color: #6b7280;">Email Path Used</td>
+            <td style="padding: 12px 16px; font-size: 14px; font-weight: 600; color: #111827;">${safePath}</td>
+          </tr>
+        </table>
+
+        <!-- CTA Button -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 28px 0 16px 0;">
+          <tr>
+            <td align="center">
+              <a href="${safeUrl}" target="_blank" style="display: inline-block; background-color: #2563eb; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 10px; font-weight: 700; font-size: 15px; box-shadow: 0 2px 6px rgba(37,99,235,0.35);">
+                Review in Admin Panel &rarr;
+              </a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f9fafb; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+          &copy; ${new Date().getFullYear()} BizPrimeHub. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+};
+
 module.exports = {
   escapeHtml,
   getWelcomeEmailHtml,
@@ -765,6 +880,7 @@ module.exports = {
   getPasswordResetOtpHtml,
   getPasswordChangedSuccessEmailHtml,
   getClaimVerificationEmailHtml,
+  getNewClaimNotificationHtml,
 };
 
 

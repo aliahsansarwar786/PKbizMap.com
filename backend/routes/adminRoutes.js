@@ -18,6 +18,8 @@ const {
   getPaymentHistory,
   deleteBusinessReceipt,
   getClaimRequests,
+  approveClaimRequest,
+  rejectClaimRequest,
 } = require('../controllers/adminController');
 const {
   getPaymentSettings,
@@ -72,7 +74,9 @@ router.delete('/businesses/:id/receipt', checkPermission('canDeleteListings'), d
 router.get('/reviews', checkPermission('canModerateReviews'), getAllReviews);
 router.delete('/reviews/:id', checkPermission('canModerateReviews'), adminDeleteReview);
 
-// ─── Claim Requests Management (View only for dispute reference) ──────────────
-router.get('/claims', getClaimRequests);
+// ─── Claim Requests Management ────────────────────────────────────────────────
+router.get('/claims', checkPermission('canApproveListings'), getClaimRequests);
+router.patch('/claims/:id/approve', checkPermission('canApproveListings'), approveClaimRequest);
+router.patch('/claims/:id/reject', checkPermission('canApproveListings'), rejectClaimRequest);
 
 module.exports = router;

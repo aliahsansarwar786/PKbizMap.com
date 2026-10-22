@@ -270,75 +270,109 @@ function ClaimVerifyContent() {
               </p>
             </div>
 
-            {/* Path A: Visitor is NOT logged in */}
-            {!isAuthenticated && (
-              <div className="space-y-4 pt-2">
-                <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs sm:text-sm text-amber-900">
-                  Please log in or register with <strong>{claimData.chosenEmail}</strong> to finish claiming this listing.
+            {/* Path for Direct-Email Claim: Awaiting Site Owner Review */}
+            {claimData.status === 'pending_admin' ? (
+              <div className="p-6 rounded-2xl bg-amber-50/80 border border-amber-200 text-center space-y-4">
+                <div className="w-14 h-14 bg-amber-100 text-amber-700 rounded-full flex items-center justify-center mx-auto shadow-sm">
+                  <ShieldCheck size={30} />
                 </div>
-
-                <div className="grid sm:grid-cols-2 gap-3">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Claim Request Received
+                </h3>
+                <p className="text-sm text-gray-700 max-w-md mx-auto leading-relaxed font-medium">
+                  Your request has been received. The website owner will verify your claim and contact you — ownership is transferred only after approval.
+                </p>
+                <div className="p-3.5 bg-white/80 rounded-xl border border-amber-200/60 text-xs text-gray-600 max-w-sm mx-auto text-left space-y-1">
+                  <div><strong>Business:</strong> {claimData.business?.title}</div>
+                  <div><strong>Claimant:</strong> {claimData.claimantName}</div>
+                  <div><strong>Verification Email:</strong> {claimData.chosenEmail}</div>
+                  <div><strong>Status:</strong> <span className="text-amber-700 font-semibold">Under Owner Review</span></div>
+                </div>
+                <div className="pt-2 flex flex-col sm:flex-row gap-2.5 justify-center">
                   <Link
-                    href={`/login?redirect=${encodeURIComponent(`/claim/verify?token=${token || ''}`)}`}
-                    className="btn-primary justify-center py-2.5"
+                    href={`/businesses/${claimData.business?.slug || claimData.business?._id}`}
+                    className="btn-secondary justify-center py-2.5 text-xs"
                   >
-                    <LogIn size={16} /> Log In with Email
+                    View Business Listing <ExternalLink size={14} />
                   </Link>
-                  <Link
-                    href={`/register?email=${encodeURIComponent(claimData.chosenEmail)}&redirect=${encodeURIComponent(`/claim/verify?token=${token || ''}`)}`}
-                    className="btn-secondary justify-center py-2.5"
-                  >
-                    <UserPlus size={16} /> Create Account
+                  <Link href="/" className="btn-primary justify-center py-2.5 text-xs">
+                    Return to Home
                   </Link>
                 </div>
               </div>
-            )}
+            ) : (
+              <>
+                {/* Path A: Visitor is NOT logged in */}
+                {!isAuthenticated && (
+                  <div className="space-y-4 pt-2">
+                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-xs sm:text-sm text-amber-900">
+                      Please log in or register with <strong>{claimData.chosenEmail}</strong> to finish claiming this listing.
+                    </div>
 
-            {/* Path B: Logged in but email is mismatched */}
-            {isEmailMismatched && (
-              <div className="space-y-4 pt-2">
-                <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs sm:text-sm text-rose-900 leading-relaxed">
-                  <p className="font-bold mb-1">Account Email Mismatch</p>
-                  You are currently logged in as <strong>{user?.email}</strong>. This listing can only be claimed by an account registered with <strong>{claimData.chosenEmail}</strong>.
-                </div>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      <Link
+                        href={`/login?redirect=${encodeURIComponent(`/claim/verify?token=${token || ''}`)}`}
+                        className="btn-primary justify-center py-2.5"
+                      >
+                        <LogIn size={16} /> Log In with Email
+                      </Link>
+                      <Link
+                        href={`/register?email=${encodeURIComponent(claimData.chosenEmail)}&redirect=${encodeURIComponent(`/claim/verify?token=${token || ''}`)}`}
+                        className="btn-secondary justify-center py-2.5"
+                      >
+                        <UserPlus size={16} /> Create Account
+                      </Link>
+                    </div>
+                  </div>
+                )}
 
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (typeof logout === 'function') {
-                      await logout();
-                    }
-                    router.push(`/login?redirect=${encodeURIComponent(`/claim/verify?token=${token || ''}`)}`);
-                  }}
-                  className="btn-secondary w-full justify-center text-xs py-2.5 text-rose-600 border-rose-200 hover:bg-rose-50 cursor-pointer"
-                >
-                  Log Out to Switch Account
-                </button>
-              </div>
-            )}
+                {/* Path B: Logged in but email is mismatched */}
+                {isEmailMismatched && (
+                  <div className="space-y-4 pt-2">
+                    <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-xs sm:text-sm text-rose-900 leading-relaxed">
+                      <p className="font-bold mb-1">Account Email Mismatch</p>
+                      You are currently logged in as <strong>{user?.email}</strong>. This listing can only be claimed by an account registered with <strong>{claimData.chosenEmail}</strong>.
+                    </div>
 
-            {/* Path C: Logged in and email matches! Ready to complete */}
-            {isEmailMatching && (
-              <div className="space-y-4 pt-2">
-                <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs sm:text-sm text-emerald-900">
-                  ✓ Logged in as <strong>{user?.email}</strong>. Ready to finalize ownership transfer!
-                </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (typeof logout === 'function') {
+                          await logout();
+                        }
+                        router.push(`/login?redirect=${encodeURIComponent(`/claim/verify?token=${token || ''}`)}`);
+                      }}
+                      className="btn-secondary w-full justify-center text-xs py-2.5 text-rose-600 border-rose-200 hover:bg-rose-50 cursor-pointer"
+                    >
+                      Log Out to Switch Account
+                    </button>
+                  </div>
+                )}
 
-                <button
-                  type="button"
-                  onClick={handleCompleteClaim}
-                  disabled={loading}
-                  className="btn-primary w-full justify-center py-3 text-base font-bold shadow-lg shadow-blue-600/25"
-                >
-                  {loading ? (
-                    <>
-                      <span className="spinner" /> Finalizing Ownership...
-                    </>
-                  ) : (
-                    <>Complete Claim &amp; Take Ownership</>
-                  )}
-                </button>
-              </div>
+                {/* Path C: Logged in and email matches! Ready to complete */}
+                {isEmailMatching && (
+                  <div className="space-y-4 pt-2">
+                    <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs sm:text-sm text-emerald-900">
+                      ✓ Logged in as <strong>{user?.email}</strong>. Ready to finalize ownership transfer!
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={handleCompleteClaim}
+                      disabled={loading}
+                      className="btn-primary w-full justify-center py-3 text-base font-bold shadow-lg shadow-blue-600/25"
+                    >
+                      {loading ? (
+                        <>
+                          <span className="spinner" /> Finalizing Ownership...
+                        </>
+                      ) : (
+                        <>Complete Claim &amp; Take Ownership</>
+                      )}
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

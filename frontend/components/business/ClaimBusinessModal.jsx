@@ -222,6 +222,9 @@ export default function ClaimBusinessModal({ business, isOpen, onClose }) {
                       <span className="text-gray-500 mt-0.5 block">
                         Send verification to your company address
                       </span>
+                      <span className="text-amber-700 font-medium text-[11px] mt-1 block">
+                        Ownership is approved by the website owner after verification.
+                      </span>
                     </div>
                   </label>
                 </div>

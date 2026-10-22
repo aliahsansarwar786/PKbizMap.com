@@ -293,6 +293,8 @@ export const adminAPI = {
   deletePaymentMethod: (methodId) => api.delete(`/admin/settings/payment/methods/${methodId}`),
   togglePaymentMethod: (methodId) => api.patch(`/admin/settings/payment/methods/${methodId}/toggle`),
   getClaims: () => api.get('/admin/claims'),
+  approveClaim: (claimId) => api.patch(`/admin/claims/${claimId}/approve`),
+  rejectClaim: (claimId) => api.patch(`/admin/claims/${claimId}/reject`),
 };
 
 // ─── Claim API ────────────────────────────────────────────────────────────────

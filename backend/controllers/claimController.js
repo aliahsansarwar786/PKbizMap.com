@@ -4,7 +4,8 @@ const ClaimRequest = require('../models/ClaimRequest');
 const Business = require('../models/Business');
 const asyncHandler = require('../utils/asyncHandler');
 const sendEmail = require('../utils/sendEmail');
-const { getClaimVerificationEmailHtml } = require('../utils/emailTemplates');
+const { getClaimVerificationEmailHtml, getNewClaimNotificationHtml } = require('../utils/emailTemplates');
+const PaymentSetting = require('../models/PaymentSetting');
 const getFrontendUrl = require('../utils/getFrontendUrl');
 const { getClientIp } = require('../utils/otpManager');
 
@@ -101,6 +102,7 @@ const requestClaim = asyncHandler(async (req, res) => {
   const claimRequest = await ClaimRequest.create({
     business: business._id,
     claimantName: claimantName.trim(),
+    emailOption,
     chosenEmail: targetEmail,
     phone: phone.trim(),
     codeHash,
@@ -137,6 +139,36 @@ const requestClaim = asyncHandler(async (req, res) => {
     });
   }
 
+  // Owner Notification: Whenever a new claim request is created (either path)
+  try {
+    const activeSettings = await PaymentSetting.getSettings();
+    const ownerEmail = activeSettings?.ownerNotificationEmail?.trim();
+    const isOwnerNotificationsEnabled = activeSettings?.ownerNotificationsEnabled !== false;
+
+    if (isOwnerNotificationsEnabled && ownerEmail) {
+      const adminUrl = `${frontendUrl}/folder/new/admin`;
+      const pathLabel = emailOption === 'registered' ? 'Registered Business Email' : 'Direct Official / Corporate Email';
+
+      await sendEmail({
+        to: ownerEmail,
+        subject: `New Claim Request: ${String(business.title || '').replace(/[\r\n]+/g, ' ').trim()}`,
+        html: getNewClaimNotificationHtml({
+          businessTitle: business.title,
+          claimantName: claimantName.trim(),
+          claimantEmail: targetEmail,
+          claimantPhone: phone.trim(),
+          pathUsed: emailOption,
+          adminUrl,
+        }),
+        text: `New Claim Request: ${business.title}\n\nBusiness Name: ${business.title}\nClaimant Name: ${claimantName.trim()}\nClaimant Email: ${targetEmail}\nClaimant Phone: ${phone.trim()}\nEmail Path Used: ${pathLabel}\n\nReview in Admin Panel: ${adminUrl}`,
+      }).catch((err) => {
+        console.error('⚠️ [Claim:Request] Non-fatal error sending owner alert:', err.message);
+      });
+    }
+  } catch (e) {
+    console.error('⚠️ [Claim:Request] Unexpected error setting up owner alert:', e.message);
+  }
+
   res.status(200).json({
     success: true,
     message: 'Verification code and link sent successfully to the chosen email.',
@@ -160,14 +192,14 @@ const verifyClaim = asyncHandler(async (req, res) => {
     const tokenHash = crypto.createHash('sha256').update(token.trim()).digest('hex');
     claim = await ClaimRequest.findOne({
       tokenHash,
-      status: { $in: ['pending', 'verified'] },
+      status: { $in: ['pending', 'verified', 'pending_admin'] },
       expiresAtToken: { $gt: new Date() },
-    }).populate('business', 'title slug category address isClaimed claimed');
+    }).populate('business', 'title slug category address isClaimed claimed email phone');
   } else if (code && code.trim()) {
     const codeHash = crypto.createHash('sha256').update(code.trim()).digest('hex');
     const query = {
       codeHash,
-      status: { $in: ['pending', 'verified'] },
+      status: { $in: ['pending', 'verified', 'pending_admin'] },
       expiresAtCode: { $gt: new Date() },
     };
     if (claimId && mongoose.Types.ObjectId.isValid(claimId)) {
@@ -176,7 +208,7 @@ const verifyClaim = asyncHandler(async (req, res) => {
     if (email && email.trim()) {
       query.chosenEmail = email.trim().toLowerCase();
     }
-    claim = await ClaimRequest.findOne(query).populate('business', 'title slug category address isClaimed claimed');
+    claim = await ClaimRequest.findOne(query).populate('business', 'title slug category address isClaimed claimed email phone');
   }
 
   if (!claim) {
@@ -193,7 +225,35 @@ const verifyClaim = asyncHandler(async (req, res) => {
     });
   }
 
-  // Mark request as verified if still pending
+  // Determine path: direct vs registered
+  const isDirect =
+    claim.emailOption === 'direct' ||
+    (!claim.emailOption && claim.business?.email && claim.chosenEmail !== claim.business.email.toLowerCase());
+
+  if (isDirect) {
+    // DIRECT-EMAIL PATH: Set status to pending_admin, do NOT transfer ownership
+    claim.status = 'pending_admin';
+    if (!claim.verifiedAt) {
+      claim.verifiedAt = new Date();
+    }
+    await claim.save();
+
+    return res.status(200).json({
+      success: true,
+      message:
+        'Your request has been received. The website owner will verify your claim and contact you — ownership is transferred only after approval.',
+      data: {
+        claimId: claim._id,
+        chosenEmail: claim.chosenEmail,
+        claimantName: claim.claimantName,
+        business: claim.business,
+        status: claim.status,
+        emailOption: 'direct',
+      },
+    });
+  }
+
+  // REGISTERED-EMAIL PATH: Keep working as before
   if (claim.status === 'pending') {
     claim.status = 'verified';
     claim.verifiedAt = new Date();
@@ -209,6 +269,7 @@ const verifyClaim = asyncHandler(async (req, res) => {
       claimantName: claim.claimantName,
       business: claim.business,
       status: claim.status,
+      emailOption: 'registered',
     },
   });
 });
@@ -236,10 +297,17 @@ const completeClaim = asyncHandler(async (req, res) => {
     });
   }
 
-  if (claim.status === 'completed') {
+  if (claim.status === 'completed' || claim.status === 'approved') {
     return res.status(400).json({
       success: false,
       message: 'This claim request has already been completed.',
+    });
+  }
+
+  if (claim.status === 'pending_admin' || claim.emailOption === 'direct') {
+    return res.status(403).json({
+      success: false,
+      message: 'Direct email claims require review and approval by the site owner. Ownership is transferred only after approval.',
     });
   }
 

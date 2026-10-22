@@ -14,6 +14,11 @@ const claimRequestSchema = new mongoose.Schema(
       trim: true,
       maxlength: [120, 'Name cannot exceed 120 characters'],
     },
+    emailOption: {
+      type: String,
+      enum: ['registered', 'direct'],
+      default: 'direct',
+    },
     chosenEmail: {
       type: String,
       required: [true, 'Verification email is required'],
@@ -46,7 +51,7 @@ const claimRequestSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['pending', 'verified', 'completed', 'expired'],
+      enum: ['pending', 'verified', 'pending_admin', 'approved', 'rejected', 'completed', 'expired'],
       default: 'pending',
       index: true,
     },

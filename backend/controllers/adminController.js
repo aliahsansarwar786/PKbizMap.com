@@ -747,11 +747,11 @@ const deleteBusinessReceipt = [
 ];
 
 // ─── GET /api/admin/claims ──────────────────────────────────────────────────
-// Admin: Get all claim requests (view only, for dispute reference)
+// Admin: Get all claim requests (with full business contact info and claimant details)
 const getClaimRequests = asyncHandler(async (req, res) => {
   const ClaimRequest = require('../models/ClaimRequest');
   const claims = await ClaimRequest.find()
-    .populate('business', 'title slug address.city address.country isClaimed')
+    .populate('business', 'title slug phone whatsapp email address.city address.country isClaimed')
     .sort('-createdAt')
     .lean();
 
@@ -759,6 +759,102 @@ const getClaimRequests = asyncHandler(async (req, res) => {
     success: true,
     message: 'Claim requests retrieved successfully.',
     data: { claims },
+  });
+});
+
+// ─── PATCH /api/admin/claims/:id/approve ─────────────────────────────────────
+// Admin: Approve a pending_admin claim request & transfer ownership to claimant
+const approveClaimRequest = asyncHandler(async (req, res) => {
+  const crypto = require('crypto');
+  const ClaimRequest = require('../models/ClaimRequest');
+  const Business = require('../models/Business');
+  const User = require('../models/User');
+
+  const claim = await ClaimRequest.findById(req.params.id);
+  if (!claim) {
+    return res.status(404).json({ success: false, message: 'Claim request not found.' });
+  }
+
+  if (claim.status !== 'pending_admin') {
+    return res.status(400).json({
+      success: false,
+      message: `Only claims with status "pending_admin" can be approved. Current status is "${claim.status}".`,
+    });
+  }
+
+  const business = await Business.findById(claim.business);
+  if (!business) {
+    return res.status(404).json({ success: false, message: 'Associated business not found.' });
+  }
+
+  // Find or create claimant's User account matching the verified email
+  const claimantEmail = (claim.chosenEmail || '').trim().toLowerCase();
+  let claimantUser = await User.findOne({ email: claimantEmail });
+
+  if (!claimantUser) {
+    const tempPassword = crypto.randomBytes(16).toString('hex');
+    claimantUser = await User.create({
+      name: claim.claimantName || 'Business Owner',
+      email: claimantEmail,
+      password: tempPassword,
+      role: 'user',
+      emailVerified: true,
+    });
+  }
+
+  // Transfer ownership & mark as claimed (same transfer logic as registered path)
+  business.owner = claimantUser._id;
+  business.isClaimed = true;
+  business.claimed = true;
+  business.claimedAt = new Date();
+  business.claimedBy = claimantUser._id;
+  await business.save();
+
+  // Set claim status to approved
+  claim.status = 'approved';
+  claim.completedAt = new Date();
+  claim.claimedBy = claimantUser._id;
+  await claim.save();
+
+  res.status(200).json({
+    success: true,
+    message: `Claim approved successfully. Ownership of "${business.title}" has been transferred to ${claimantEmail}.`,
+    data: {
+      claimId: claim._id,
+      businessId: business._id,
+      status: claim.status,
+      claimedBy: claimantUser._id,
+    },
+  });
+});
+
+// ─── PATCH /api/admin/claims/:id/reject ──────────────────────────────────────
+// Admin: Reject a pending_admin claim request (no ownership change)
+const rejectClaimRequest = asyncHandler(async (req, res) => {
+  const ClaimRequest = require('../models/ClaimRequest');
+
+  const claim = await ClaimRequest.findById(req.params.id);
+  if (!claim) {
+    return res.status(404).json({ success: false, message: 'Claim request not found.' });
+  }
+
+  if (claim.status !== 'pending_admin') {
+    return res.status(400).json({
+      success: false,
+      message: `Only claims with status "pending_admin" can be rejected. Current status is "${claim.status}".`,
+    });
+  }
+
+  claim.status = 'rejected';
+  await claim.save();
+
+  res.status(200).json({
+    success: true,
+    message: 'Claim request has been rejected.',
+    data: {
+      claimId: claim._id,
+      status: claim.status,
+    },
   });
 });
 
@@ -780,6 +876,8 @@ module.exports = {
   getPaymentHistory,
   deleteBusinessReceipt,
   getClaimRequests,
+  approveClaimRequest,
+  rejectClaimRequest,
 };
 
 

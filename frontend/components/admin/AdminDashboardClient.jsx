@@ -140,6 +140,7 @@ export default function AdminDashboardClient() {
   const [businesses, setBusinesses] = useState([]);
   const [users, setUsers] = useState([]);
   const [claimRequests, setClaimRequests] = useState([]);
+  const [claimActionLoading, setClaimActionLoading] = useState({});
   const [pagination, setPagination] = useState(null);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -237,7 +238,13 @@ export default function AdminDashboardClient() {
       list.push({ id: 'reviews', label: 'Reviews', badge: dashStats?.totalReviews });
     }
     if (isSuperAdmin || perms.canApproveListings) {
-      list.push({ id: 'claims', label: 'Claim Requests', badge: claimRequests.length > 0 ? claimRequests.length : undefined });
+      const pendingClaimsCount = claimRequests.filter((c) => c.status === 'pending_admin').length;
+      list.push({
+        id: 'claims',
+        label: 'Claim Requests',
+        badge: pendingClaimsCount > 0 ? pendingClaimsCount : (claimRequests.length > 0 ? claimRequests.length : undefined),
+        badgeClass: pendingClaimsCount > 0 ? 'badge-yellow' : undefined,
+      });
     }
     if (isSuperAdmin) {
       list.push({ id: 'users', label: 'Users' });
@@ -257,6 +264,7 @@ export default function AdminDashboardClient() {
     dashStats?.pendingBusinesses,
     dashStats?.totalReviews,
     paymentConfig.isEnabled,
+    claimRequests,
   ]);
 
   // Auth guard
@@ -443,6 +451,52 @@ export default function AdminDashboardClient() {
       toast.success('Review deleted and ratings recalculated.');
     } catch (err) {
       toast.error(err.message || 'Failed to delete review.');
+    }
+  };
+
+  const handleApproveClaim = async (claim) => {
+    if (
+      !confirm(
+        `Are you sure you want to APPROVE the claim for "${claim.business?.title || 'this business'}"?\n\nThis will transfer ownership to ${claim.chosenEmail}.`
+      )
+    ) {
+      return;
+    }
+
+    setClaimActionLoading((prev) => ({ ...prev, [claim._id]: 'approve' }));
+    try {
+      const res = await adminAPI.approveClaim(claim._id);
+      toast.success(res.data?.message || 'Claim approved successfully!');
+      setClaimRequests((prev) =>
+        prev.map((c) => (c._id === claim._id ? { ...c, status: 'approved' } : c))
+      );
+    } catch (err) {
+      toast.error(err.message || 'Failed to approve claim.');
+    } finally {
+      setClaimActionLoading((prev) => ({ ...prev, [claim._id]: null }));
+    }
+  };
+
+  const handleRejectClaim = async (claim) => {
+    if (
+      !confirm(
+        `Are you sure you want to REJECT the claim for "${claim.business?.title || 'this business'}"?`
+      )
+    ) {
+      return;
+    }
+
+    setClaimActionLoading((prev) => ({ ...prev, [claim._id]: 'reject' }));
+    try {
+      const res = await adminAPI.rejectClaim(claim._id);
+      toast.success(res.data?.message || 'Claim rejected.');
+      setClaimRequests((prev) =>
+        prev.map((c) => (c._id === claim._id ? { ...c, status: 'rejected' } : c))
+      );
+    } catch (err) {
+      toast.error(err.message || 'Failed to reject claim.');
+    } finally {
+      setClaimActionLoading((prev) => ({ ...prev, [claim._id]: null }));
     }
   };
 
@@ -2363,15 +2417,22 @@ export default function AdminDashboardClient() {
                 <div className="flex items-center justify-between pb-2 border-b border-gray-100">
                   <div>
                     <h3 className="text-base font-bold text-gray-900">
-                      Claim Requests (Dispute Reference)
+                      Claim Requests
                     </h3>
                     <p className="text-xs text-gray-500">
-                      Audit log of business ownership claims for verification and dispute resolution.
+                      Manage business ownership claim requests. Direct email claims require admin review and approval.
                     </p>
                   </div>
-                  <span className="badge badge-blue">
-                    {claimRequests.length} Total Requests
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {claimRequests.filter((c) => c.status === 'pending_admin').length > 0 && (
+                      <span className="badge badge-yellow">
+                        {claimRequests.filter((c) => c.status === 'pending_admin').length} Pending Approval
+                      </span>
+                    )}
+                    <span className="badge badge-blue">
+                      {claimRequests.length} Total Requests
+                    </span>
+                  </div>
                 </div>
 
                 {claimRequests.length === 0 ? (
@@ -2384,12 +2445,12 @@ export default function AdminDashboardClient() {
                     <table className="w-full text-left border-collapse text-xs sm:text-sm">
                       <thead>
                         <tr className="bg-slate-50 border-b border-gray-200 text-gray-600 font-semibold text-[11px] uppercase tracking-wider">
-                          <th className="py-3 px-4">Business</th>
-                          <th className="py-3 px-4">Claimant Name</th>
-                          <th className="py-3 px-4">Verification Email</th>
-                          <th className="py-3 px-4">Phone / WhatsApp</th>
+                          <th className="py-3 px-4">Business &amp; Contact Info</th>
+                          <th className="py-3 px-4">Claimant Details</th>
+                          <th className="py-3 px-4">Path Used</th>
                           <th className="py-3 px-4">Status</th>
                           <th className="py-3 px-4">Date</th>
+                          <th className="py-3 px-4 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 bg-white">
@@ -2407,35 +2468,67 @@ export default function AdminDashboardClient() {
                               ) : (
                                 <span className="text-gray-400 italic">Deleted Business</span>
                               )}
-                              {claim.business?.address?.city && (
-                                <span className="text-[11px] text-gray-400 block font-normal">
-                                  {claim.business.address.city}
+                              <div className="mt-1 space-y-0.5 text-[11px] text-gray-500 font-normal">
+                                <div>
+                                  <span className="font-semibold text-gray-700">Listed Phone:</span>{' '}
+                                  {claim.business?.phone || claim.business?.whatsapp || (
+                                    <span className="text-gray-400 italic">None</span>
+                                  )}
+                                </div>
+                                <div>
+                                  <span className="font-semibold text-gray-700">Registered Email:</span>{' '}
+                                  {claim.business?.email ? (
+                                    <span className="font-mono text-gray-800 select-all font-medium">
+                                      {claim.business.email}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400 italic">None</span>
+                                  )}
+                                </div>
+                                {claim.business?.address?.city && (
+                                  <div className="text-gray-400">
+                                    {claim.business.address.city}
+                                    {claim.business.address.country ? `, ${claim.business.address.country}` : ''}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="py-3 px-4 text-xs">
+                              <div className="font-bold text-gray-900">{claim.claimantName}</div>
+                              <div className="font-mono text-gray-700 mt-0.5 select-all">{claim.chosenEmail}</div>
+                              <div className="text-gray-600 mt-0.5">{claim.phone}</div>
+                            </td>
+                            <td className="py-3 px-4 text-xs">
+                              {claim.emailOption === 'registered' ||
+                              (claim.business?.email &&
+                                claim.chosenEmail?.toLowerCase() === claim.business.email?.toLowerCase()) ? (
+                                <span className="badge badge-blue text-[11px] font-semibold py-0.5 px-2">
+                                  Registered Email
+                                </span>
+                              ) : (
+                                <span className="badge badge-purple text-[11px] font-semibold py-0.5 px-2">
+                                  Direct Email
                                 </span>
                               )}
-                            </td>
-                            <td className="py-3 px-4 text-gray-800 font-medium">
-                              {claim.claimantName}
-                            </td>
-                            <td className="py-3 px-4 text-gray-700 font-mono text-xs">
-                              {claim.chosenEmail}
-                            </td>
-                            <td className="py-3 px-4 text-gray-700">
-                              {claim.phone}
                             </td>
                             <td className="py-3 px-4">
                               <span
                                 className={`badge ${
-                                  claim.status === 'completed'
+                                  claim.status === 'completed' || claim.status === 'approved'
                                     ? 'badge-green'
                                     : claim.status === 'verified'
                                     ? 'badge-blue'
-                                    : claim.status === 'pending'
+                                    : claim.status === 'pending_admin'
                                     ? 'badge-yellow'
+                                    : claim.status === 'rejected'
+                                    ? 'badge-red'
                                     : 'badge-gray'
                                 }`}
                                 style={{ fontSize: '0.7rem', padding: '2px 8px', textTransform: 'capitalize' }}
                               >
-                                {claim.status}
+                                {claim.status === 'pending_admin'
+                                  ? 'Pending Admin'
+                                  : claim.status}
                               </span>
                             </td>
                             <td className="py-3 px-4 text-gray-500 whitespace-nowrap text-xs">
@@ -2443,6 +2536,32 @@ export default function AdminDashboardClient() {
                               <span className="text-[10px] text-gray-400 block">
                                 {new Date(claim.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                               </span>
+                            </td>
+                            <td className="py-3 px-4 text-right whitespace-nowrap">
+                              {claim.status === 'pending_admin' && (isSuperAdmin || perms.canApproveListings) ? (
+                                <div className="flex items-center justify-end gap-1.5">
+                                  <button
+                                    type="button"
+                                    disabled={Boolean(claimActionLoading[claim._id])}
+                                    onClick={() => handleApproveClaim(claim)}
+                                    className="px-2.5 py-1 text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-lg shadow-xs transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                    title="Approve claim and transfer ownership"
+                                  >
+                                    <Check size={13} /> Approve
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={Boolean(claimActionLoading[claim._id])}
+                                    onClick={() => handleRejectClaim(claim)}
+                                    className="px-2.5 py-1 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-lg transition-colors flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                    title="Reject claim"
+                                  >
+                                    <X size={13} /> Reject
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 text-xs">—</span>
+                              )}
                             </td>
                           </tr>
                         ))}
