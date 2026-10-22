@@ -1658,7 +1658,7 @@ export default function BusinessForm({
 
                     {/* RIGHT — Payment Method Cards */}
                     {hasMethods && (
-                      <div className="space-y-4">
+                      <div className="space-y-4 w-full max-w-[400px]">
                         {enabledMethods.map((method) => {
                           const isCopied = copiedMethodId === method._id;
                           const isIban = method.kind === 'iban';
@@ -1666,7 +1666,8 @@ export default function BusinessForm({
                           return (
                             <div
                               key={method._id}
-                              className="relative w-full aspect-[1.586/1] rounded-2xl overflow-hidden shadow-md border border-black/15 group select-none transition-transform hover:-translate-y-0.5"
+                              className="relative w-full max-w-[400px] aspect-[1.586/1] rounded-2xl overflow-hidden shadow-md border border-black/15 group select-none transition-transform hover:-translate-y-0.5"
+                              style={{ maxWidth: '400px', aspectRatio: '1.586 / 1', height: 'auto' }}
                             >
                               {method.cardImage?.url ? (
                                 <img
