@@ -122,12 +122,20 @@ const requestClaim = asyncHandler(async (req, res) => {
     verifyUrl,
   });
 
-  await sendEmail({
+  const emailSent = await sendEmail({
     to: targetEmail,
     subject: `[Verification] Claim Listing "${business.title}" on BizPrimeHub`,
     html: emailHtml,
     text: `Claim Verification for ${business.title}\n\nYour 6-digit code: ${code} (expires in 30 minutes)\n\nOr click this link to verify directly: ${verifyUrl}\n\nIf you did not request this, please disregard.`,
   });
+
+  if (!emailSent) {
+    await ClaimRequest.findByIdAndDelete(claimRequest._id);
+    return res.status(502).json({
+      success: false,
+      message: 'Verification email could not be sent. Please try again in a few minutes.',
+    });
+  }
 
   res.status(200).json({
     success: true,
