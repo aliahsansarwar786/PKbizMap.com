@@ -58,27 +58,35 @@ const requestClaim = asyncHandler(async (req, res) => {
     });
   }
 
-  let targetEmail = '';
-  if (emailOption === 'registered') {
-    if (!business.email || !business.email.trim()) {
-      return res.status(400).json({
-        success: false,
-        message: 'This listing does not have a registered business email. Please use direct official email.',
-      });
-    }
-    targetEmail = business.email.trim().toLowerCase();
-  } else if (emailOption === 'direct') {
-    if (!directEmail || !/^\S+@\S+\.\S+$/.test(directEmail.trim())) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide a valid direct official / corporate email address.',
-      });
-    }
-    targetEmail = directEmail.trim().toLowerCase();
-  } else {
+  // Direct/corporate email option is completely removed.
+  // Claims are strictly restricted to the business's registered email.
+  if (emailOption === 'direct' || emailOption !== 'registered') {
     return res.status(400).json({
       success: false,
-      message: 'Please select an email verification option.',
+      message: "Claims can only be made through the business's registered email.",
+    });
+  }
+
+  if (!business.email || !business.email.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: "Claims can only be made through the business's registered email.",
+    });
+  }
+
+  const targetEmail = business.email.trim().toLowerCase();
+
+  // If a chosenEmail or directEmail was passed that does not match registered email, reject
+  if (req.body.chosenEmail && req.body.chosenEmail.trim().toLowerCase() !== targetEmail) {
+    return res.status(400).json({
+      success: false,
+      message: "Claims can only be made through the business's registered email.",
+    });
+  }
+  if (directEmail && directEmail.trim().toLowerCase() !== targetEmail) {
+    return res.status(400).json({
+      success: false,
+      message: "Claims can only be made through the business's registered email.",
     });
   }
 
@@ -89,7 +97,7 @@ const requestClaim = asyncHandler(async (req, res) => {
     { status: 'expired' }
   );
 
-  // Generate 6-digit numeric verification code and random token
+  // Generate 6-digit numeric verification code and random token (schema requires tokenHash)
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const token = crypto.randomBytes(32).toString('hex');
 
@@ -102,7 +110,7 @@ const requestClaim = asyncHandler(async (req, res) => {
   const claimRequest = await ClaimRequest.create({
     business: business._id,
     claimantName: claimantName.trim(),
-    emailOption,
+    emailOption: 'registered',
     chosenEmail: targetEmail,
     phone: phone.trim(),
     codeHash,
@@ -114,21 +122,19 @@ const requestClaim = asyncHandler(async (req, res) => {
   });
 
   const frontendUrl = getFrontendUrl();
-  const verifyUrl = `${frontendUrl}/claim/verify?token=${token}`;
 
-  // Send ONE email with both 6-digit code and 1-click verification link
+  // Send ONE email with 6-digit code only (NO verification link)
   const emailHtml = getClaimVerificationEmailHtml({
     businessTitle: business.title,
     claimantName: claimantName.trim(),
     code,
-    verifyUrl,
   });
 
   const emailSent = await sendEmail({
     to: targetEmail,
-    subject: `[Verification] Claim Listing "${business.title}" on BizPrimeHub`,
+    subject: `[Verification Code] Claim Listing "${business.title}" on BizPrimeHub`,
     html: emailHtml,
-    text: `Claim Verification for ${business.title}\n\nYour 6-digit code: ${code} (expires in 30 minutes)\n\nOr click this link to verify directly: ${verifyUrl}\n\nIf you did not request this, please disregard.`,
+    text: `Claim Verification for ${business.title}\n\nYour 6-digit verification code is: ${code}\n(This code expires in 30 minutes)\n\nEnter this code on BizPrimeHub to verify ownership of your business listing.\n\nIf you did not request this, please disregard.`,
   });
 
   if (!emailSent) {
@@ -139,7 +145,7 @@ const requestClaim = asyncHandler(async (req, res) => {
     });
   }
 
-  // Owner Notification: Whenever a new claim request is created (either path)
+  // Owner Notification: Whenever a new claim request is created
   try {
     const activeSettings = await PaymentSetting.getSettings();
     const ownerEmail = activeSettings?.ownerNotificationEmail?.trim();
@@ -147,7 +153,6 @@ const requestClaim = asyncHandler(async (req, res) => {
 
     if (isOwnerNotificationsEnabled && ownerEmail) {
       const adminUrl = `${frontendUrl}/folder/new/admin`;
-      const pathLabel = emailOption === 'registered' ? 'Registered Business Email' : 'Direct Official / Corporate Email';
 
       await sendEmail({
         to: ownerEmail,
@@ -157,10 +162,10 @@ const requestClaim = asyncHandler(async (req, res) => {
           claimantName: claimantName.trim(),
           claimantEmail: targetEmail,
           claimantPhone: phone.trim(),
-          pathUsed: emailOption,
+          pathUsed: 'registered',
           adminUrl,
         }),
-        text: `New Claim Request: ${business.title}\n\nBusiness Name: ${business.title}\nClaimant Name: ${claimantName.trim()}\nClaimant Email: ${targetEmail}\nClaimant Phone: ${phone.trim()}\nEmail Path Used: ${pathLabel}\n\nReview in Admin Panel: ${adminUrl}`,
+        text: `New Claim Request: ${business.title}\n\nBusiness Name: ${business.title}\nClaimant Name: ${claimantName.trim()}\nClaimant Email: ${targetEmail}\nClaimant Phone: ${phone.trim()}\nEmail Path Used: Registered Business Email\n\nReview in Admin Panel: ${adminUrl}`,
       }).catch((err) => {
         console.error('⚠️ [Claim:Request] Non-fatal error sending owner alert:', err.message);
       });
@@ -171,7 +176,7 @@ const requestClaim = asyncHandler(async (req, res) => {
 
   res.status(200).json({
     success: true,
-    message: 'Verification code and link sent successfully to the chosen email.',
+    message: 'Verification code sent successfully to the business registered email.',
     data: {
       claimId: claimRequest._id,
       businessId: business._id,
@@ -182,20 +187,21 @@ const requestClaim = asyncHandler(async (req, res) => {
 });
 
 // ─── POST /api/claims/verify ─────────────────────────────────────────────────
-// Public: Verify 6-digit code OR token link
+// Public: Verify 6-digit code only (token links rejected with HTTP 400)
 const verifyClaim = asyncHandler(async (req, res) => {
   const { token, code, email, claimId } = req.body;
 
+  // Claim verification works by entering the 6-digit code only. Link verification is disabled.
+  if (token && token.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Link verification is no longer supported. Please verify your claim by entering the 6-digit code sent to your registered business email.',
+    });
+  }
+
   let claim = null;
 
-  if (token && token.trim()) {
-    const tokenHash = crypto.createHash('sha256').update(token.trim()).digest('hex');
-    claim = await ClaimRequest.findOne({
-      tokenHash,
-      status: { $in: ['pending', 'verified', 'pending_admin'] },
-      expiresAtToken: { $gt: new Date() },
-    }).populate('business', 'title slug category address isClaimed claimed email phone');
-  } else if (code && code.trim()) {
+  if (code && code.trim()) {
     const codeHash = crypto.createHash('sha256').update(code.trim()).digest('hex');
     const query = {
       codeHash,
@@ -214,7 +220,7 @@ const verifyClaim = asyncHandler(async (req, res) => {
   if (!claim) {
     return res.status(400).json({
       success: false,
-      message: 'Invalid or expired verification code or link. Please submit a new claim request.',
+      message: 'Invalid or expired verification code. Please submit a new claim request.',
     });
   }
 

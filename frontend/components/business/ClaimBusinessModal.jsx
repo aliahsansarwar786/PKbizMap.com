@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { claimAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
-import { X, ShieldCheck, Mail, Phone, User, CheckCircle2, ArrowRight } from 'lucide-react';
+import { X, ShieldCheck, Mail, Phone, User, CheckCircle2, ArrowRight, AlertCircle } from 'lucide-react';
 
 function maskEmail(email) {
   if (!email || !email.includes('@')) return '';
@@ -20,12 +20,11 @@ function maskEmail(email) {
 
 export default function ClaimBusinessModal({ business, isOpen, onClose }) {
   const router = useRouter();
+  const whatsappNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '923106131361';
   const hasRegisteredEmail = Boolean(business?.email && business.email.trim());
 
   const [claimantName, setClaimantName] = useState('');
-  const [emailOption, setEmailOption] = useState(hasRegisteredEmail ? 'registered' : 'direct');
-  const [directEmail, setDirectEmail] = useState('');
-  const [phone, setPhone] = useState(business?.phone || '');
+  const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [resultMaskedEmail, setResultMaskedEmail] = useState('');
@@ -40,11 +39,6 @@ export default function ClaimBusinessModal({ business, isOpen, onClose }) {
       return;
     }
 
-    if (emailOption === 'direct' && (!directEmail.trim() || !/^\S+@\S+\.\S+$/.test(directEmail.trim()))) {
-      toast.error('Please enter a valid official/corporate email.');
-      return;
-    }
-
     if (!phone.trim()) {
       toast.error('Please enter your phone or WhatsApp number.');
       return;
@@ -54,14 +48,13 @@ export default function ClaimBusinessModal({ business, isOpen, onClose }) {
     try {
       const res = await claimAPI.requestClaim(business._id, {
         claimantName: claimantName.trim(),
-        emailOption,
-        directEmail: directEmail.trim(),
+        emailOption: 'registered',
         phone: phone.trim(),
       });
 
-      setResultMaskedEmail(res.data?.maskedEmail || (emailOption === 'registered' ? maskEmail(business.email) : maskEmail(directEmail)));
+      setResultMaskedEmail(res.data?.maskedEmail || maskEmail(business.email));
       setSubmitted(true);
-      toast.success('Verification code and link sent!');
+      toast.success('Verification code sent!');
     } catch (err) {
       toast.error(err.message || 'Failed to send claim verification.');
     } finally {
@@ -111,7 +104,39 @@ export default function ClaimBusinessModal({ business, isOpen, onClose }) {
 
         {/* Content */}
         <div className="p-6">
-          {submitted ? (
+          {!hasRegisteredEmail ? (
+            /* Case A: Business has NO registered email on file */
+            <div className="text-center py-4">
+              <div className="w-14 h-14 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4 shadow-xs">
+                <AlertCircle size={30} />
+              </div>
+              <h4 className="text-xl font-bold text-gray-900 mb-2">
+                No Registered Email on File
+              </h4>
+              <p className="text-sm text-gray-600 max-w-sm mx-auto mb-6 leading-relaxed">
+                This business has no registered email on file. To claim it, contact the website owner on WhatsApp.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
+                <a
+                  href={`https://wa.me/${whatsappNumber}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-sm shadow-md transition-colors"
+                >
+                  <Phone size={16} />
+                  <span>Chat with Website Owner</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="btn-secondary justify-center"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          ) : submitted ? (
+            /* Case B: Verification Code Sent successfully */
             <div className="text-center py-4">
               <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 size={32} />
@@ -120,10 +145,10 @@ export default function ClaimBusinessModal({ business, isOpen, onClose }) {
                 Verification Code Sent!
               </h4>
               <p className="text-sm text-gray-600 max-w-sm mx-auto mb-6 leading-relaxed">
-                We have sent a 6-digit verification code and a 1-click verification link to{' '}
+                We have sent a 6-digit verification code to{' '}
                 <strong className="text-gray-900">{resultMaskedEmail}</strong>.
               </p>
-              <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
+              <div className="flex flex-col sm:flex-row gap-2.5 justify-center mb-6">
                 <button
                   type="button"
                   onClick={handleGoToVerify}
@@ -139,12 +164,28 @@ export default function ClaimBusinessModal({ business, isOpen, onClose }) {
                   Close
                 </button>
               </div>
+
+              {/* Bottom WhatsApp support link */}
+              <div className="pt-4 border-t border-gray-100">
+                <p className="text-xs text-gray-500">
+                  For any issue with your claim,{' '}
+                  <a
+                    href={`https://wa.me/${whatsappNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-emerald-600 hover:text-emerald-700 hover:underline inline-flex items-center gap-1"
+                  >
+                    <span>contact the website owner on WhatsApp</span>
+                  </a>
+                </p>
+              </div>
             </div>
           ) : (
+            /* Case C: Active claim form with registered email */
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Note text */}
+              {/* Note text: code-only wording */}
               <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-100 text-xs text-blue-900 leading-relaxed">
-                We will identify your ownership via email and send you a 6-digit verification code and a 1-click verification link to claim this listing.
+                We will send a 6-digit verification code to the business&apos;s registered email to confirm your ownership.
               </div>
 
               {/* Field 1: Name / Designation */}
@@ -167,88 +208,27 @@ export default function ClaimBusinessModal({ business, isOpen, onClose }) {
                 </div>
               </div>
 
-              {/* Field 2: Verification Email Option */}
+              {/* Field 2: Registered Business Email (masked display only, no direct option) */}
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-2">
-                  Verification Email Option <span className="text-red-500">*</span>
+                <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
+                  Registered Business Email
                 </label>
-                <div className="space-y-2">
-                  {hasRegisteredEmail && (
-                    <label
-                      className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-                        emailOption === 'registered'
-                          ? 'border-blue-500 bg-blue-50/50'
-                          : 'border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="emailOption"
-                        value="registered"
-                        checked={emailOption === 'registered'}
-                        onChange={() => setEmailOption('registered')}
-                        className="mt-0.5 text-blue-600 focus:ring-blue-500"
-                      />
-                      <div className="text-xs">
-                        <span className="font-semibold text-gray-900 block">
-                          Send to registered business email
-                        </span>
-                        <span className="text-gray-500 font-mono mt-0.5 block">
-                          ({maskEmail(business.email)})
-                        </span>
-                      </div>
-                    </label>
-                  )}
-
-                  <label
-                    className={`flex items-start gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${
-                      emailOption === 'direct'
-                        ? 'border-blue-500 bg-blue-50/50'
-                        : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name="emailOption"
-                      value="direct"
-                      checked={emailOption === 'direct'}
-                      onChange={() => setEmailOption('direct')}
-                      className="mt-0.5 text-blue-600 focus:ring-blue-500"
-                    />
-                    <div className="text-xs">
-                      <span className="font-semibold text-gray-900 block">
-                        Use my direct official / corporate email
-                      </span>
-                      <span className="text-gray-500 mt-0.5 block">
-                        Send verification to your company address
-                      </span>
-                      <span className="text-amber-700 font-medium text-[11px] mt-1 block">
-                        Ownership is approved by the website owner after verification.
-                      </span>
-                    </div>
-                  </label>
-                </div>
-
-                {emailOption === 'direct' && (
-                  <div className="mt-2.5 animate-in fade-in duration-150">
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                        <Mail size={16} />
-                      </div>
-                      <input
-                        type="email"
-                        required={emailOption === 'direct'}
-                        value={directEmail}
-                        onChange={(e) => setDirectEmail(e.target.value)}
-                        placeholder="yourname@company.com"
-                        className="input-field pl-9"
-                      />
-                    </div>
+                <div className="p-3 rounded-xl border border-gray-200 bg-gray-50/70 flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                    <Mail size={15} />
                   </div>
-                )}
+                  <div className="min-w-0">
+                    <span className="text-xs font-mono font-bold text-gray-800 block truncate">
+                      {maskEmail(business.email)}
+                    </span>
+                    <span className="text-[11px] text-gray-500 block">
+                      Verification code will be sent to this email address
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {/* Field 3: Phone / WhatsApp Number */}
+              {/* Field 3: Phone / WhatsApp Number (EMPTY by default, placeholder only, business phone never shown) */}
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
                   Phone / WhatsApp Number <span className="text-red-500">*</span>
@@ -262,7 +242,7 @@ export default function ClaimBusinessModal({ business, isOpen, onClose }) {
                     required
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="e.g. +92 300 1234567"
+                    placeholder="Your phone / WhatsApp number"
                     className="input-field pl-9"
                   />
                 </div>
@@ -277,12 +257,27 @@ export default function ClaimBusinessModal({ business, isOpen, onClose }) {
                 >
                   {loading ? (
                     <>
-                      <span className="spinner" /> Sending Verification...
+                      <span className="spinner" /> Sending Verification Code...
                     </>
                   ) : (
-                    <>Send Verification Code &amp; Link</>
+                    <>Send Verification Code</>
                   )}
                 </button>
+              </div>
+
+              {/* Bottom WhatsApp support link */}
+              <div className="pt-3 border-t border-gray-100 text-center">
+                <p className="text-xs text-gray-500">
+                  For any issue with your claim,{' '}
+                  <a
+                    href={`https://wa.me/${whatsappNumber}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-emerald-600 hover:text-emerald-700 hover:underline"
+                  >
+                    contact the website owner on WhatsApp
+                  </a>
+                </p>
               </div>
             </form>
           )}

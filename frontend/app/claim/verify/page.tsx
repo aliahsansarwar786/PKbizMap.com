@@ -183,7 +183,7 @@ function ClaimVerifyContent() {
             Claim Listing Verification
           </h1>
           <p className="text-xs sm:text-sm text-gray-500 mt-1 max-w-md mx-auto">
-            Verify listing ownership with your 6-digit code or 1-click email link.
+            Verify listing ownership by entering the 6-digit code sent to the business&apos;s registered email.
           </p>
         </div>
 
@@ -311,13 +311,13 @@ function ClaimVerifyContent() {
 
                     <div className="grid sm:grid-cols-2 gap-3">
                       <Link
-                        href={`/login?redirect=${encodeURIComponent(`/claim/verify?token=${token || ''}`)}`}
+                        href={`/login?redirect=${encodeURIComponent('/claim/verify')}`}
                         className="btn-primary justify-center py-2.5"
                       >
                         <LogIn size={16} /> Log In with Email
                       </Link>
                       <Link
-                        href={`/register?email=${encodeURIComponent(claimData.chosenEmail)}&redirect=${encodeURIComponent(`/claim/verify?token=${token || ''}`)}`}
+                        href={`/register?email=${encodeURIComponent(claimData.chosenEmail)}&redirect=${encodeURIComponent('/claim/verify')}`}
                         className="btn-secondary justify-center py-2.5"
                       >
                         <UserPlus size={16} /> Create Account
@@ -340,7 +340,7 @@ function ClaimVerifyContent() {
                         if (typeof logout === 'function') {
                           await logout();
                         }
-                        router.push(`/login?redirect=${encodeURIComponent(`/claim/verify?token=${token || ''}`)}`);
+                        router.push(`/login?redirect=${encodeURIComponent('/claim/verify')}`);
                       }}
                       className="btn-secondary w-full justify-center text-xs py-2.5 text-rose-600 border-rose-200 hover:bg-rose-50 cursor-pointer"
                     >

@@ -657,16 +657,16 @@ const getPasswordChangedSuccessEmailHtml = ({ name }) => {
  * Generates the Claim Verification Email HTML
  * @param {Object} params
  * @param {string} params.businessTitle
+ * @param {Object} params
+ * @param {string} params.businessTitle
  * @param {string} params.claimantName
  * @param {string} params.code
- * @param {string} params.verifyUrl
  * @returns {string} HTML string
  */
-const getClaimVerificationEmailHtml = ({ businessTitle, claimantName, code, verifyUrl }) => {
+const getClaimVerificationEmailHtml = ({ businessTitle, claimantName, code }) => {
   const safeBusinessTitle = escapeHtml(businessTitle || 'Your Business Listing');
   const safeClaimantName = escapeHtml(claimantName || 'Listing Representative');
   const safeCode = escapeHtml(code || '');
-  const safeUrl = escapeHtml(verifyUrl || '#');
 
   return `
 <!DOCTYPE html>
@@ -716,22 +716,9 @@ const getClaimVerificationEmailHtml = ({ businessTitle, claimantName, code, veri
           </p>
         </div>
 
-        <!-- 1-Click Verification Link -->
-        <p style="margin: 20px 0 12px 0; font-size: 14px; font-weight: 600; color: #374151; text-align: center;">
-          Or verify instantly with 1-click:
-        </p>
-        <div style="text-align: center; margin: 0 0 28px 0;">
-          <a href="${safeUrl}" target="_blank" rel="noopener noreferrer" style="display: inline-block; background-color: #2563eb; color: #ffffff; font-size: 15px; font-weight: 600; text-decoration: none; padding: 14px 32px; border-radius: 10px; box-shadow: 0 2px 6px rgba(37,99,235,0.3);">
-            Verify &amp; Claim Listing
-          </a>
-          <p style="margin: 10px 0 0 0; font-size: 12px; color: #94a3b8;">
-            This 1-click link is valid for 24 hours.
-          </p>
-        </div>
-
         <div style="background-color: #f0fdf4; border-left: 4px solid #16a34a; padding: 12px 16px; border-radius: 6px; margin: 20px 0;">
           <p style="margin: 0; font-size: 13px; color: #15803d; line-height: 1.5;">
-            <strong>Next step:</strong> Once verified, you will manage this business directly from your BizPrimeHub account dashboard.
+            <strong>Next step:</strong> Enter this 6-digit code on BizPrimeHub to confirm your ownership and manage your business from the dashboard.
           </p>
         </div>
 
