@@ -60,19 +60,19 @@ const STATS = [
 
 export const metadata: Metadata = {
   title: {
-    absolute: 'Free Business Listing & Local Business Directory in Pakistan | BizPrimeHub',
+    absolute: 'Free Business Listing & Local Business Directory in Pakistan, UAE & USA | BizPrimeHub',
   },
   description:
-    "List your business for free on BizPrimeHub, Pakistan's trusted local business directory. Find shops, hotels, restaurants, clinics and services near you in Multan, Lahore, Karachi and across Pakistan, UAE and the USA.",
+    "List your business for free on BizPrimeHub, Pakistan, UAE & USA's trusted local business directory. Find shops, hotels, restaurants, clinics and services near you in Multan, Lahore, Karachi and across Pakistan, UAE and the USA.",
   keywords:
     'free business listing, business directory Pakistan, list your business free, local businesses near me, Pakistan business directory, free listing site, add your business, trusted local businesses, businesses in Multan, find businesses in Pakistan',
   alternates: {
     canonical: 'https://www.bizprimehub.com',
   },
   openGraph: {
-    title: 'Free Business Listing & Local Business Directory in Pakistan | BizPrimeHub',
+    title: 'Free Business Listing & Local Business Directory in Pakistan, UAE & USA | BizPrimeHub',
     description:
-      "List your business for free on BizPrimeHub, Pakistan's trusted local business directory. Find shops, hotels, restaurants, clinics and services near you in Multan, Lahore, Karachi and across Pakistan, UAE and the USA.",
+      "List your business for free on BizPrimeHub, Pakistan, UAE & USA's trusted local business directory. Find shops, hotels, restaurants, clinics and services near you in Multan, Lahore, Karachi and across Pakistan, UAE and the USA.",
     url: 'https://www.bizprimehub.com',
     siteName: 'BizPrimeHub',
     type: 'website',
@@ -81,15 +81,15 @@ export const metadata: Metadata = {
         url: '/og-default.jpg',
         width: 1200,
         height: 630,
-        alt: 'Free Business Listing & Local Business Directory in Pakistan | BizPrimeHub',
+        alt: 'Free Business Listing & Local Business Directory in Pakistan, UAE & USA | BizPrimeHub',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Free Business Listing & Local Business Directory in Pakistan | BizPrimeHub',
+    title: 'Free Business Listing & Local Business Directory in Pakistan, UAE & USA | BizPrimeHub',
     description:
-      "List your business for free on BizPrimeHub, Pakistan's trusted local business directory. Find shops, hotels, restaurants, clinics and services near you in Multan, Lahore, Karachi and across Pakistan, UAE and the USA.",
+      "List your business for free on BizPrimeHub, Pakistan, UAE & USA's trusted local business directory. Find shops, hotels, restaurants, clinics and services near you in Multan, Lahore, Karachi and across Pakistan, UAE and the USA.",
     images: ['/og-default.jpg'],
   },
 };
@@ -190,11 +190,11 @@ export default async function HomePage() {
                 id="hero-heading"
                 className="text-4xl sm:text-5xl lg:text-[4rem] font-extrabold text-slate-900 mb-5 leading-[1.1] tracking-tight"
               >
-                Find Trusted Local Businesses in Pakistan
+                Find Trusted Local Businesses in Pakistan, the UAE &amp; the USA
               </h1>
 
               <p className="text-lg sm:text-xl text-slate-700 mb-8 leading-relaxed font-medium max-w-xl">
-                Pakistan&apos;s free business listing directory — list your business for free and get found by customers near you.
+                The free business listing directory for Pakistan, the UAE and the USA — list your business for free and get found by customers near you.
               </p>
             </div>
           </div>
@@ -325,7 +325,7 @@ export default async function HomePage() {
                 
                 <div className="space-y-6">
                   {[
-                    { title: 'Business Listings', desc: 'Find local businesses across Pakistan.' },
+                    { title: 'Business Listings', desc: 'Find local businesses across Pakistan, the UAE and the USA.' },
                     { title: 'Community Feedback', desc: 'A growing platform to help you make informed decisions before any purchasing decisions.' },
                     { title: 'Advanced Search', desc: 'Find exactly what you need with our powerful location and category-based search engine.' }
                   ].map((item, idx) => (
