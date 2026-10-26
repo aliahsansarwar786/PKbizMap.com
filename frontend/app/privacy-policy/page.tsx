@@ -52,7 +52,7 @@ export default function PrivacyPolicyPage() {
               Privacy Policy
             </h1>
             <p className="text-slate-300 text-sm sm:text-base max-w-2xl mx-auto">
-              Last updated: 17 October 2026
+              Last updated: 26 October 2026
             </p>
           </div>
         </section>
@@ -310,8 +310,19 @@ export default function PrivacyPolicyPage() {
                     own cookies in line with Google&apos;s Terms of Service.
                   </p>
                   <p>
-                    We do not use advertising cookies, targeting cookies, or analytics trackers. A dedicated Cookie Policy will be
-                    published on the Services.
+                    We use Google Analytics 4 (provided by Google LLC) to understand how
+                    visitors use our Services. Google Analytics uses cookies and similar
+                    technologies to collect information such as pages visited, time spent on
+                    pages, browser and device characteristics, and approximate location. IP
+                    addresses are anonymized by Google Analytics, and the information is
+                    processed in aggregate and does not identify you personally. Data collected
+                    by Google Analytics may be transferred to and stored on Google servers,
+                    including servers in the United States, in line with Google's Privacy
+                    Policy. You can opt out of Google Analytics tracking by installing the
+                    Google Analytics Opt-out Browser Add-on (https://tools.google.com/dlpage/gaoptout).
+                  </p>
+                  <p>
+                    A dedicated Cookie Policy will be published on the Services.
                   </p>
                   <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-5 mt-3 space-y-2">
                     <p className="font-bold text-slate-900">Advertising &amp; Google AdSense Transparency</p>
