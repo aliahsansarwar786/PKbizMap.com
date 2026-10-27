@@ -10,15 +10,18 @@ export default function ContactForm() {
     e.preventDefault();
     if (!whatsappNumber) return;
     
-    // Format the message for WhatsApp
-    const text = `*New Contact Request from BizPrimeHub*%0A%0A*Name:* ${formData.name}%0A*Email:* ${formData.email}%0A*Message:* ${formData.message}`;
+    // Format the message for WhatsApp with encoded interpolated fields
+    const safeName = encodeURIComponent(formData.name);
+    const safeEmail = encodeURIComponent(formData.email);
+    const safeMessage = encodeURIComponent(formData.message);
+    const text = `*New Contact Request from BizPrimeHub*%0A%0A*Name:* ${safeName}%0A*Email:* ${safeEmail}%0A*Message:* ${safeMessage}`;
     
     // Target WhatsApp Number (without + or leading zeros)
     // Create WhatsApp URL
     const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${text}`;
     
     // Open WhatsApp in a new tab
-    window.open(whatsappUrl, '_blank');
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
   };
 
   return (

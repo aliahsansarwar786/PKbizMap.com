@@ -165,7 +165,7 @@ CLOUDINARY_API_SECRET=your_api_secret
 
 # Admin seed (never hardcoded in source)
 ADMIN_EMAIL=admin@yourdomain.com
-ADMIN_PASSWORD=YourStrongPassword123!
+ADMIN_PASSWORD=CHANGE_ME_EXAMPLE_PASSWORD
 ADMIN_NAME=Super Admin
 ```
 

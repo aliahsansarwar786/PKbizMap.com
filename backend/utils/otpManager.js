@@ -1,19 +1,22 @@
 const crypto = require('crypto');
 const OtpIpAttempt = require('../models/OtpIpAttempt');
+const OtpEmailThrottle = require('../models/OtpEmailThrottle');
 
 const MAX_WRONG_ATTEMPTS = 4;
 const BLOCK_DURATION_MS = 30 * 60 * 1000; // 30 minutes
 const OTP_EXPIRY_MS = 3 * 60 * 1000; // 3 minutes
 const RESEND_COOLDOWN_MS = 60 * 1000; // 60 seconds
+const MAX_OTP_EMAILS_PER_HOUR = 5;
 
 /**
  * Extracts client IP safely from request headers (handles Vercel proxies).
+ * Returns the first comma-separated X-Forwarded-For entry (the client IP).
  */
 const getClientIp = (req) => {
   const forwarded = req.headers['x-forwarded-for'];
   if (forwarded) {
     const parts = forwarded.split(',');
-    return parts[parts.length - 1].trim();
+    return parts[0].trim();
   }
   return req.ip || req.socket?.remoteAddress || 'unknown';
 };
@@ -115,11 +118,44 @@ const clearIpAttempts = async (ip, action) => {
   }
 };
 
+/**
+ * Checks and increments the hourly OTP email rate limit for a specific email address.
+ * Max 5 OTP emails per email address per hour.
+ */
+const checkAndIncrementEmailOtpLimit = async (email) => {
+  if (!email || typeof email !== 'string') return { allowed: true };
+  const normalized = email.toLowerCase().trim();
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+  try {
+    const record = await OtpEmailThrottle.findOne({
+      email: normalized,
+      createdAt: { $gt: oneHourAgo },
+    });
+
+    if (record) {
+      if (record.count >= MAX_OTP_EMAILS_PER_HOUR) {
+        return { allowed: false };
+      }
+      record.count += 1;
+      await record.save();
+      return { allowed: true };
+    }
+
+    await OtpEmailThrottle.create({ email: normalized, count: 1 });
+    return { allowed: true };
+  } catch (err) {
+    console.error('Failed to check/increment email OTP limit:', err.message);
+    return { allowed: true };
+  }
+};
+
 module.exports = {
   MAX_WRONG_ATTEMPTS,
   BLOCK_DURATION_MS,
   OTP_EXPIRY_MS,
   RESEND_COOLDOWN_MS,
+  MAX_OTP_EMAILS_PER_HOUR,
   getClientIp,
   generate6DigitOtp,
   hashOtp,
@@ -127,4 +163,5 @@ module.exports = {
   checkIpBlock,
   recordFailedAttempt,
   clearIpAttempts,
+  checkAndIncrementEmailOtpLimit,
 };

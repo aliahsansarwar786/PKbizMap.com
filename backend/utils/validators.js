@@ -29,6 +29,12 @@ const registerValidator = [
   body('password')
     .notEmpty().withMessage('Password is required')
     .isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+    .custom((val) => {
+      if (Buffer.byteLength(val, 'utf8') > 72) {
+        throw new Error('Password cannot exceed 72 bytes');
+      }
+      return true;
+    })
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
     .withMessage('Password must contain uppercase, lowercase, and a number'),
 ];
@@ -105,6 +111,12 @@ const resetPasswordWithOtpValidator = [
   body('newPassword')
     .notEmpty().withMessage('New password is required')
     .isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+    .custom((val) => {
+      if (Buffer.byteLength(val, 'utf8') > 72) {
+        throw new Error('Password cannot exceed 72 bytes');
+      }
+      return true;
+    })
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
     .withMessage('Password must contain uppercase, lowercase, and a number'),
 ];
@@ -118,6 +130,9 @@ const resetPasswordValidator = [
       }
       if (typeof p !== 'string' || p.length < 6) {
         throw new Error('Password must be at least 6 characters');
+      }
+      if (Buffer.byteLength(p, 'utf8') > 72) {
+        throw new Error('Password cannot exceed 72 bytes');
       }
       if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(p)) {
         throw new Error('Password must contain uppercase, lowercase, and a number');
@@ -142,6 +157,12 @@ const changePasswordValidator = [
   body('newPassword')
     .notEmpty().withMessage('New password is required')
     .isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
+    .custom((val) => {
+      if (Buffer.byteLength(val, 'utf8') > 72) {
+        throw new Error('Password cannot exceed 72 bytes');
+      }
+      return true;
+    })
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/)
     .withMessage('Password must contain uppercase, lowercase, and a number'),
 ];

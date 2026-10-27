@@ -61,11 +61,6 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    // Allow all vercel preview deployments for bizprimehub and pkbizmap
-    if (/^https:\/\/(bizprimehub|pkbizmap)[a-zA-Z0-9-]*\.vercel\.app$/.test(origin)) {
-      return callback(null, true);
-    }
-
     callback(new Error(`CORS: Origin "${origin}" is not allowed.`));
   },
   credentials: true, // Required for cookies

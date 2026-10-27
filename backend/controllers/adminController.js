@@ -474,12 +474,17 @@ const deleteUser = [
       });
     }
 
-    // Delete user's businesses and their images
+    // Delete user's businesses and their images + payment receipts
     const userBusinesses = await Business.find({ owner: req.params.id });
     for (const business of userBusinesses) {
       for (const img of business.images) {
         await cloudinary.uploader.destroy(img.publicId).catch((err) => {
           console.error(`Failed to delete image ${img.publicId}:`, err.message);
+        });
+      }
+      if (business.paymentReceipt?.publicId) {
+        await cloudinary.uploader.destroy(business.paymentReceipt.publicId).catch((err) => {
+          console.error(`Failed to delete receipt ${business.paymentReceipt.publicId}:`, err.message);
         });
       }
     }
@@ -750,15 +755,33 @@ const deleteBusinessReceipt = [
 // Admin: Get all claim requests (with full business contact info and claimant details)
 const getClaimRequests = asyncHandler(async (req, res) => {
   const ClaimRequest = require('../models/ClaimRequest');
-  const claims = await ClaimRequest.find()
-    .populate('business', 'title slug phone whatsapp email address.city address.country isClaimed')
-    .sort('-createdAt')
-    .lean();
+  const { page = 1, limit = 100 } = req.query;
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 100));
+  const skip = (pageNum - 1) * limitNum;
+
+  const [claims, total] = await Promise.all([
+    ClaimRequest.find()
+      .populate('business', 'title slug phone whatsapp email address.city address.country isClaimed')
+      .sort('-createdAt')
+      .skip(skip)
+      .limit(limitNum)
+      .lean(),
+    ClaimRequest.countDocuments(),
+  ]);
 
   res.status(200).json({
     success: true,
     message: 'Claim requests retrieved successfully.',
-    data: { claims },
+    data: {
+      claims,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages: Math.ceil(total / limitNum),
+      },
+    },
   });
 });
 

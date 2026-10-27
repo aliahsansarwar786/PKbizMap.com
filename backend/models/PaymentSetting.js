@@ -149,7 +149,7 @@ const paymentSettingSchema = new mongoose.Schema(
     // Owner Email Notifications
     ownerNotificationEmail: {
       type: String,
-      default: 'ahsanalisarwar555@gmail.com',
+      default: () => process.env.OWNER_NOTIFICATION_EMAIL || '',
       trim: true,
       lowercase: true,
     },
@@ -181,11 +181,7 @@ paymentSettingSchema.methods.getFeeForCountry = function (countryName) {
 
 // Singleton helper: read-only retrieval of the single configuration document
 paymentSettingSchema.statics.getSettings = async function () {
-  let settings = await this.findOne();
-  if (!settings) {
-    settings = await this.create({});
-  }
-  return settings;
+  return await this.findOne();
 };
 
 // Startup migration & repair helper: runs strictly on server startup, not on public GET requests
@@ -269,7 +265,7 @@ paymentSettingSchema.statics.initOrRepairSettings = async function () {
 
   // Ensure owner notification settings are initialized
   if (settings.ownerNotificationEmail === undefined || settings.ownerNotificationEmail === null) {
-    settings.ownerNotificationEmail = 'ahsanalisarwar555@gmail.com';
+    settings.ownerNotificationEmail = process.env.OWNER_NOTIFICATION_EMAIL || '';
     modified = true;
   }
   if (settings.ownerNotificationsEnabled === undefined || settings.ownerNotificationsEnabled === null) {

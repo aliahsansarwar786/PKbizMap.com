@@ -34,7 +34,8 @@ const claimRequestSchema = new mongoose.Schema(
     },
     codeHash: {
       type: String,
-      required: true,
+      required: false,
+      default: null,
     },
     tokenHash: {
       type: String,
@@ -43,11 +44,16 @@ const claimRequestSchema = new mongoose.Schema(
     },
     expiresAtCode: {
       type: Date,
-      required: true,
+      required: false,
+      default: null,
     },
     expiresAtToken: {
       type: Date,
       required: true,
+    },
+    failedAttempts: {
+      type: Number,
+      default: 0,
     },
     status: {
       type: String,
@@ -81,5 +87,9 @@ const claimRequestSchema = new mongoose.Schema(
 
 claimRequestSchema.index({ business: 1, status: 1 });
 claimRequestSchema.index({ createdAt: -1 });
+claimRequestSchema.index(
+  { expiresAtCode: 1 },
+  { expireAfterSeconds: 0, partialFilterExpression: { status: 'pending' } }
+);
 
 module.exports = mongoose.model('ClaimRequest', claimRequestSchema);

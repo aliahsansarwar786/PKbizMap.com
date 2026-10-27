@@ -154,7 +154,7 @@ const updateReview = [
     }
 
     // Only the review author can edit (admin cannot edit, only delete)
-    if (review.user.toString() !== req.user._id.toString()) {
+    if (!review.user || review.user.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'You can only edit your own reviews.',
@@ -188,10 +188,10 @@ const deleteReview = [
       return res.status(404).json({ success: false, message: 'Review not found.' });
     }
 
-    const isAuthor = review.user.toString() === req.user._id.toString();
     const isAdmin =
       req.user.role === 'admin' ||
       (req.user.role === 'subadmin' && req.user.permissions?.canModerateReviews === true);
+    const isAuthor = Boolean(review.user && review.user.toString() === req.user._id.toString());
 
     if (!isAuthor && !isAdmin) {
       return res.status(403).json({

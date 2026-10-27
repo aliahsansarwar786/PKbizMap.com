@@ -104,6 +104,15 @@ export async function generateMetadata({ params }: BusinessDetailPageProps): Pro
   };
 }
 
+function safeJsonLd(data: unknown): string {
+  return JSON.stringify(data)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+}
+
 export default async function BusinessDetailPage({ params }: BusinessDetailPageProps) {
   const { id } = await params;
   const business = await getBusiness(id);
@@ -223,13 +232,13 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
       {jsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
         />
       )}
       {breadcrumbJsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }}
         />
       )}
       <Navbar />

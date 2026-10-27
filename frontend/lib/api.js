@@ -26,6 +26,24 @@ const getCookie = (name) => {
 };
 
 /**
+ * Ensures a fresh CSRF token is fetched and cached before state-changing auth calls
+ */
+async function ensureFreshCsrfToken() {
+  try {
+    const csrfRes = await fetch(`${API_URL}/auth/csrf-token`, { credentials: 'include' });
+    const csrfData = await csrfRes.json().catch(() => ({}));
+    const headerToken = csrfRes.headers.get('X-CSRF-Token') || csrfRes.headers.get('x-csrf-token');
+    const fresh = csrfData?.csrfToken || headerToken || getCookie('XSRF-TOKEN');
+    if (fresh) {
+      cachedCsrfToken = fresh;
+    }
+    return cachedCsrfToken;
+  } catch (e) {
+    return cachedCsrfToken;
+  }
+}
+
+/**
  * Core fetch wrapper
  */
 async function fetchAPI(endpoint, options = {}) {
@@ -178,8 +196,14 @@ const api = {
 
 // ─── Auth API ─────────────────────────────────────────────────────────────────
 export const authAPI = {
-  register: (data) => api.post('/auth/register', data),
-  login: (data) => api.post('/auth/login', data),
+  register: async (data) => {
+    await ensureFreshCsrfToken();
+    return api.post('/auth/register', data);
+  },
+  login: async (data) => {
+    await ensureFreshCsrfToken();
+    return api.post('/auth/login', data);
+  },
   logout: () => api.post('/auth/logout'),
   getMe: () => api.get('/auth/me'),
   verifyEmail: (data) => api.post('/auth/verify-email', data),

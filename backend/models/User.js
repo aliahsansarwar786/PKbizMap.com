@@ -116,6 +116,16 @@ const userSchema = new mongoose.Schema(
     passwordChangedAt: {
       type: Date,
     },
+    loginAttempts: {
+      type: Number,
+      default: 0,
+      select: false,
+    },
+    lockUntil: {
+      type: Date,
+      default: null,
+      select: false,
+    },
   },
   {
     timestamps: true,
@@ -140,28 +150,12 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-// ─── Instance Method: Generate password reset token ──────────────────────────
-userSchema.methods.generatePasswordResetToken = function () {
-  // Generate raw token
-  const resetToken = crypto.randomBytes(32).toString('hex');
-
-  // Hash it before storing (never store raw token in DB)
-  this.resetPasswordToken = crypto
-    .createHash('sha256')
-    .update(resetToken)
-    .digest('hex');
-
-  // Set expiry: 1 hour (60 minutes)
-  this.resetPasswordExpire = Date.now() + 60 * 60 * 1000;
-
-  // Return the raw token (to send via email)
-  return resetToken;
-};
-
 // ─── Safe JSON output: Strip sensitive fields ─────────────────────────────────
 userSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.password;
+  delete obj.loginAttempts;
+  delete obj.lockUntil;
   delete obj.resetPasswordToken;
   delete obj.resetPasswordExpire;
   delete obj.emailVerificationOTP;

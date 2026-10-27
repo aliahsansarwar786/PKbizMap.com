@@ -21,11 +21,9 @@ const csrfProtection = (req, res, next) => {
     return next();
   }
 
-  // Public unauthenticated authentication endpoints do not require CSRF,
-  // even if a stale session cookie happens to be present in the browser
+  // When a session cookie is present, require CSRF on login and register.
+  // Only password-reset and email-verification public endpoints remain exempt.
   const publicAuthEndpoints = [
-    '/api/auth/login',
-    '/api/auth/register',
     '/api/auth/verify-email',
     '/api/auth/resend-otp',
     '/api/auth/forgot-password',

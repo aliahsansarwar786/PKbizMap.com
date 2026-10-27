@@ -1,12 +1,17 @@
 import type { NextConfig } from "next";
 
+const isProduction = process.env.NODE_ENV === 'production';
+const devConnectSources = isProduction ? '' : ' http://localhost:5000 http://localhost:3000';
+
+// 'unsafe-inline' is retained because Next.js runtime hydration and inline chunks require it.
+// TODO: Migrate to middleware-based request-level nonce generation.
 const cspHeader = `
   default-src 'self';
-  script-src 'self' 'unsafe-eval' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com;
+  script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   img-src 'self' data: blob: https://res.cloudinary.com https://ui-avatars.com https://images.unsplash.com https://www.google-analytics.com https://www.googletagmanager.com;
   font-src 'self' data: https://fonts.gstatic.com;
-  connect-src 'self' https://pkbizmap-backend.vercel.app https://bizprimehub.vercel.app http://localhost:5000 http://localhost:3000 https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com;
+  connect-src 'self' https://pkbizmap-backend.vercel.app https://bizprimehub.vercel.app${devConnectSources} https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com;
   frame-src 'self' https://maps.google.com https://www.google.com;
   frame-ancestors 'none';
   form-action 'self';

@@ -11,6 +11,19 @@ const PaymentSetting = require('../models/PaymentSetting');
 const { validate, businessValidator, updateBusinessValidator, objectIdValidator } = require('../utils/validators');
 const { normalizeCategory, getCategorySearchValues } = require('../utils/categories');
 
+// Helper to validate http/https URL scheme
+const isValidHttpUrl = (str) => {
+  if (!str || typeof str !== 'string') return true;
+  const trimmed = str.trim();
+  if (!trimmed) return true;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 // ─── GET /api/businesses ──────────────────────────────────────────────────────
 // Public: Returns only approved businesses with search, filter, pagination
 const getBusinesses = asyncHandler(async (req, res) => {
@@ -102,7 +115,7 @@ const getBusinesses = asyncHandler(async (req, res) => {
   const [businesses, total] = await Promise.all([
     Business.find(queryObj)
       .populate('owner', 'name avatar')
-      .select('-__v')
+      .select('-__v -paymentReceipt -paymentStatus -paymentAmount')
       .sort(sortStr)
       .skip(skip)
       .limit(limitNum)
@@ -145,7 +158,7 @@ const getBusiness = [
       isApproved: true,
     })
       .populate('owner', 'name avatar createdAt')
-      .select('-__v');
+      .select('-__v -paymentReceipt -paymentStatus -paymentAmount');
 
     // 2. Fall back to Mongo ID lookup if not found by slug
     if (!business && mongoose.Types.ObjectId.isValid(identifier)) {
@@ -154,7 +167,7 @@ const getBusiness = [
         isApproved: true,
       })
         .populate('owner', 'name avatar createdAt')
-        .select('-__v');
+        .select('-__v -paymentReceipt -paymentStatus -paymentAmount');
     }
 
     if (!business) {
@@ -334,6 +347,36 @@ const createBusiness = [
       parsedSocialLinks.googleBusiness = req.body['socialLinks[googleBusiness]'] || req.body.googleBusiness;
     }
 
+    // Validate website scheme (http/https only)
+    if (website && !isValidHttpUrl(website)) {
+      if (images.length > 0) {
+        await Promise.all(images.map((img) => cloudinary.uploader.destroy(img.publicId).catch(() => {})));
+      }
+      if (receiptFile?.filename) {
+        await cloudinary.uploader.destroy(receiptFile.filename).catch(() => {});
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'Website must be a valid URL starting with http:// or https://',
+      });
+    }
+
+    // Validate socialLinks schemes (http/https only)
+    for (const [key, val] of Object.entries(parsedSocialLinks)) {
+      if (val && !isValidHttpUrl(val)) {
+        if (images.length > 0) {
+          await Promise.all(images.map((img) => cloudinary.uploader.destroy(img.publicId).catch(() => {})));
+        }
+        if (receiptFile?.filename) {
+          await cloudinary.uploader.destroy(receiptFile.filename).catch(() => {});
+        }
+        return res.status(400).json({
+          success: false,
+          message: `${key} must be a valid URL starting with http:// or https://`,
+        });
+      }
+    }
+
     // NEVER trust owner from req.body - always use authenticated user
     const business = await Business.create({
       title,
@@ -477,6 +520,26 @@ const updateBusiness = [
     }
     if (req.body['socialLinks[googleBusiness]'] !== undefined || req.body.googleBusiness !== undefined) {
       updates.socialLinks = { ...(updates.socialLinks || business.socialLinks?.toObject?.() || business.socialLinks || {}), googleBusiness: req.body['socialLinks[googleBusiness]'] ?? req.body.googleBusiness };
+    }
+
+    // Validate website scheme (http/https only)
+    if (updates.website !== undefined && !isValidHttpUrl(updates.website)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Website must be a valid URL starting with http:// or https://',
+      });
+    }
+
+    // Validate socialLinks schemes (http/https only)
+    if (updates.socialLinks) {
+      for (const [key, val] of Object.entries(updates.socialLinks)) {
+        if (val && !isValidHttpUrl(val)) {
+          return res.status(400).json({
+            success: false,
+            message: `${key} must be a valid URL starting with http:// or https://`,
+          });
+        }
+      }
     }
 
     const hasAddressField = req.body.address || req.body['address[city]'] || req.body.city || req.body['address[country]'] || req.body.country || req.body['address[street]'] || req.body.street || req.body['address[area]'] || req.body.area || req.body['address[zipCode]'] || req.body.zipCode;
@@ -708,43 +771,57 @@ const getBusinessSummary = asyncHandler(async (req, res) => {
 
   const queryObj = andConditions.length === 1 ? andConditions[0] : { $and: andConditions };
 
-  const businesses = await Business.find(
-    queryObj,
-    'address.country address.city category'
-  ).lean();
+  // MongoDB aggregation pipeline to count grouped records without loading all documents into memory
+  const aggregateResults = await Business.aggregate([
+    { $match: queryObj },
+    {
+      $group: {
+        _id: {
+          country: { $ifNull: ['$address.country', ''] },
+          city: { $ifNull: ['$address.city', ''] },
+          category: { $ifNull: ['$category', ''] },
+        },
+        count: { $sum: 1 },
+      },
+    },
+  ]);
 
   const countries = { Pakistan: 0, UAE: 0, USA: 0 };
   const cities = { Pakistan: {}, UAE: {}, USA: {} };
   const categories = { Pakistan: {}, UAE: {}, USA: {} };
   const categoriesByCity = { Pakistan: {}, UAE: {}, USA: {} };
+  let total = 0;
 
-  for (const b of businesses) {
-    let bCountry = (b.address?.country || '').trim();
+  for (const item of aggregateResults) {
+    const count = item.count;
+    total += count;
+
+    let bCountry = (item._id.country || '').trim();
     // Backward-compat fallback: if country is missing or invalid, treat as Pakistan
     if (!bCountry || !['Pakistan', 'UAE', 'USA'].includes(bCountry)) {
       bCountry = 'Pakistan';
     }
 
-    countries[bCountry] = (countries[bCountry] || 0) + 1;
+    countries[bCountry] = (countries[bCountry] || 0) + count;
 
-    const rawCity = (b.address?.city || '').trim();
+    const rawCity = (item._id.city || '').trim();
     if (rawCity) {
       if (!cities[bCountry]) cities[bCountry] = {};
-      cities[bCountry][rawCity] = (cities[bCountry][rawCity] || 0) + 1;
+      cities[bCountry][rawCity] = (cities[bCountry][rawCity] || 0) + count;
     }
 
-    const rawCat = (b.category || '').trim();
+    const rawCat = (item._id.category || '').trim();
     const cat = normalizeCategory(rawCat);
     if (cat) {
       if (!categories[bCountry]) categories[bCountry] = {};
-      categories[bCountry][cat] = (categories[bCountry][cat] || 0) + 1;
+      categories[bCountry][cat] = (categories[bCountry][cat] || 0) + count;
     }
 
     if (!categoriesByCity[bCountry]) categoriesByCity[bCountry] = {};
     if (rawCity && cat) {
       if (!categoriesByCity[bCountry][rawCity]) categoriesByCity[bCountry][rawCity] = {};
       categoriesByCity[bCountry][rawCity][cat] =
-        (categoriesByCity[bCountry][rawCity][cat] || 0) + 1;
+        (categoriesByCity[bCountry][rawCity][cat] || 0) + count;
     }
   }
 
@@ -752,7 +829,7 @@ const getBusinessSummary = asyncHandler(async (req, res) => {
     success: true,
     message: 'Business summary counts retrieved successfully.',
     data: {
-      total: businesses.length,
+      total,
       countries,
       cities,
       categories,

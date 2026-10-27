@@ -73,7 +73,7 @@ function formatInlineText(text: string) {
     }
     if (match[1] && match[2]) {
       const linkText = match[1];
-      const href = match[2];
+      const href = match[2].trim();
       if (href.startsWith('/')) {
         tokens.push(
           <Link key={match.index} href={href} className="text-blue-600 hover:underline font-medium">
@@ -81,17 +81,29 @@ function formatInlineText(text: string) {
           </Link>
         );
       } else {
-        tokens.push(
-          <a
-            key={match.index}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:underline font-medium"
-          >
-            {linkText}
-          </a>
-        );
+        let isAllowedScheme = false;
+        try {
+          const parsed = new URL(href);
+          isAllowedScheme = parsed.protocol === 'http:' || parsed.protocol === 'https:';
+        } catch {
+          isAllowedScheme = false;
+        }
+
+        if (isAllowedScheme) {
+          tokens.push(
+            <a
+              key={match.index}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline font-medium"
+            >
+              {linkText}
+            </a>
+          );
+        } else {
+          tokens.push(linkText);
+        }
       }
     } else if (match[3]) {
       tokens.push(<strong key={match.index} className="font-semibold text-slate-900">{match[3]}</strong>);

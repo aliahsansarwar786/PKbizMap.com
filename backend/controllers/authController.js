@@ -13,6 +13,7 @@ const {
   getPasswordChangedSuccessEmailHtml,
 } = require('../utils/emailTemplates');
 const PaymentSetting = require('../models/PaymentSetting');
+const bcrypt = require('bcryptjs');
 const {
   generate6DigitOtp,
   hashOtp,
@@ -21,9 +22,13 @@ const {
   checkIpBlock,
   recordFailedAttempt,
   clearIpAttempts,
+  checkAndIncrementEmailOtpLimit,
   OTP_EXPIRY_MS,
   RESEND_COOLDOWN_MS,
 } = require('../utils/otpManager');
+
+// Precomputed 12-round bcrypt hash used for timing-safe dummy password comparisons
+const DUMMY_HASH = '$2a$12$jqzh7bk27B/AYiavrRoThOnbT11VDB8oFoLc0M608Ctf/phHwGs1m';
 const {
   validate,
   registerValidator,
@@ -49,13 +54,26 @@ const register = [
     const { name, email, password } = req.body;
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check if user exists
+    // Check per-email OTP throttle (max 5 OTP emails per hour)
+    const throttle = await checkAndIncrementEmailOtpLimit(normalizedEmail);
+    if (!throttle.allowed) {
+      return res.status(429).set('Retry-After', String(throttle.retryAfterSeconds)).json({
+        success: false,
+        message: 'Too many verification code requests for this email. Please try again later.',
+      });
+    }
+
+    const genericSuccess = {
+      success: true,
+      message: 'Registration successful. Please verify your email with the 6-digit code sent to you.',
+      requiresVerification: true,
+      email: normalizedEmail,
+    };
+
+    // Check if user exists: if so, return the same generic success response without creating duplicate
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
-      return res.status(409).json({
-        success: false,
-        message: 'An account with this email already exists.',
-      });
+      return res.status(201).json(genericSuccess);
     }
 
     // Generate fresh 6-digit numeric OTP and SHA-256 hash
@@ -88,12 +106,7 @@ const register = [
       console.error('⚠️ [Auth:Register] Unexpected error sending verification OTP:', e.message);
     }
 
-    return res.status(201).json({
-      success: true,
-      message: 'Registration successful. Please verify your email with the 6-digit code sent to you.',
-      requiresVerification: true,
-      email: user.email,
-    });
+    return res.status(201).json(genericSuccess);
   }),
 ];
 
@@ -298,6 +311,15 @@ const resendOtp = [
       message: 'If an account exists for this email, a verification code has been sent.',
     };
 
+    // Check per-email OTP throttle (max 5 OTP emails per hour)
+    const throttle = await checkAndIncrementEmailOtpLimit(normalizedEmail);
+    if (!throttle.allowed) {
+      return res.status(429).set('Retry-After', String(throttle.retryAfterSeconds)).json({
+        success: false,
+        message: 'Too many verification code requests for this email. Please try again later.',
+      });
+    }
+
     const user = await User.findOne({ email: normalizedEmail }).select(
       '+emailVerificationLastResend +emailVerificationOTPBlockedUntil +emailVerificationOTPAttempts'
     );
@@ -307,7 +329,7 @@ const resendOtp = [
     }
 
     if (user.emailVerified) {
-      return res.status(400).json({ success: false, message: 'Email is already verified.' });
+      return res.status(200).json(genericResponse);
     }
 
     // Check account lockout
@@ -811,9 +833,21 @@ const login = [
     validate(req);
 
     const { email, password } = req.body;
+    const normalizedEmail = (email || '').toLowerCase().trim();
 
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    const user = await User.findOne({ email: normalizedEmail }).select('+password +loginAttempts +lockUntil');
     if (!user) {
+      // Timing-safe: run bcrypt compare against fixed dummy hash to prevent user enumeration via timing
+      await bcrypt.compare(password, DUMMY_HASH);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password.',
+      });
+    }
+
+    // Check per-account lockout (15 minutes after 5 failed logins)
+    if (user.lockUntil && user.lockUntil.getTime() > Date.now()) {
+      await bcrypt.compare(password, DUMMY_HASH);
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password.',
@@ -822,10 +856,25 @@ const login = [
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      // Increment failed login attempts
+      const attempts = (user.loginAttempts || 0) + 1;
+      user.loginAttempts = attempts;
+      if (attempts >= 5) {
+        user.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15-minute lock
+      }
+      await user.save({ validateBeforeSave: false });
+
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password.',
       });
+    }
+
+    // Login successful: reset failed login attempts and lock
+    if (user.loginAttempts > 0 || user.lockUntil) {
+      user.loginAttempts = 0;
+      user.lockUntil = undefined;
+      await user.save({ validateBeforeSave: false });
     }
 
     if (!user.emailVerified && user.role !== 'admin' && user.role !== 'subadmin') {
@@ -842,6 +891,10 @@ const login = [
 ];
 
 // ─── POST /api/auth/logout ────────────────────────────────────────────────────
+// Accepted Tradeoff: JWTs are stateless and remain cryptographically valid until their
+// 7-day expiry after logout. The token cookie is cleared from the client. Password change
+// explicitly invalidates previously issued tokens via user.passwordChangedAt. A token
+// denylist or server-side session revocation is intentionally omitted for simplicity.
 const logout = asyncHandler(async (req, res) => {
   res
     .status(200)

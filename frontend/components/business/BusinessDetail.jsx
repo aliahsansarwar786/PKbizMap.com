@@ -34,6 +34,18 @@ function WhatsAppIcon({ size = 15, className = '' }) {
   );
 }
 
+// Helper to check whether a URL has an http: or https: scheme
+function isSafeUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  try {
+    const parsed = new URL(trimmed.startsWith('http://') || trimmed.startsWith('https://') ? trimmed : `https://${trimmed}`);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 // Helper to format full address without duplicate city
 function formatAddress(address) {
   if (!address) return '';
@@ -573,9 +585,16 @@ export default function BusinessDetail({ id }) {
                               className="rounded-full object-cover shrink-0"
                             />
                             <div>
-                              <p style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1f2937' }}>
-                                {reviewerName}
-                              </p>
+                              <div className="flex items-center gap-1.5">
+                                <p style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1f2937' }}>
+                                  {reviewerName}
+                                </p>
+                                {!review.user && (
+                                  <span className="text-[10px] font-semibold bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded border border-gray-200">
+                                    Guest
+                                  </span>
+                                )}
+                              </div>
                               <StarRating rating={review.rating} count={1} size={12} />
                             </div>
                           </div>
@@ -742,23 +761,37 @@ export default function BusinessDetail({ id }) {
 
               {/* Website "Visit" row (if exists) */}
               {business.website && (
-                <a
-                  href={business.website.startsWith('http') ? business.website : `https://${business.website}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 rounded-xl border border-gray-200 bg-white hover:bg-blue-50/60 transition-colors"
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600 shrink-0">
-                      <Globe size={15} />
+                isSafeUrl(business.website) ? (
+                  <a
+                    href={business.website.startsWith('http') ? business.website : `https://${business.website}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between p-3 rounded-xl border border-gray-200 bg-white hover:bg-blue-50/60 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-blue-50 text-blue-600 shrink-0">
+                        <Globe size={15} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] text-gray-500 font-medium">Website</p>
+                        <p className="text-xs sm:text-sm font-semibold text-blue-600 truncate">{business.website}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-[11px] text-gray-500 font-medium">Website</p>
-                      <p className="text-xs sm:text-sm font-semibold text-blue-600 truncate">{business.website}</p>
+                    <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded shrink-0">Visit</span>
+                  </a>
+                ) : (
+                  <div className="flex items-center justify-between p-3 rounded-xl border border-gray-200 bg-gray-50/40">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-gray-100 text-gray-500 shrink-0">
+                        <Globe size={15} />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] text-gray-500 font-medium">Website</p>
+                        <p className="text-xs sm:text-sm font-semibold text-gray-700 truncate">{business.website}</p>
+                      </div>
                     </div>
                   </div>
-                  <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded shrink-0">Visit</span>
-                </a>
+                )
               )}
 
               {/* Prominent Claim This Business button if not claimed */}
@@ -782,34 +815,52 @@ export default function BusinessDetail({ id }) {
               {(business.socialLinks?.facebook || business.socialLinks?.youtube || business.socialLinks?.googleBusiness) && (
                 <div className="pt-2 border-t border-gray-100 flex flex-wrap gap-2">
                   {business.socialLinks.facebook && (
-                    <a
-                      href={business.socialLinks.facebook}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
-                    >
-                      Facebook
-                    </a>
+                    isSafeUrl(business.socialLinks.facebook) ? (
+                      <a
+                        href={business.socialLinks.facebook}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                      >
+                        Facebook
+                      </a>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600">
+                        Facebook: {business.socialLinks.facebook}
+                      </span>
+                    )
                   )}
                   {business.socialLinks.youtube && (
-                    <a
-                      href={business.socialLinks.youtube}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
-                    >
-                      YouTube
-                    </a>
+                    isSafeUrl(business.socialLinks.youtube) ? (
+                      <a
+                        href={business.socialLinks.youtube}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
+                      >
+                        YouTube
+                      </a>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600">
+                        YouTube: {business.socialLinks.youtube}
+                      </span>
+                    )
                   )}
                   {business.socialLinks.googleBusiness && (
-                    <a
-                      href={business.socialLinks.googleBusiness}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
-                    >
-                      Google Profile
-                    </a>
+                    isSafeUrl(business.socialLinks.googleBusiness) ? (
+                      <a
+                        href={business.socialLinks.googleBusiness}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                      >
+                        Google Profile
+                      </a>
+                    ) : (
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600">
+                        Google Profile: {business.socialLinks.googleBusiness}
+                      </span>
+                    )
                   )}
                 </div>
               )}
