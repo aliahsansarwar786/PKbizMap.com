@@ -921,6 +921,37 @@ export default function AdminDashboardClient() {
     }
   };
 
+  const [updatingPaymentStatus, setUpdatingPaymentStatus] = useState(false);
+
+  const handleUpdatePaymentStatus = async (bizId, status) => {
+    if (!isSuperAdmin) {
+      toast.error('Only the main admin can verify or reject payments.');
+      return;
+    }
+    setUpdatingPaymentStatus(true);
+    try {
+      const res = await adminAPI.updatePaymentStatus(bizId, status);
+      setPayments((prev) =>
+        prev.map((p) =>
+          p._id === bizId ? { ...p, paymentStatus: status } : p
+        )
+      );
+      setBusinesses((prev) =>
+        prev.map((b) =>
+          b._id === bizId ? { ...b, paymentStatus: status } : b
+        )
+      );
+      if (selectedReceiptBiz?._id === bizId) {
+        setSelectedReceiptBiz((prev) => (prev ? { ...prev, paymentStatus: status } : null));
+      }
+      toast.success(res.message || `Payment status marked as ${status}.`);
+    } catch (err) {
+      toast.error(err.message || `Failed to update payment status to ${status}.`);
+    } finally {
+      setUpdatingPaymentStatus(false);
+    }
+  };
+
   if (authLoading || (!isSuperAdmin && !isSubAdmin && !authLoading)) {
     return <div className="section container-max text-center"><p style={{ color: '#6b7280' }}>Loading...</p></div>;
   }
@@ -1488,6 +1519,28 @@ export default function AdminDashboardClient() {
                         </div>
 
                         <div className="flex items-center gap-2 flex-wrap pt-3 sm:pt-0 border-t border-gray-200/80 sm:border-0 w-full sm:w-auto justify-start sm:justify-end">
+                          {isSuperAdmin && p.paymentStatus !== 'verified' && (
+                            <button
+                              type="button"
+                              disabled={updatingPaymentStatus}
+                              onClick={() => handleUpdatePaymentStatus(p._id, 'verified')}
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-300 cursor-pointer min-h-[36px]"
+                              title="Verify Payment Receipt"
+                            >
+                              <Check size={13} /> Verify
+                            </button>
+                          )}
+                          {isSuperAdmin && p.paymentStatus !== 'rejected' && (
+                            <button
+                              type="button"
+                              disabled={updatingPaymentStatus}
+                              onClick={() => handleUpdatePaymentStatus(p._id, 'rejected')}
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors border border-rose-300 cursor-pointer min-h-[36px]"
+                              title="Reject Payment Receipt"
+                            >
+                              <X size={13} /> Reject
+                            </button>
+                          )}
                           {p.paymentReceipt?.url && (
                             <button
                               type="button"
@@ -2625,7 +2678,7 @@ export default function AdminDashboardClient() {
                   Raast Payment Screenshot
                 </h3>
                 <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                  {selectedReceiptBiz.title} • Fee: Rs. {selectedReceiptBiz.paymentAmount || 500}
+                  {selectedReceiptBiz.title} • Fee: Rs. {selectedReceiptBiz.paymentAmount || 500} • Status: <span className="capitalize font-semibold text-gray-800">{selectedReceiptBiz.paymentStatus || 'pending'}</span>
                 </p>
               </div>
               <button
@@ -2712,7 +2765,29 @@ export default function AdminDashboardClient() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {isSuperAdmin && selectedReceiptBiz.paymentStatus !== 'verified' && (
+                  <button
+                    type="button"
+                    disabled={updatingPaymentStatus}
+                    onClick={() => handleUpdatePaymentStatus(selectedReceiptBiz._id, 'verified')}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 cursor-pointer"
+                    title="Mark payment status as Verified"
+                  >
+                    <Check size={13} /> Verify Receipt
+                  </button>
+                )}
+                {isSuperAdmin && selectedReceiptBiz.paymentStatus !== 'rejected' && (
+                  <button
+                    type="button"
+                    disabled={updatingPaymentStatus}
+                    onClick={() => handleUpdatePaymentStatus(selectedReceiptBiz._id, 'rejected')}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-rose-800 bg-rose-50 hover:bg-rose-100 border border-rose-300 cursor-pointer"
+                    title="Mark payment status as Rejected"
+                  >
+                    <X size={13} /> Reject Receipt
+                  </button>
+                )}
                 {!selectedReceiptBiz.isApproved && (isSuperAdmin || perms.canApproveListings) && (
                   <button
                     type="button"

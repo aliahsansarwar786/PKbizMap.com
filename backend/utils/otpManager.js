@@ -10,13 +10,17 @@ const MAX_OTP_EMAILS_PER_HOUR = 5;
 
 /**
  * Extracts client IP safely from request headers (handles Vercel proxies).
- * Returns the first comma-separated X-Forwarded-For entry (the client IP).
+ * Prefers Vercel's x-real-ip header or the last comma-separated X-Forwarded-For entry
+ * (appended by Vercel's edge network) to prevent header-spoofing bypasses.
  */
 const getClientIp = (req) => {
-  const forwarded = req.headers['x-forwarded-for'];
+  if (req.headers && req.headers['x-real-ip']) {
+    return String(req.headers['x-real-ip']).trim();
+  }
+  const forwarded = req.headers && req.headers['x-forwarded-for'];
   if (forwarded) {
     const parts = forwarded.split(',');
-    return parts[0].trim();
+    return parts[parts.length - 1].trim();
   }
   return req.ip || req.socket?.remoteAddress || 'unknown';
 };

@@ -4,6 +4,8 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import BusinessDirectory from '@/components/business/BusinessDirectory';
 import CategoryBreadcrumbs from '@/components/business/CategoryBreadcrumbs';
+import { safeJsonLd } from '@/lib/safeJsonLd';
+import { CATEGORY_NAMES, CATEGORY_ALIASES } from '@/data/categories';
 
 export const metadata: Metadata = {
   title: 'Business Directory — Find Local Businesses in Pakistan',
@@ -34,9 +36,29 @@ interface BusinessesPageProps {
   searchParams?: Promise<{ category?: string; [key: string]: string | string[] | undefined }>;
 }
 
+function sanitizeCategory(rawCategory?: string): string | undefined {
+  if (!rawCategory || typeof rawCategory !== 'string') return undefined;
+  const trimmed = rawCategory.trim();
+  if (!trimmed) return undefined;
+  const canonicalMatch = CATEGORY_NAMES.find(
+    (name) => name.toLowerCase() === trimmed.toLowerCase()
+  );
+  if (canonicalMatch) return canonicalMatch;
+  const aliasMatch = Object.keys(CATEGORY_ALIASES).find(
+    (alias) => alias.toLowerCase() === trimmed.toLowerCase()
+  );
+  if (aliasMatch) return CATEGORY_ALIASES[aliasMatch];
+  // Allow only plain text without HTML/script markup
+  if (/^[\p{L}\p{N}\s&',.\-()]+$/u.test(trimmed) && !trimmed.includes('<') && !trimmed.includes('>')) {
+    return trimmed;
+  }
+  return undefined;
+}
+
 export default async function BusinessesPage({ searchParams }: BusinessesPageProps) {
   const resolvedParams = searchParams ? await searchParams : undefined;
-  const categoryParam = typeof resolvedParams?.category === 'string' ? resolvedParams.category : undefined;
+  const rawCategoryParam = typeof resolvedParams?.category === 'string' ? resolvedParams.category : undefined;
+  const categoryParam = sanitizeCategory(rawCategoryParam);
 
   const breadcrumbJsonLd = categoryParam
     ? {
@@ -70,7 +92,7 @@ export default async function BusinessesPage({ searchParams }: BusinessesPagePro
       {breadcrumbJsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }}
         />
       )}
       <Navbar />

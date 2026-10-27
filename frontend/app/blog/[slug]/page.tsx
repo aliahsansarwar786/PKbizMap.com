@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { getPostBySlug, getRelatedPosts, getAllPosts } from '@/data/blogPosts';
 import { Calendar, Clock, ArrowLeft, Tag, Share2, CheckCircle2, ChevronRight, BookOpen } from 'lucide-react';
 import type { Metadata } from 'next';
+import { safeJsonLd } from '@/lib/safeJsonLd';
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -163,7 +164,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
       <Navbar />
       <main className="bg-slate-50 min-h-screen py-10 sm:py-14">

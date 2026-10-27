@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
+import { safeJsonLd } from '@/lib/safeJsonLd';
 
 interface CategoryBreadcrumbsProps {
   initialCategory?: string;
@@ -9,7 +10,10 @@ interface CategoryBreadcrumbsProps {
 
 export default function CategoryBreadcrumbs({ initialCategory }: CategoryBreadcrumbsProps) {
   const searchParams = useSearchParams();
-  const category = searchParams.get('category') || initialCategory;
+  const rawCategory = searchParams.get('category') || initialCategory;
+  const category = rawCategory && !rawCategory.includes('<') && !rawCategory.includes('>')
+    ? rawCategory.trim()
+    : undefined;
 
   if (!category) return null;
 
@@ -46,7 +50,7 @@ export default function CategoryBreadcrumbs({ initialCategory }: CategoryBreadcr
         <script
           id="category-breadcrumb-jsonld"
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(breadcrumbJsonLd) }}
         />
       )}
       <nav aria-label="Breadcrumb" className="mb-3 text-xs sm:text-sm text-gray-500">

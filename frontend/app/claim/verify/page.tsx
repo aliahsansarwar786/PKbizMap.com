@@ -26,15 +26,23 @@ function ClaimVerifyContent() {
   const { user, isAuthenticated, logout }: any = useAuth();
 
   const tokenParam = searchParams.get('token') || '';
+  const claimIdParam = searchParams.get('claimId') || '';
+  const emailParam = searchParams.get('email') || '';
 
   const [token, setToken] = useState<string>(tokenParam);
+  const [claimId, setClaimId] = useState<string>(claimIdParam);
   const [code, setCode] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
+  const [email, setEmail] = useState<string>(emailParam);
 
   const [loading, setLoading] = useState<boolean>(false);
   const [claimData, setClaimData] = useState<any>(null);
   const [completedBusiness, setCompletedBusiness] = useState<any>(null);
   const [error, setError] = useState<string>('');
+
+  useEffect(() => {
+    if (claimIdParam) setClaimId(claimIdParam);
+    if (emailParam) setEmail(emailParam);
+  }, [claimIdParam, emailParam]);
 
   // Automatically attempt verification if token exists in URL
   const verifyWithToken = useCallback(async (tokenToVerify: string) => {
@@ -68,11 +76,17 @@ function ClaimVerifyContent() {
       return;
     }
 
+    if (!claimId.trim() && !email.trim()) {
+      toast.error('Please provide your registered business email or Claim ID.');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
       const res = await claimAPI.verify({
         code: code.trim(),
+        claimId: claimId.trim() || undefined,
         email: email.trim() || undefined,
       });
       setClaimData(res.data);
@@ -220,10 +234,11 @@ function ClaimVerifyContent() {
 
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-gray-700 mb-1.5">
-                  Verification Email <span className="text-gray-400 text-[10px] font-normal">(Optional if checking direct code)</span>
+                  Registered Business Email {!claimId && <span className="text-red-500">*</span>}
                 </label>
                 <input
                   type="email"
+                  required={!claimId}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="The email where you received the code"

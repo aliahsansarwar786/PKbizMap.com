@@ -17,6 +17,7 @@ const {
   adminUpdateBusiness,
   getPaymentHistory,
   deleteBusinessReceipt,
+  updateBusinessPaymentStatus,
   getClaimRequests,
   approveClaimRequest,
   rejectClaimRequest,
@@ -51,8 +52,9 @@ router.patch('/settings/payment/methods/:methodId', authorize('admin'), handlePa
 router.delete('/settings/payment/methods/:methodId', authorize('admin'), deletePaymentMethod);
 router.patch('/settings/payment/methods/:methodId/toggle', authorize('admin'), togglePaymentMethod);
 
-// ─── Payments History (Main Admin ONLY) ──────────────────────────────────────
+// ─── Payments History & Verification (Main Admin ONLY) ───────────────────────
 router.get('/payments', authorize('admin'), getPaymentHistory);
+router.patch('/businesses/:id/payment', authorize('admin'), updateBusinessPaymentStatus);
 
 // ─── User Management & Permissions (Main Admin ONLY) ─────────────────────────
 router.get('/users', authorize('admin'), getUsers);

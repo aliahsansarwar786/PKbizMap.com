@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import Link from 'next/link';
 import Navbar from '@/components/layout/Navbar';
+import { safeJsonLd } from '@/lib/safeJsonLd';
 import Footer from '@/components/layout/Footer';
 import HeroSearch from '@/components/home/HeroSearch';
 import BrowseSection from '@/components/business/BrowseSection';
@@ -155,7 +156,7 @@ export default async function HomePage() {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(homeJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(homeJsonLd) }}
       />
       <Navbar />
       <main>

@@ -770,6 +770,157 @@ const getNewClaimNotificationHtml = ({
   `.trim();
 };
 
+/**
+ * Generates the Claim Approved Email HTML
+ */
+const getClaimApprovedEmailHtml = ({ claimantName, businessTitle, businessSlug, forgotPasswordUrl, loginUrl }) => {
+  const safeName = escapeHtml(claimantName || 'Business Owner');
+  const safeTitle = escapeHtml(businessTitle || 'Your Business');
+  const safeForgotUrl = escapeHtml(forgotPasswordUrl || 'https://www.bizprimehub.com/forgot-password');
+  const safeLoginUrl = escapeHtml(loginUrl || 'https://www.bizprimehub.com/login');
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Business Claim Approved - BizPrimeHub</title>
+</head>
+<body style="${getBaseStyles()} padding: 32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">
+          BizPrimeHub
+        </h1>
+        <p style="color: #d1fae5; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+          Ownership Verification Approved
+        </p>
+      </td>
+    </tr>
+
+    <!-- Content -->
+    <tr>
+      <td style="padding: 32px 28px;">
+        <div style="display: inline-block; background-color: #ecfdf5; color: #059669; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px; border: 1px solid #a7f3d0;">
+          ✓ Claim Approved
+        </div>
+
+        <h2 style="margin: 0 0 12px 0; font-size: 20px; font-weight: 700; color: #111827;">
+          Congratulations, ${safeName}!
+        </h2>
+        <p style="margin: 0 0 20px 0; font-size: 15px; color: #4b5563;">
+          Your ownership claim for <strong>"${safeTitle}"</strong> has been approved by the BizPrimeHub administration. Listing ownership has been successfully assigned to your account.
+        </p>
+
+        <!-- Instructions Box -->
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
+          <h3 style="margin: 0 0 8px 0; font-size: 14px; font-weight: 700; color: #0f172a;">
+            How to Sign In &amp; Set Your Password:
+          </h3>
+          <p style="margin: 0 0 12px 0; font-size: 13px; color: #475569; line-height: 1.5;">
+            Because your verified account was configured securely by the administration with a system-generated password, please use the <strong>Forgot Password</strong> flow to set your personal password via a quick 6-digit OTP sent to this email address.
+          </p>
+          <ol style="margin: 0; padding-left: 20px; font-size: 13px; color: #475569; line-height: 1.6;">
+            <li>Go to the Forgot Password page using the button below.</li>
+            <li>Enter this email address to receive a secure 6-digit verification code.</li>
+            <li>Set your new secure password, then log in to manage your listing on your owner dashboard.</li>
+          </ol>
+        </div>
+
+        <!-- CTA Buttons -->
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin: 24px 0 16px 0;">
+          <tr>
+            <td align="center">
+              <a href="${safeForgotUrl}" target="_blank" style="display: inline-block; background-color: #059669; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 10px; font-weight: 700; font-size: 14px; box-shadow: 0 2px 6px rgba(5,150,105,0.35); margin-right: 8px;">
+                Set Your Password &rarr;
+              </a>
+              <a href="${safeLoginUrl}" target="_blank" style="display: inline-block; background-color: #f1f5f9; color: #334155; text-decoration: none; padding: 14px 24px; border-radius: 10px; font-weight: 600; font-size: 14px; border: 1px solid #cbd5e1;">
+                Login Page
+              </a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f9fafb; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+          &copy; ${new Date().getFullYear()} BizPrimeHub. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+};
+
+/**
+ * Generates the Claim Rejected Email HTML
+ */
+const getClaimRejectedEmailHtml = ({ claimantName, businessTitle }) => {
+  const safeName = escapeHtml(claimantName || 'Business Owner');
+  const safeTitle = escapeHtml(businessTitle || 'Your Business');
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Business Claim Status Update - BizPrimeHub</title>
+</head>
+<body style="${getBaseStyles()} padding: 32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">
+          BizPrimeHub
+        </h1>
+        <p style="color: #bfdbfe; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+          Claim Request Status Update
+        </p>
+      </td>
+    </tr>
+
+    <!-- Content -->
+    <tr>
+      <td style="padding: 32px 28px;">
+        <h2 style="margin: 0 0 12px 0; font-size: 20px; font-weight: 700; color: #111827;">
+          Hello ${safeName},
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; color: #4b5563;">
+          Thank you for reaching out regarding the listing for <strong>"${safeTitle}"</strong>.
+        </p>
+        <p style="margin: 0 0 20px 0; font-size: 14px; color: #4b5563; line-height: 1.6;">
+          After review by our administration team, your ownership claim could not be approved at this time. This may be because the provided details could not be verified against the official registered business information.
+        </p>
+        <p style="margin: 0 0 24px 0; font-size: 14px; color: #4b5563; line-height: 1.6;">
+          If you believe this decision was made in error or if you have additional verification documents or questions, please feel free to contact our support team.
+        </p>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f9fafb; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+          &copy; ${new Date().getFullYear()} BizPrimeHub. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+};
+
 module.exports = {
   escapeHtml,
   getWelcomeEmailHtml,
@@ -780,6 +931,8 @@ module.exports = {
   getPasswordChangedSuccessEmailHtml,
   getClaimVerificationEmailHtml,
   getNewClaimNotificationHtml,
+  getClaimApprovedEmailHtml,
+  getClaimRejectedEmailHtml,
 };
 
 

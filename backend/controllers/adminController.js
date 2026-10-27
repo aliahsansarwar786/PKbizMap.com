@@ -1,10 +1,27 @@
+const crypto = require('crypto');
 const User = require('../models/User');
 const Business = require('../models/Business');
 const Review = require('../models/Review');
+const PaymentSetting = require('../models/PaymentSetting');
 const asyncHandler = require('../utils/asyncHandler');
 const cloudinary = require('../config/cloudinary');
 const escapeRegex = require('../utils/escapeRegex');
+const sendEmail = require('../utils/sendEmail');
+const { getClaimApprovedEmailHtml, getClaimRejectedEmailHtml } = require('../utils/emailTemplates');
+const getFrontendUrl = require('../utils/getFrontendUrl');
 const { validate, objectIdValidator, updateBusinessValidator } = require('../utils/validators');
+
+const isValidHttpUrl = (str) => {
+  if (!str || typeof str !== 'string') return true;
+  const trimmed = str.trim();
+  if (!trimmed) return true;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
 
 // ─── GET /api/admin/dashboard ─────────────────────────────────────────────────
 // Admin: Application statistics
@@ -240,15 +257,31 @@ const approveBusiness = [
   asyncHandler(async (req, res) => {
     validate(req);
 
-    const business = await Business.findByIdAndUpdate(
-      req.params.id,
-      { isApproved: true },
-      { new: true }
-    ).populate('owner', 'name email');
-
+    const business = await Business.findById(req.params.id).populate('owner', 'name email');
     if (!business) {
       return res.status(404).json({ success: false, message: 'Business not found.' });
     }
+
+    // FIX 4: approveBusiness must require paymentStatus === 'verified' whenever the
+    // applicable listing fee for the listing's country is greater than zero
+    const paymentSetting = await PaymentSetting.getSettings();
+    if (paymentSetting && paymentSetting.isEnabled) {
+      const targetCountry = business.address?.country || 'Pakistan';
+      const feeInfo = paymentSetting.getFeeForCountry
+        ? paymentSetting.getFeeForCountry(targetCountry)
+        : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount || 0 });
+
+      const effectiveFee = Number(feeInfo.amount) || 0;
+      if (effectiveFee > 0 && business.paymentStatus !== 'verified') {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot approve listing: payment receipt must be verified first for ${targetCountry} (fee: ${feeInfo.symbol || ''}${effectiveFee}).`,
+        });
+      }
+    }
+
+    business.isApproved = true;
+    await business.save();
 
     res.status(200).json({
       success: true,
@@ -574,14 +607,24 @@ const adminUpdateBusiness = [
       return res.status(404).json({ success: false, message: 'Business not found.' });
     }
 
-    // Allowed fields: title, description, category, subcategory, contactPerson, email, phone, whatsapp, website, address, openingHours, socialLinks
+    // FIX 5: Sub-admin must NOT be able to change business's registered email
+    if (req.body.email !== undefined) {
+      if (req.user?.role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: 'Changing a business registered email requires the main admin role.',
+        });
+      }
+      business.email = req.body.email;
+    }
+
+    // Allowed fields: email is handled strictly above with the main-admin role check
     const allowedScalarFields = [
       'title',
       'description',
       'category',
       'subcategory',
       'contactPerson',
-      'email',
       'phone',
       'whatsapp',
       'website',
@@ -591,6 +634,14 @@ const adminUpdateBusiness = [
         business[field] = req.body[field];
       }
     });
+
+    // Validate website scheme (http/https only)
+    if (business.website && !isValidHttpUrl(business.website)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Website must be a valid URL starting with http:// or https://',
+      });
+    }
 
     if (req.body.openingHours !== undefined) {
       if (typeof req.body.openingHours === 'string') {
@@ -605,12 +656,30 @@ const adminUpdateBusiness = [
     }
 
     if (req.body.socialLinks !== undefined) {
+      let parsedLinks = null;
       if (typeof req.body.socialLinks === 'string') {
         try {
-          business.socialLinks = JSON.parse(req.body.socialLinks);
-        } catch {}
-      } else if (typeof req.body.socialLinks === 'object') {
-        business.socialLinks = req.body.socialLinks;
+          parsedLinks = JSON.parse(req.body.socialLinks);
+        } catch {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid socialLinks format.',
+          });
+        }
+      } else if (typeof req.body.socialLinks === 'object' && req.body.socialLinks !== null) {
+        parsedLinks = req.body.socialLinks;
+      }
+
+      if (parsedLinks) {
+        for (const [key, val] of Object.entries(parsedLinks)) {
+          if (val && !isValidHttpUrl(val)) {
+            return res.status(400).json({
+              success: false,
+              message: `${key} must be a valid URL starting with http:// or https://`,
+            });
+          }
+        }
+        business.socialLinks = parsedLinks;
       }
     }
 
@@ -751,6 +820,37 @@ const deleteBusinessReceipt = [
   }),
 ];
 
+// ─── PATCH /api/admin/businesses/:id/payment ─────────────────────────────────
+// Main Admin ONLY: Verify or reject a business listing's payment receipt
+const updateBusinessPaymentStatus = [
+  ...objectIdValidator('id'),
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    const { status } = req.body;
+    if (!status || !['verified', 'rejected'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid payment status. Allowed values: verified, rejected.',
+      });
+    }
+
+    const business = await Business.findById(req.params.id);
+    if (!business) {
+      return res.status(404).json({ success: false, message: 'Business not found.' });
+    }
+
+    business.paymentStatus = status;
+    await business.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Payment status updated to "${status}".`,
+      data: { business },
+    });
+  }),
+];
+
 // ─── GET /api/admin/claims ──────────────────────────────────────────────────
 // Admin: Get all claim requests (with full business contact info and claimant details)
 const getClaimRequests = asyncHandler(async (req, res) => {
@@ -788,10 +888,7 @@ const getClaimRequests = asyncHandler(async (req, res) => {
 // ─── PATCH /api/admin/claims/:id/approve ─────────────────────────────────────
 // Admin: Approve a pending_admin claim request & transfer ownership to claimant
 const approveClaimRequest = asyncHandler(async (req, res) => {
-  const crypto = require('crypto');
   const ClaimRequest = require('../models/ClaimRequest');
-  const Business = require('../models/Business');
-  const User = require('../models/User');
 
   const claim = await ClaimRequest.findById(req.params.id);
   if (!claim) {
@@ -808,6 +905,19 @@ const approveClaimRequest = asyncHandler(async (req, res) => {
   const business = await Business.findById(claim.business);
   if (!business) {
     return res.status(404).json({ success: false, message: 'Associated business not found.' });
+  }
+
+  // FIX 6: Reject approval if business is already claimed
+  if (business.isClaimed || business.claimed) {
+    const isSelfClaim =
+      (claim.claimedBy && String(business.claimedBy) === String(claim.claimedBy)) ||
+      (business.claimedBy && String(business.claimedBy) === String(claim.claimedBy));
+    if (!isSelfClaim) {
+      return res.status(400).json({
+        success: false,
+        message: 'This business has already been claimed.',
+      });
+    }
   }
 
   // Find or create claimant's User account matching the verified email
@@ -838,6 +948,38 @@ const approveClaimRequest = asyncHandler(async (req, res) => {
   claim.completedAt = new Date();
   claim.claimedBy = claimantUser._id;
   await claim.save();
+
+  // FIX 6: On approval, expire/invalidate all other pending claims for the same business
+  await ClaimRequest.updateMany(
+    {
+      business: business._id,
+      _id: { $ne: claim._id },
+      status: { $in: ['pending', 'pending_admin'] },
+    },
+    { status: 'expired' }
+  );
+
+  // FIX 6: Send approval email explaining how to sign in via forgot-password OTP
+  try {
+    const frontendUrl = getFrontendUrl ? getFrontendUrl(req) : (process.env.FRONTEND_URL || 'https://www.bizprimehub.com');
+    const forgotPasswordUrl = `${frontendUrl}/forgot-password`;
+    const loginUrl = `${frontendUrl}/login`;
+
+    await sendEmail({
+      to: claimantEmail,
+      subject: `Business Claim Approved: ${String(business.title || '').replace(/[\r\n]+/g, ' ').trim()}`,
+      html: getClaimApprovedEmailHtml({
+        claimantName: claim.claimantName,
+        businessTitle: business.title,
+        businessSlug: business.slug,
+        forgotPasswordUrl,
+        loginUrl,
+      }),
+      text: `Congratulations ${claim.claimantName || 'Business Owner'}!\n\nYour claim for "${business.title}" on BizPrimeHub has been approved.\n\nTo access your account, please set your password using our Forgot Password flow at: ${forgotPasswordUrl}\n\nOnce set, you can log in at: ${loginUrl}\n\nThank you,\nBizPrimeHub Team`,
+    });
+  } catch (emailErr) {
+    console.error('⚠️ [Claim:Approve] Non-fatal error sending approval email:', emailErr.message);
+  }
 
   res.status(200).json({
     success: true,
@@ -871,6 +1013,25 @@ const rejectClaimRequest = asyncHandler(async (req, res) => {
   claim.status = 'rejected';
   await claim.save();
 
+  // FIX 6: Send rejection email to claimant
+  try {
+    const claimantEmail = (claim.chosenEmail || '').trim().toLowerCase();
+    const business = await Business.findById(claim.business);
+    const businessTitle = business?.title || 'Business';
+
+    await sendEmail({
+      to: claimantEmail,
+      subject: `Business Claim Update: ${String(businessTitle).replace(/[\r\n]+/g, ' ').trim()}`,
+      html: getClaimRejectedEmailHtml({
+        claimantName: claim.claimantName,
+        businessTitle,
+      }),
+      text: `Hello ${claim.claimantName || 'Business Owner'},\n\nYour claim request for "${businessTitle}" on BizPrimeHub could not be approved at this time.\n\nIf you have questions or additional verification documents, please contact support.\n\nThank you,\nBizPrimeHub Team`,
+    });
+  } catch (emailErr) {
+    console.error('⚠️ [Claim:Reject] Non-fatal error sending rejection email:', emailErr.message);
+  }
+
   res.status(200).json({
     success: true,
     message: 'Claim request has been rejected.',
@@ -898,6 +1059,7 @@ module.exports = {
   adminUpdateBusiness,
   getPaymentHistory,
   deleteBusinessReceipt,
+  updateBusinessPaymentStatus,
   getClaimRequests,
   approveClaimRequest,
   rejectClaimRequest,

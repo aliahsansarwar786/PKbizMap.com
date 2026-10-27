@@ -28,6 +28,7 @@ export default function ClaimBusinessModal({ business, isOpen, onClose }) {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [resultMaskedEmail, setResultMaskedEmail] = useState('');
+  const [claimId, setClaimId] = useState('');
 
   if (!isOpen || !business) return null;
 
@@ -52,6 +53,9 @@ export default function ClaimBusinessModal({ business, isOpen, onClose }) {
         phone: phone.trim(),
       });
 
+      if (res.data?.claimId) {
+        setClaimId(res.data.claimId);
+      }
       setResultMaskedEmail(res.data?.maskedEmail || maskEmail(business.email));
       setSubmitted(true);
       toast.success('Verification code sent!');
@@ -64,7 +68,10 @@ export default function ClaimBusinessModal({ business, isOpen, onClose }) {
 
   const handleGoToVerify = () => {
     onClose();
-    router.push('/claim/verify');
+    const params = new URLSearchParams();
+    if (claimId) params.set('claimId', claimId);
+    if (business.email) params.set('email', business.email);
+    router.push(`/claim/verify?${params.toString()}`);
   };
 
   return (

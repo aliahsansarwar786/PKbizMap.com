@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { permanentRedirect } from 'next/navigation';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import { safeJsonLd } from '@/lib/safeJsonLd';
 import BusinessDetail from '@/components/business/BusinessDetail';
 
 interface BusinessDetailPageProps {
@@ -102,15 +103,6 @@ export async function generateMetadata({ params }: BusinessDetailPageProps): Pro
       images: [ogImage],
     },
   };
-}
-
-function safeJsonLd(data: unknown): string {
-  return JSON.stringify(data)
-    .replace(/</g, '\\u003c')
-    .replace(/>/g, '\\u003e')
-    .replace(/&/g, '\\u0026')
-    .replace(/\u2028/g, '\\u2028')
-    .replace(/\u2029/g, '\\u2029');
 }
 
 export default async function BusinessDetailPage({ params }: BusinessDetailPageProps) {

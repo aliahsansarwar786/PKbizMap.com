@@ -7,7 +7,7 @@ const sendEmail = require('../utils/sendEmail');
 const { getClaimVerificationEmailHtml, getNewClaimNotificationHtml } = require('../utils/emailTemplates');
 const PaymentSetting = require('../models/PaymentSetting');
 const getFrontendUrl = require('../utils/getFrontendUrl');
-const { getClientIp } = require('../utils/otpManager');
+const { getClientIp, timingSafeCompare } = require('../utils/otpManager');
 
 // Helper to mask email (e.g. co*****s@domain.com)
 const maskEmail = (email) => {
@@ -188,7 +188,7 @@ const requestClaim = asyncHandler(async (req, res) => {
 });
 
 // ─── POST /api/claims/verify ─────────────────────────────────────────────────
-// Public: Verify 6-digit code only (token links rejected with HTTP 400)
+// Public: Verify 6-digit code only (requires claimId or email; global code-only lookup removed)
 const verifyClaim = asyncHandler(async (req, res) => {
   const { token, code, email, claimId } = req.body;
 
@@ -200,6 +200,14 @@ const verifyClaim = asyncHandler(async (req, res) => {
     });
   }
 
+  // FIX 2: Require claimId (or email) on EVERY verify attempt; reject requests supplying neither with HTTP 400
+  if ((!claimId || !String(claimId).trim()) && (!email || !String(email).trim())) {
+    return res.status(400).json({
+      success: false,
+      message: 'Claim ID or registered email is required for verification.',
+    });
+  }
+
   if (!code || !code.trim()) {
     return res.status(400).json({
       success: false,
@@ -207,65 +215,52 @@ const verifyClaim = asyncHandler(async (req, res) => {
     });
   }
 
-  let claim = null;
-
-  // If claimId or email is provided, identify the specific claim request to track failed attempts
+  // Identify specific claim request by claimId or email (never look up by codeHash alone)
   let candidateClaim = null;
   if (claimId && mongoose.Types.ObjectId.isValid(claimId)) {
-    candidateClaim = await ClaimRequest.findById(claimId).populate('business', 'title slug category address isClaimed claimed email phone');
+    candidateClaim = await ClaimRequest.findById(claimId).populate(
+      'business',
+      'title slug category address isClaimed claimed email'
+    );
   } else if (email && email.trim()) {
     candidateClaim = await ClaimRequest.findOne({
       chosenEmail: email.trim().toLowerCase(),
       status: { $in: ['pending', 'verified', 'pending_admin'] },
-    }).sort({ createdAt: -1 }).populate('business', 'title slug category address isClaimed claimed email phone');
+    })
+      .sort({ createdAt: -1 })
+      .populate('business', 'title slug category address isClaimed claimed email');
   }
 
-  if (candidateClaim) {
-    if ((candidateClaim.failedAttempts || 0) >= 5) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or expired verification code. Please submit a new claim request.',
-      });
-    }
-
-    const codeHash = crypto.createHash('sha256').update(code.trim()).digest('hex');
-    const isCodeMatch = candidateClaim.codeHash && candidateClaim.codeHash === codeHash;
-    const isNotExpired = candidateClaim.expiresAtCode && candidateClaim.expiresAtCode > new Date();
-    const isStatusValid = ['pending', 'verified', 'pending_admin'].includes(candidateClaim.status);
-
-    if (!isCodeMatch || !isNotExpired || !isStatusValid) {
-      candidateClaim.failedAttempts = (candidateClaim.failedAttempts || 0) + 1;
-      await candidateClaim.save();
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or expired verification code. Please submit a new claim request.',
-      });
-    }
-
-    claim = candidateClaim;
-  } else {
-    // Lookup by codeHash if neither claimId nor email was provided
-    const codeHash = crypto.createHash('sha256').update(code.trim()).digest('hex');
-    claim = await ClaimRequest.findOne({
-      codeHash,
-      status: { $in: ['pending', 'verified', 'pending_admin'] },
-      expiresAtCode: { $gt: new Date() },
-    }).populate('business', 'title slug category address isClaimed claimed email phone');
-
-    if (!claim) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or expired verification code. Please submit a new claim request.',
-      });
-    }
-
-    if ((claim.failedAttempts || 0) >= 5) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or expired verification code. Please submit a new claim request.',
-      });
-    }
+  if (!candidateClaim) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid or expired verification code. Please submit a new claim request.',
+    });
   }
+
+  // Enforce 5-attempt lockout
+  if ((candidateClaim.failedAttempts || 0) >= 5) {
+    return res.status(400).json({
+      success: false,
+      message: 'Too many failed verification attempts. This code has been locked. Please submit a new claim request.',
+    });
+  }
+
+  // Compare code hash with timing-safe comparison (reuse timingSafeCompare from otpManager)
+  const isCodeMatch = candidateClaim.codeHash && timingSafeCompare(code.trim(), candidateClaim.codeHash);
+  const isNotExpired = candidateClaim.expiresAtCode && candidateClaim.expiresAtCode > new Date();
+  const isStatusValid = ['pending', 'verified', 'pending_admin'].includes(candidateClaim.status);
+
+  if (!isCodeMatch || !isNotExpired || !isStatusValid) {
+    candidateClaim.failedAttempts = (candidateClaim.failedAttempts || 0) + 1;
+    await candidateClaim.save();
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid or expired verification code. Please submit a new claim request.',
+    });
+  }
+
+  const claim = candidateClaim;
 
   if (claim.business?.isClaimed || claim.business?.claimed) {
     return res.status(400).json({
@@ -274,9 +269,23 @@ const verifyClaim = asyncHandler(async (req, res) => {
     });
   }
 
-  // Clear stored codeHash and expiresAtCode so code cannot be reused (FIX 9)
+  // Clear stored codeHash and expiresAtCode so code cannot be reused
   claim.codeHash = null;
   claim.expiresAtCode = null;
+
+  // Sanitized business object: NEVER return the business phone in verify response
+  const sanitizedBusiness = claim.business
+    ? {
+        _id: claim.business._id,
+        title: claim.business.title,
+        slug: claim.business.slug,
+        category: claim.business.category,
+        address: claim.business.address,
+        isClaimed: claim.business.isClaimed,
+        claimed: claim.business.claimed,
+        email: claim.business.email,
+      }
+    : null;
 
   // Determine path: direct vs registered
   const isDirect =
@@ -299,7 +308,7 @@ const verifyClaim = asyncHandler(async (req, res) => {
         claimId: claim._id,
         chosenEmail: claim.chosenEmail,
         claimantName: claim.claimantName,
-        business: claim.business,
+        business: sanitizedBusiness,
         status: claim.status,
         emailOption: 'direct',
       },
@@ -320,7 +329,7 @@ const verifyClaim = asyncHandler(async (req, res) => {
       claimId: claim._id,
       chosenEmail: claim.chosenEmail,
       claimantName: claim.claimantName,
-      business: claim.business,
+      business: sanitizedBusiness,
       status: claim.status,
       emailOption: 'registered',
     },

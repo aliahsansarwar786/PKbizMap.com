@@ -312,6 +312,7 @@ export const adminAPI = {
   updatePaymentSettings: (data) => api.patch('/admin/settings/payment', data),
   deletePaymentQrCode: () => api.delete('/admin/settings/payment/qr'),
   deleteReceipt: (businessId) => api.delete(`/admin/businesses/${businessId}/receipt`),
+  updatePaymentStatus: (businessId, status) => api.patch(`/admin/businesses/${businessId}/payment`, { status }),
   addPaymentMethod: (formData) => api.post('/admin/settings/payment/methods', formData),
   updatePaymentMethod: (methodId, formData) => api.patch(`/admin/settings/payment/methods/${methodId}`, formData),
   deletePaymentMethod: (methodId) => api.delete(`/admin/settings/payment/methods/${methodId}`),
