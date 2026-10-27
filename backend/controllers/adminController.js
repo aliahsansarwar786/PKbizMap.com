@@ -316,6 +316,7 @@ const approveBusiness = [
     }
 
     business.isApproved = true;
+    business.hiddenBySpam = false;
     await business.save();
 
     logActivity({
@@ -345,7 +346,7 @@ const rejectBusiness = [
 
     const business = await Business.findByIdAndUpdate(
       req.params.id,
-      { isApproved: false },
+      { isApproved: false, hiddenBySpam: false },
       { new: true }
     ).populate('owner', 'name email');
 
