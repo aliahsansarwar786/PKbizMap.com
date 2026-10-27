@@ -55,6 +55,18 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isSpam: {
+      type: Boolean,
+      default: false,
+    },
+    spamReason: {
+      type: String,
+      default: '',
+    },
+    spamAt: {
+      type: Date,
+      default: null,
+    },
     emailVerificationOTP: {
       type: String,
       select: false,

@@ -1,6 +1,7 @@
 const PaymentSetting = require('../models/PaymentSetting');
 const asyncHandler = require('../utils/asyncHandler');
 const cloudinary = require('../config/cloudinary');
+const { logActivity } = require('../utils/activityLogger');
 
 // Helper to validate IBAN and account number
 const validatePaymentMethodData = ({ name, kind, accountTitle, accountValue }) => {
@@ -200,6 +201,16 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
 
   await settings.save();
 
+  logActivity({
+    actorId: req.user?._id,
+    actorName: req.user?.name,
+    action: 'update_payment_settings',
+    targetType: 'settings',
+    targetId: settings._id,
+    targetLabel: 'Payment Settings',
+    details: `Fee: Rs. ${settings.feeAmount}, Enabled: ${settings.isEnabled}`,
+  });
+
   res.status(200).json({
     success: true,
     message: 'Payment settings updated successfully.',
@@ -236,6 +247,16 @@ const deletePaymentQrCode = asyncHandler(async (req, res) => {
 
   settings.qrCode = { url: '', publicId: '' };
   await settings.save();
+
+  logActivity({
+    actorId: req.user?._id,
+    actorName: req.user?.name,
+    action: 'delete_payment_qr',
+    targetType: 'settings',
+    targetId: settings._id,
+    targetLabel: 'Payment Settings',
+    details: 'Deleted payment QR code',
+  });
 
   res.status(200).json({
     success: true,
@@ -316,6 +337,16 @@ const createPaymentMethod = asyncHandler(async (req, res) => {
   await settings.save();
 
   const createdMethod = settings.paymentMethods[settings.paymentMethods.length - 1];
+
+  logActivity({
+    actorId: req.user?._id,
+    actorName: req.user?.name,
+    action: 'create_payment_method',
+    targetType: 'settings',
+    targetId: createdMethod._id,
+    targetLabel: createdMethod.name,
+    details: `Kind: ${createdMethod.kind}, Title: ${createdMethod.accountTitle}`,
+  });
 
   res.status(201).json({
     success: true,
@@ -406,6 +437,16 @@ const updatePaymentMethod = asyncHandler(async (req, res) => {
 
   await settings.save();
 
+  logActivity({
+    actorId: req.user?._id,
+    actorName: req.user?.name,
+    action: 'update_payment_method',
+    targetType: 'settings',
+    targetId: method._id,
+    targetLabel: method.name,
+    details: `Kind: ${method.kind}, Enabled: ${method.isEnabled}`,
+  });
+
   res.status(200).json({
     success: true,
     message: `Payment method "${method.name}" updated successfully.`,
@@ -434,8 +475,20 @@ const deletePaymentMethod = asyncHandler(async (req, res) => {
     });
   }
 
+  const methodName = method.name;
+  const methodIdObj = method._id;
   settings.paymentMethods.pull(methodId);
   await settings.save();
+
+  logActivity({
+    actorId: req.user?._id,
+    actorName: req.user?.name,
+    action: 'delete_payment_method',
+    targetType: 'settings',
+    targetId: methodIdObj,
+    targetLabel: methodName,
+    details: `Deleted payment method ${methodName}`,
+  });
 
   res.status(200).json({
     success: true,
@@ -460,6 +513,16 @@ const togglePaymentMethod = asyncHandler(async (req, res) => {
 
   method.isEnabled = !method.isEnabled;
   await settings.save();
+
+  logActivity({
+    actorId: req.user?._id,
+    actorName: req.user?.name,
+    action: 'toggle_payment_method',
+    targetType: 'settings',
+    targetId: method._id,
+    targetLabel: method.name,
+    details: `Status: ${method.isEnabled ? 'enabled' : 'disabled'}`,
+  });
 
   res.status(200).json({
     success: true,

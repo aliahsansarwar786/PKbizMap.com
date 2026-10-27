@@ -13,7 +13,7 @@ import {
   CreditCard, Eye, Image as ImageIcon, Save, ExternalLink,
   DollarSign, CheckCircle, AlertCircle, Phone, ArrowUpRight,
   QrCode, Upload, MessageSquare, Search, Filter, Plus, Mail, Bell,
-  ArrowLeft, AlertTriangle, ShieldCheck
+  ArrowLeft, AlertTriangle, ShieldCheck, Send, Activity, Download
 } from 'lucide-react';
 import BusinessForm from '@/components/business/BusinessForm';
 
@@ -104,6 +104,13 @@ const TAB_META = {
     borderColor: '#ddd6fe',
     desc: 'Accounts & roles',
   },
+  emails: {
+    icon: Mail,
+    color: '#0284c7',
+    bgColor: '#f0f9ff',
+    borderColor: '#bae6fd',
+    desc: 'Sent logs & composer',
+  },
   'payment-settings': {
     icon: QrCode,
     color: '#16a34a',
@@ -118,7 +125,37 @@ const TAB_META = {
     borderColor: '#bae6fd',
     desc: 'Ownership claims',
   },
+  activity: {
+    icon: Activity,
+    color: '#0891b2',
+    bgColor: '#ecfeff',
+    borderColor: '#a5f3fc',
+    desc: 'Admin audit log',
+  },
 };
+
+const ACTIVITY_ACTIONS = [
+  { value: '', label: 'All Actions' },
+  { value: 'approve_business', label: 'Approve Business' },
+  { value: 'reject_business', label: 'Reject Business' },
+  { value: 'delete_business', label: 'Delete Business' },
+  { value: 'delete_user', label: 'Delete User' },
+  { value: 'change_role', label: 'Change Role' },
+  { value: 'spam_user', label: 'Spam User' },
+  { value: 'unspam_user', label: 'Un-spam User' },
+  { value: 'approve_claim', label: 'Approve Claim' },
+  { value: 'reject_claim', label: 'Reject Claim' },
+  { value: 'verify_payment', label: 'Verify Payment' },
+  { value: 'reject_payment', label: 'Reject Payment' },
+  { value: 'delete_receipt', label: 'Delete Receipt' },
+  { value: 'delete_review', label: 'Delete Review' },
+  { value: 'update_payment_settings', label: 'Update Payment Settings' },
+  { value: 'create_payment_method', label: 'Create Payment Method' },
+  { value: 'update_payment_method', label: 'Update Payment Method' },
+  { value: 'delete_payment_method', label: 'Delete Payment Method' },
+  { value: 'toggle_payment_method', label: 'Toggle Payment Method' },
+  { value: 'delete_payment_qr', label: 'Delete Payment QR' },
+];
 
 export default function AdminDashboardClient() {
   const { user, isAuthenticated, isAdmin, hasAdminAccess, loading: authLoading } = useAuth();
@@ -200,6 +237,9 @@ export default function AdminDashboardClient() {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
   const [paymentSearch, setPaymentSearch] = useState('');
 
+  // Users Tab Search State
+  const [userSearch, setUserSearch] = useState('');
+
   // Admin Edit Business State
   const [editingBusiness, setEditingBusiness] = useState(null);
 
@@ -209,6 +249,73 @@ export default function AdminDashboardClient() {
   // Make Admin Confirmation Dialog State
   const [makeAdminTarget, setMakeAdminTarget] = useState(null);
   const [isPromotingAdmin, setIsPromotingAdmin] = useState(false);
+
+  // Delete User Confirmation Dialog State
+  const [deleteUserTarget, setDeleteUserTarget] = useState(null);
+  const [deleteUserAcknowledged, setDeleteUserAcknowledged] = useState(false);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+
+  // Spam Confirmation Dialog State
+  const [spamTarget, setSpamTarget] = useState(null);
+  const [spamReason, setSpamReason] = useState('');
+  const [isSpamSubmitting, setIsSpamSubmitting] = useState(false);
+  const [unspamLoadingId, setUnspamLoadingId] = useState(null);
+
+  // Emails Tab State
+  const [emailStats, setEmailStats] = useState({ total: 0, today: 0 });
+  const [emailLogs, setEmailLogs] = useState([]);
+  const [emailForm, setEmailForm] = useState({ to: '', subject: '', message: '' });
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [userPickerOpen, setUserPickerOpen] = useState(false);
+  const [userPickerSearch, setUserPickerSearch] = useState('');
+
+  // Activity Log State
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [activityActionFilter, setActivityActionFilter] = useState('');
+
+  // Backup Export State
+  const [isExportingBackup, setIsExportingBackup] = useState(false);
+  const [userPickerResults, setUserPickerResults] = useState([]);
+  const [userPickerLoading, setUserPickerLoading] = useState(false);
+
+  // Close user picker on Escape key
+  useEffect(() => {
+    if (!userPickerOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setUserPickerOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [userPickerOpen]);
+
+  // Fetch users for user picker dropdown
+  useEffect(() => {
+    if (!userPickerOpen) return;
+    let active = true;
+    setUserPickerLoading(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await adminAPI.getUsers({
+          search: userPickerSearch.trim() || undefined,
+          limit: 8,
+        });
+        if (active) {
+          setUserPickerResults(res.data?.users || []);
+        }
+      } catch {
+        if (active) setUserPickerResults([]);
+      } finally {
+        if (active) setUserPickerLoading(false);
+      }
+    }, userPickerSearch ? 300 : 0);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [userPickerOpen, userPickerSearch]);
 
   // Close Make Admin confirmation dialog on Escape key
   useEffect(() => {
@@ -221,6 +328,32 @@ export default function AdminDashboardClient() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [makeAdminTarget, isPromotingAdmin]);
+
+  // Close Delete User confirmation dialog on Escape key
+  useEffect(() => {
+    if (!deleteUserTarget) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !isDeletingUser) {
+        setDeleteUserTarget(null);
+        setDeleteUserAcknowledged(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [deleteUserTarget, isDeletingUser]);
+
+  // Close Spam confirmation dialog on Escape key
+  useEffect(() => {
+    if (!spamTarget) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !isSpamSubmitting) {
+        setSpamTarget(null);
+        setSpamReason('');
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [spamTarget, isSpamSubmitting]);
 
   // Dynamic tabs based on user role & permissions
   const tabs = useMemo(() => {
@@ -248,6 +381,8 @@ export default function AdminDashboardClient() {
     }
     if (isSuperAdmin) {
       list.push({ id: 'users', label: 'Users' });
+      list.push({ id: 'emails', label: 'Emails' });
+      list.push({ id: 'activity', label: 'Activity' });
       list.push({
         id: 'payment-settings',
         label: 'Raast QR Settings',
@@ -330,9 +465,37 @@ export default function AdminDashboardClient() {
         setPagination(res.data.pagination);
       } else if (tab === 'users') {
         if (!isSuperAdmin) return;
-        const res = await adminAPI.getUsers({ page, limit: 10 });
+        const res = await adminAPI.getUsers({
+          page,
+          limit: 10,
+          search: userSearch,
+        });
         setUsers(res.data.users);
         setPagination(res.data.pagination);
+      } else if (tab === 'emails') {
+        if (!isSuperAdmin) return;
+        const [statsRes, logsRes] = await Promise.all([
+          adminAPI.getEmailStats(),
+          adminAPI.getEmailLog({ page, limit: 20 }),
+        ]);
+        const statsData = statsRes.data?.data || statsRes.data || {};
+        setEmailStats({
+          total: typeof statsData.total === 'number' ? statsData.total : 0,
+          today: typeof statsData.today === 'number' ? statsData.today : 0,
+        });
+        const logsData = logsRes.data?.data || logsRes.data || {};
+        setEmailLogs(Array.isArray(logsData.logs) ? logsData.logs : []);
+        setPagination(logsData.pagination || null);
+      } else if (tab === 'activity') {
+        if (!isSuperAdmin) return;
+        const res = await adminAPI.getActivityLog({
+          page,
+          limit: 20,
+          action: activityActionFilter || undefined,
+        });
+        const data = res.data?.data || res.data || {};
+        setActivityLogs(Array.isArray(data.logs) ? data.logs : (Array.isArray(data.activityLogs) ? data.activityLogs : []));
+        setPagination(data.pagination || null);
       } else if (tab === 'payments') {
         if (!isSuperAdmin) return;
         const res = await adminAPI.getPaymentHistory({
@@ -387,9 +550,11 @@ export default function AdminDashboardClient() {
     perms.canApproveListings,
     perms.canDeleteListings,
     perms.canModerateReviews,
+    userSearch,
     reviewSearch,
     paymentStatusFilter,
     paymentSearch,
+    activityActionFilter,
   ]);
 
   useEffect(() => {
@@ -420,6 +585,132 @@ export default function AdminDashboardClient() {
     }
   };
 
+  const handleOpenSpamModal = (biz) => {
+    if (!biz.owner) {
+      toast.error('Listing has no associated owner.');
+      return;
+    }
+    setSpamTarget({
+      user: biz.owner,
+      business: biz,
+    });
+    setSpamReason('');
+  };
+
+  const handleConfirmSpam = async () => {
+    if (!spamTarget?.user?._id) return;
+    const trimmed = spamReason.trim();
+    if (!trimmed) {
+      toast.error('Please enter a reason for flagging this account.');
+      return;
+    }
+    if (trimmed.length > 200) {
+      toast.error('Reason must be at most 200 characters.');
+      return;
+    }
+    setIsSpamSubmitting(true);
+    try {
+      const targetUserId = spamTarget.user._id;
+      await adminAPI.spamUser(targetUserId, trimmed);
+      setBusinesses((prev) =>
+        prev.map((b) => {
+          const ownerId = b.owner?._id || b.owner;
+          if (ownerId === targetUserId) {
+            return {
+              ...b,
+              owner: typeof b.owner === 'object'
+                ? { ...b.owner, isSpam: true, spamReason: trimmed, spamAt: new Date().toISOString() }
+                : b.owner,
+            };
+          }
+          return b;
+        })
+      );
+      setUsers((prev) =>
+        prev.map((u) =>
+          u._id === targetUserId
+            ? { ...u, isSpam: true, spamReason: trimmed, spamAt: new Date().toISOString() }
+            : u
+        )
+      );
+      toast.success('User flagged as spam.');
+      setSpamTarget(null);
+      setSpamReason('');
+    } catch (err) {
+      toast.error(err.message || 'Failed to flag user as spam.');
+    } finally {
+      setIsSpamSubmitting(false);
+    }
+  };
+
+  const handleUnspamUser = async (biz) => {
+    const targetUserId = biz.owner?._id || biz.owner;
+    if (!targetUserId) {
+      toast.error('Listing has no associated owner.');
+      return;
+    }
+    setUnspamLoadingId(targetUserId);
+    try {
+      await adminAPI.unspamUser(targetUserId);
+      setBusinesses((prev) =>
+        prev.map((b) => {
+          const ownerId = b.owner?._id || b.owner;
+          if (ownerId === targetUserId) {
+            return {
+              ...b,
+              owner: typeof b.owner === 'object'
+                ? { ...b.owner, isSpam: false, spamReason: '', spamAt: null }
+                : b.owner,
+            };
+          }
+          return b;
+        })
+      );
+      setUsers((prev) =>
+        prev.map((u) =>
+          u._id === targetUserId
+            ? { ...u, isSpam: false, spamReason: '', spamAt: null }
+            : u
+        )
+      );
+      toast.success('User un-flagged successfully.');
+    } catch (err) {
+      toast.error(err.message || 'Failed to un-flag user.');
+    } finally {
+      setUnspamLoadingId(null);
+    }
+  };
+
+  const handleSendEmail = async (e) => {
+    e.preventDefault();
+    const to = emailForm.to.trim();
+    const subject = emailForm.subject.trim();
+    const message = emailForm.message.trim();
+
+    if (!to || !subject || !message) {
+      toast.error('Recipient, subject, and message are all required.');
+      return;
+    }
+
+    setSendingEmail(true);
+    try {
+      const res = await adminAPI.sendAdminEmail({ to, subject, message });
+      toast.success(res.data?.message || 'Email sent successfully.');
+      setEmailForm({ to: '', subject: '', message: '' });
+      setUserPickerOpen(false);
+      setUserPickerSearch('');
+      if (page === 1) {
+        loadTabData();
+      } else {
+        setPage(1);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to send email.');
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   const handleDeleteBusiness = async (id, title) => {
     if (!confirm(`Permanently delete "${title}"?`)) return;
     try {
@@ -431,14 +722,30 @@ export default function AdminDashboardClient() {
     }
   };
 
-  const handleDeleteUser = async (id, name) => {
-    if (!confirm(`Delete user "${name}" and all their data?`)) return;
+  const handleDeleteUser = (userOrId, name) => {
+    if (userOrId && typeof userOrId === 'object') {
+      setDeleteUserTarget(userOrId);
+    } else {
+      const found = users.find((x) => x._id === userOrId) || { _id: userOrId, name: name || 'User' };
+      setDeleteUserTarget(found);
+    }
+    setDeleteUserAcknowledged(false);
+  };
+
+  const handleConfirmDeleteUser = async () => {
+    if (!deleteUserTarget || !deleteUserAcknowledged || isDeletingUser) return;
+    const targetId = deleteUserTarget._id;
+    setIsDeletingUser(true);
     try {
-      await adminAPI.deleteUser(id);
-      setUsers((prev) => prev.filter((u) => u._id !== id));
+      await adminAPI.deleteUser(targetId);
+      setUsers((prev) => prev.filter((u) => u._id !== targetId));
       toast.success('User deleted.');
+      setDeleteUserTarget(null);
+      setDeleteUserAcknowledged(false);
     } catch (err) {
       toast.error(err.message || 'Failed to delete user.');
+    } finally {
+      setIsDeletingUser(false);
     }
   };
 
@@ -952,6 +1259,20 @@ export default function AdminDashboardClient() {
     }
   };
 
+  // Download full database backup
+  const handleDownloadBackup = async () => {
+    if (!isSuperAdmin) return;
+    setIsExportingBackup(true);
+    try {
+      await adminAPI.exportBackup();
+      toast.success('Backup downloaded successfully!');
+    } catch (err) {
+      toast.error(err.message || 'Failed to download backup.');
+    } finally {
+      setIsExportingBackup(false);
+    }
+  };
+
   if (authLoading || (!isSuperAdmin && !isSubAdmin && !authLoading)) {
     return <div className="section container-max text-center"><p style={{ color: '#6b7280' }}>Loading...</p></div>;
   }
@@ -984,6 +1305,18 @@ export default function AdminDashboardClient() {
               </p>
             </div>
           </div>
+          {isSuperAdmin && (
+            <button
+              type="button"
+              onClick={handleDownloadBackup}
+              disabled={isExportingBackup}
+              className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-3.5 py-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shadow-xs"
+              title="Download full JSON backup"
+            >
+              <Download size={16} />
+              <span>{isExportingBackup ? 'Preparing backup…' : 'Download Backup'}</span>
+            </button>
+          )}
         </div>
 
         {/* Stats */}
@@ -1246,66 +1579,159 @@ export default function AdminDashboardClient() {
                         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl"
                         style={{ background: '#f9fafb', border: '1px solid #f3f4f6' }}
                       >
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p style={{ fontWeight: 600, fontSize: '0.925rem', color: '#1f2937' }} className="truncate">
-                              {biz.title}
-                            </p>
-                            {biz.isApproved ? (
-                              <span className="badge badge-green" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>Approved</span>
-                            ) : (
-                              <span className="badge badge-yellow" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>Pending</span>
-                            )}
-                          </div>
+                        <div className="flex items-start sm:items-center gap-3.5 flex-1 min-w-0">
+                          {/* (a) Receipt thumbnail INLINE */}
+                          {biz.paymentReceipt?.url && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setVerifiedInBankApp(false);
+                                setSelectedReceiptBiz(biz);
+                              }}
+                              className="relative shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden border border-emerald-300 hover:ring-2 hover:ring-emerald-500 transition-all cursor-pointer group bg-white shadow-2xs mt-0.5 sm:mt-0"
+                              title="Click to view payment receipt screenshot"
+                              aria-label="View payment receipt screenshot"
+                            >
+                              <img
+                                src={biz.paymentReceipt.url}
+                                alt="Payment receipt"
+                                loading="lazy"
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
+                              />
+                            </button>
+                          )}
 
-                          <div className="flex flex-wrap items-center gap-2 mt-1">
-                            <span className="badge badge-gray" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
-                              {biz.category}
-                            </span>
-                            <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
-                              {[biz.address?.city, biz.address?.country || 'Pakistan'].filter(Boolean).join(', ')}
-                            </span>
-                            {biz.owner && (
-                              <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
-                                by {biz.owner.name} ({biz.owner.email})
-                              </span>
-                            )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p style={{ fontWeight: 600, fontSize: '0.9375rem', color: '#1f2937' }} className="truncate">
+                                {biz.title}
+                              </p>
+                              {biz.isApproved ? (
+                                <span className="badge badge-green" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>Approved</span>
+                              ) : (
+                                <span className="badge badge-yellow" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>Pending</span>
+                              )}
 
-                            {/* Payment Receipt Badge */}
-                            {biz.paymentReceipt?.url ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setVerifiedInBankApp(false);
-                                  setSelectedReceiptBiz(biz);
-                                }}
-                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold cursor-pointer hover:opacity-90 transition-opacity"
-                                style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}
-                                title="Click to view payment screenshot"
-                              >
-                                <ImageIcon size={12} />
-                                Rs. {biz.paymentAmount || 'Paid'} (View Receipt)
-                              </button>
-                            ) : Number(biz.paymentAmount) > 0 ? (
+                              {/* (d) Waiting-days badge */}
+                              {!biz.isApproved && biz.createdAt && (() => {
+                                const diffDays = Math.floor((new Date() - new Date(biz.createdAt)) / (1000 * 60 * 60 * 24));
+                                if (diffDays < 1) {
+                                  return (
+                                    <span className="badge badge-blue text-[11px]" title="Submitted within the last 24 hours">
+                                      Submitted today
+                                    </span>
+                                  );
+                                }
+                                const badgeClass = diffDays >= 7 ? 'badge-red' : diffDays >= 3 ? 'badge-yellow' : 'badge-gray';
+                                return (
+                                  <span className={`badge ${badgeClass} text-[11px]`} title={`Waiting for review for ${diffDays}d`}>
+                                    Waiting {diffDays}d
+                                  </span>
+                                );
+                              })()}
+                            </div>
+
+                            <div className="flex flex-wrap items-center gap-2 mt-1">
                               <span className="badge badge-gray" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
-                                Fee: Rs. {biz.paymentAmount} (No Receipt)
+                                {biz.category}
                               </span>
-                            ) : (
-                              <span className="badge badge-green" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
-                                Free Listing ({biz.address?.country || 'Free'})
+                              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                {[biz.address?.city, biz.address?.country || 'Pakistan'].filter(Boolean).join(', ')}
                               </span>
-                            )}
+                              {biz.owner && (
+                                <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
+                                  by {biz.owner.name} ({biz.owner.email})
+                                </span>
+                              )}
+                              {biz.owner?.isSpam && (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold"
+                                  style={{ background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca' }}
+                                  title={`Owner flagged as spam${biz.owner.spamReason ? `: ${biz.owner.spamReason}` : ''}`}
+                                >
+                                  <AlertTriangle size={12} /> Spam: {biz.owner.spamReason || 'Flagged'}
+                                </span>
+                              )}
 
-                            {/* Warning Badge if Payment is ON, Fee > 0, and Receipt is Missing */}
-                            {paymentConfig.isEnabled && (biz.paymentAmount === undefined || Number(biz.paymentAmount) > 0) && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url) && !biz.isApproved && (
-                              <span
-                                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold"
-                                style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}
-                                title="Payment screenshot is missing! Do not approve."
-                              >
-                                <AlertCircle size={12} /> Receipt Missing - Do NOT Approve
-                              </span>
-                            )}
+                              {/* (c) Payment-status badge */}
+                              {(() => {
+                                const status = (biz.paymentStatus || 'none').toLowerCase();
+                                if (status === 'verified') {
+                                  return <span className="badge badge-green text-[11px]">Verified</span>;
+                                }
+                                if (status === 'pending') {
+                                  return <span className="badge badge-yellow text-[11px]">Pending</span>;
+                                }
+                                if (status === 'rejected') {
+                                  return <span className="badge badge-red text-[11px]">Rejected</span>;
+                                }
+                                return <span className="badge badge-gray text-[11px]">none</span>;
+                              })()}
+
+                              {/* (e) Payment Receipt Badge with country currency symbol */}
+                              {(() => {
+                                const country = biz.address?.country || 'Pakistan';
+                                const symbol = country === 'UAE' ? 'AED ' : country === 'USA' ? '$' : 'Rs. ';
+
+                                if (biz.paymentReceipt?.url) {
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setVerifiedInBankApp(false);
+                                        setSelectedReceiptBiz(biz);
+                                      }}
+                                      className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold cursor-pointer hover:opacity-90 transition-opacity"
+                                      style={{ background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}
+                                      title="Click to view payment screenshot"
+                                    >
+                                      <ImageIcon size={12} />
+                                      {symbol}{biz.paymentAmount || 'Paid'} (View Receipt)
+                                    </button>
+                                  );
+                                }
+                                if (Number(biz.paymentAmount) > 0) {
+                                  return (
+                                    <span className="badge badge-gray" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
+                                      Fee: {symbol}{biz.paymentAmount} (No Receipt)
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <span className="badge badge-green" style={{ fontSize: '0.7rem', padding: '2px 6px' }}>
+                                    Free Listing ({country})
+                                  </span>
+                                );
+                              })()}
+
+                              {/* (b) Expected-fee line */}
+                              {paymentConfig.isEnabled && (() => {
+                                const country = biz.address?.country || 'Pakistan';
+                                const symbol = country === 'UAE' ? 'AED ' : country === 'USA' ? '$' : 'Rs. ';
+                                const expectedAmount = paymentConfig.fees?.[country]?.amount ?? (country === 'Pakistan' ? (paymentConfig.feeAmount ?? 50) : 0);
+
+                                return (
+                                  <span
+                                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                    style={{ background: '#f3f4f6', color: '#374151', border: '1px solid #e5e7eb' }}
+                                    title={`Configured listing fee for ${country}`}
+                                  >
+                                    Expected fee: {symbol}{expectedAmount}
+                                  </span>
+                                );
+                              })()}
+
+                              {/* Warning Badge if Payment is ON, Fee > 0, and Receipt is Missing */}
+                              {paymentConfig.isEnabled && (biz.paymentAmount === undefined || Number(biz.paymentAmount) > 0) && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url) && !biz.isApproved && (
+                                <span
+                                  className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold"
+                                  style={{ background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca' }}
+                                  title="Payment screenshot is missing! Do not approve."
+                                >
+                                  <AlertCircle size={12} /> Receipt Missing - Do NOT Approve
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
 
@@ -1330,26 +1756,34 @@ export default function AdminDashboardClient() {
                           {!biz.isApproved && (isSuperAdmin || perms.canApproveListings) && (() => {
                             const isPaidBiz = paymentConfig.isEnabled && (biz.paymentAmount === undefined || Number(biz.paymentAmount) > 0);
                             const receiptMissing = isPaidBiz && (biz.paymentStatus === 'none' || !biz.paymentReceipt?.url);
+                            const isOwnerSpam = Boolean(biz.owner?.isSpam);
+                            const cannotApprove = receiptMissing || isOwnerSpam;
 
                             return (
                               <button
                                 onClick={() => {
+                                  if (isOwnerSpam) {
+                                    toast.error('Cannot approve: Business owner is flagged as spam!');
+                                    return;
+                                  }
                                   if (receiptMissing) {
                                     toast.error('Cannot approve: Payment screenshot is missing!');
                                     return;
                                   }
                                   handleApprove(biz._id);
                                 }}
-                                disabled={receiptMissing}
+                                disabled={cannotApprove}
                                 className={`flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-colors min-h-[40px] ${
-                                  receiptMissing
+                                  cannotApprove
                                     ? 'opacity-40 cursor-not-allowed bg-gray-100 text-gray-400 border-gray-200'
                                     : 'bg-green-50 text-green-800 border-green-200 hover:bg-green-100 cursor-pointer shadow-2xs'
                                 }`}
                                 style={{ border: '1px solid' }}
                                 aria-label={`Approve ${biz.title}`}
                                 title={
-                                  receiptMissing
+                                  isOwnerSpam
+                                    ? 'Cannot approve: Owner flagged as spam'
+                                    : receiptMissing
                                     ? 'Receipt Missing - Do NOT Approve'
                                     : `Approve ${biz.title}`
                                 }
@@ -1378,6 +1812,33 @@ export default function AdminDashboardClient() {
                             >
                               <Edit3 size={14} /> Edit
                             </button>
+                          )}
+                          {/* Spam / Un-spam Button (Main Admin ONLY) */}
+                          {isSuperAdmin && biz.owner && (
+                            biz.owner.isSpam ? (
+                              <button
+                                type="button"
+                                onClick={() => handleUnspamUser(biz)}
+                                disabled={unspamLoadingId === (biz.owner._id || biz.owner)}
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-200 cursor-pointer min-h-[40px]"
+                                aria-label={`Un-spam owner of ${biz.title}`}
+                                title="Un-spam User & Restore Listings"
+                              >
+                                <ShieldCheck size={14} />
+                                <span>{unspamLoadingId === (biz.owner._id || biz.owner) ? 'Restoring...' : 'Un-spam'}</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenSpamModal(biz)}
+                                className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors border border-rose-200 cursor-pointer min-h-[40px]"
+                                aria-label={`Flag owner of ${biz.title} as spam`}
+                                title="Flag User as Spam"
+                              >
+                                <AlertTriangle size={14} />
+                                <span>Spam</span>
+                              </button>
+                            )
                           )}
                           <Link
                             href={biz.isApproved ? `/businesses/${biz.slug || biz._id}` : '#'}
@@ -1655,7 +2116,45 @@ export default function AdminDashboardClient() {
                 )}
               </div>
             ) : tab === 'users' ? (
-              <>
+              <div className="space-y-4">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setPage(1);
+                    loadTabData();
+                  }}
+                  className="flex items-center gap-2 max-w-md pb-2"
+                >
+                  <div className="relative flex-1 min-w-0">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={userSearch}
+                      onChange={(e) => {
+                        setUserSearch(e.target.value);
+                        setPage(1);
+                      }}
+                      placeholder="Search users by name or email..."
+                      className="form-input pl-9 text-sm"
+                    />
+                  </div>
+                  <button type="submit" className="btn-secondary text-xs px-3 py-2 font-semibold min-h-[38px] shrink-0">
+                    Search
+                  </button>
+                  {userSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserSearch('');
+                        setPage(1);
+                      }}
+                      className="text-xs text-gray-500 hover:text-gray-700 px-1"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </form>
+
                 {users.length === 0 ? (
                   <div className="text-center py-12">
                     <p style={{ color: '#6b7280' }}>No users found.</p>
@@ -1691,6 +2190,12 @@ export default function AdminDashboardClient() {
                               <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>{u.email}</span>
                               <span style={{ fontSize: '0.75rem', color: '#9ca3af' }}>
                                 Joined: {new Date(u.createdAt).toLocaleDateString()}
+                              </span>
+                              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                • {u.businessCount ?? 0} {u.businessCount === 1 ? 'business' : 'businesses'}
+                              </span>
+                              <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>
+                                • {u.reviewCount ?? 0} {u.reviewCount === 1 ? 'review' : 'reviews'}
                               </span>
                             </div>
                           </div>
@@ -1769,7 +2274,7 @@ export default function AdminDashboardClient() {
 
                                 <button
                                   type="button"
-                                  onClick={() => handleDeleteUser(u._id, u.name)}
+                                  onClick={() => handleDeleteUser(u)}
                                   className="min-h-[44px] px-3.5 py-2.5 rounded-lg text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors inline-flex items-center justify-center gap-1 shrink-0 cursor-pointer"
                                   aria-label={`Delete user ${u.name}`}
                                   title="Delete user"
@@ -1829,7 +2334,387 @@ export default function AdminDashboardClient() {
                     ))}
                   </div>
                 )}
-              </>
+              </div>
+            ) : tab === 'emails' ? (
+              <div className="space-y-6">
+                {/* (a) Counter cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="card p-4 sm:p-5">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs sm:text-sm font-medium text-gray-500">Total emails sent</p>
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-blue-50 text-blue-600">
+                        <Mail size={18} />
+                      </div>
+                    </div>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight">
+                      {emailStats.total}
+                    </p>
+                  </div>
+
+                  <div className="card p-4 sm:p-5">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs sm:text-sm font-medium text-gray-500">Sent today</p>
+                      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 bg-emerald-50 text-emerald-600">
+                        <Clock size={18} />
+                      </div>
+                    </div>
+                    <p className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-tight">
+                      {emailStats.today}
+                    </p>
+                  </div>
+                </div>
+
+                {/* (b) Send email form */}
+                <div className="card p-4 sm:p-6">
+                  <div className="pb-3 mb-4 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                        <Send size={16} className="text-blue-600" />
+                        Send Email
+                      </h3>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Compose and send branded emails directly to users or custom email addresses.
+                      </p>
+                    </div>
+                  </div>
+
+                  <form onSubmit={handleSendEmail} className="space-y-4">
+                    {/* Recipient To field + user-picker */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        To (Recipient Email) <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <input
+                            type="email"
+                            value={emailForm.to}
+                            onChange={(e) => setEmailForm((prev) => ({ ...prev, to: e.target.value }))}
+                            placeholder="Enter recipient email address"
+                            className="flex-1 text-sm px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            required
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setUserPickerOpen(!userPickerOpen)}
+                            className="btn-secondary flex items-center justify-center gap-1.5 text-xs whitespace-nowrap px-3.5 py-2.5 cursor-pointer"
+                          >
+                            <Users size={14} />
+                            <span>{userPickerOpen ? 'Close Picker' : 'Pick Registered User'}</span>
+                          </button>
+                        </div>
+
+                        {userPickerOpen && (
+                          <div className="absolute left-0 right-0 top-full mt-2 z-20 bg-white rounded-xl shadow-xl border border-gray-200 p-3 max-h-72 overflow-hidden flex flex-col">
+                            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                              <span className="text-xs font-semibold text-gray-700">Select user to populate To field</span>
+                              <button
+                                type="button"
+                                onClick={() => setUserPickerOpen(false)}
+                                className="text-gray-400 hover:text-gray-600 p-0.5 cursor-pointer"
+                                aria-label="Close user picker"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                            <div className="relative my-2">
+                              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                              <input
+                                type="text"
+                                value={userPickerSearch}
+                                onChange={(e) => setUserPickerSearch(e.target.value)}
+                                placeholder="Search users by name or email..."
+                                className="w-full text-xs pl-8 pr-3 py-1.5 rounded-md border border-gray-200 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                autoFocus
+                              />
+                            </div>
+                            <div className="overflow-y-auto flex-1 divide-y divide-gray-50">
+                              {userPickerLoading ? (
+                                <p className="text-xs text-gray-400 text-center py-4">Searching users...</p>
+                              ) : userPickerResults.length === 0 ? (
+                                <p className="text-xs text-gray-400 text-center py-4">
+                                  {userPickerSearch.trim() ? 'No users matching search.' : 'No users found.'}
+                                </p>
+                              ) : (
+                                userPickerResults.map((u) => (
+                                  <button
+                                    key={u._id}
+                                    type="button"
+                                    onClick={() => {
+                                      setEmailForm((prev) => ({ ...prev, to: u.email }));
+                                      setUserPickerOpen(false);
+                                      setUserPickerSearch('');
+                                    }}
+                                    className="w-full text-left p-2 hover:bg-blue-50/60 rounded-md transition-colors flex items-center justify-between gap-2 cursor-pointer"
+                                  >
+                                    <div className="min-w-0">
+                                      <p className="text-xs font-medium text-gray-900 truncate">{u.name}</p>
+                                      <p className="text-[11px] text-gray-500 truncate">{u.email}</p>
+                                    </div>
+                                    {u.role && (
+                                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${u.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'}`}>
+                                        {u.role}
+                                      </span>
+                                    )}
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Subject input */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-gray-700">
+                          Subject <span className="text-red-500">*</span>
+                        </label>
+                        <span className="text-[11px] text-gray-400">
+                          {emailForm.subject.length}/200
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        maxLength={200}
+                        value={emailForm.subject}
+                        onChange={(e) => setEmailForm((prev) => ({ ...prev, subject: e.target.value }))}
+                        placeholder="e.g. Important update regarding your business listing"
+                        className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                        required
+                      />
+                    </div>
+
+                    {/* Message textarea */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-semibold text-gray-700">
+                          Message <span className="text-red-500">*</span>
+                        </label>
+                        <span className="text-[11px] text-gray-400">
+                          {emailForm.message.length}/5000
+                        </span>
+                      </div>
+                      <textarea
+                        rows={5}
+                        maxLength={5000}
+                        value={emailForm.message}
+                        onChange={(e) => setEmailForm((prev) => ({ ...prev, message: e.target.value }))}
+                        placeholder="Type your message here..."
+                        className="w-full text-sm px-3.5 py-2.5 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white resize-y"
+                        required
+                      />
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="submit"
+                        disabled={sendingEmail || !emailForm.to.trim() || !emailForm.subject.trim() || !emailForm.message.trim()}
+                        className="btn-primary flex items-center gap-2 px-5 py-2.5 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      >
+                        <Send size={15} />
+                        <span>{sendingEmail ? 'Sending...' : 'Send Email'}</span>
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* (c) Sent-email log table */}
+                <div className="card overflow-hidden">
+                  <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-gray-900">Sent Email Log</h3>
+                      <p className="text-xs text-gray-500">Record of outgoing emails dispatched through the platform.</p>
+                    </div>
+                    {pagination?.totalResults != null && (
+                      <span className="badge badge-gray text-xs">
+                        {pagination.totalResults} total
+                      </span>
+                    )}
+                  </div>
+
+                  {emailLogs.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Mail size={40} className="text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500 text-sm">No email logs recorded yet.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-gray-200 text-gray-600 font-semibold text-[11px] uppercase tracking-wider">
+                            <th className="py-3 px-4">To</th>
+                            <th className="py-3 px-4">Subject</th>
+                            <th className="py-3 px-4">Type</th>
+                            <th className="py-3 px-4">Status</th>
+                            <th className="py-3 px-4">Date</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 bg-white">
+                          {emailLogs.map((log) => (
+                            <tr key={log._id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="py-3 px-4 font-medium text-gray-900 break-all">{log.to}</td>
+                              <td className="py-3 px-4 text-gray-700 max-w-xs truncate" title={log.subject}>
+                                {log.subject}
+                              </td>
+                              <td className="py-3 px-4">
+                                <span
+                                  className={`badge ${
+                                    log.type === 'manual'
+                                      ? 'badge-blue'
+                                      : log.type === 'spam'
+                                      ? 'badge-red'
+                                      : log.type === 'unspam'
+                                      ? 'badge-green'
+                                      : 'badge-gray'
+                                  } capitalize`}
+                                >
+                                  {log.type === 'unspam' ? 'Un-spam' : log.type}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4">
+                                <span
+                                  className={`badge ${log.status === 'sent' ? 'badge-green' : 'badge-red'} capitalize`}
+                                >
+                                  {log.status}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-gray-500 whitespace-nowrap">
+                                {new Date(log.createdAt).toLocaleString(undefined, {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : tab === 'activity' ? (
+              <div className="space-y-6">
+                {/* Action-filter dropdown header */}
+                <div className="card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+                      <Activity size={18} className="text-cyan-600" />
+                      Admin Activity Log
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      Immutable audit trail of administrative actions and system updates.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Filter size={15} className="text-gray-400 shrink-0" />
+                    <select
+                      value={activityActionFilter}
+                      onChange={(e) => {
+                        setActivityActionFilter(e.target.value);
+                        setPage(1);
+                      }}
+                      className="text-xs sm:text-sm px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
+                      aria-label="Filter activity by action"
+                    >
+                      {ACTIVITY_ACTIONS.map((act) => (
+                        <option key={act.value} value={act.value}>
+                          {act.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Activity Log Table */}
+                <div className="card overflow-hidden">
+                  <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-base font-bold text-gray-900">Audit Trail</h3>
+                      <p className="text-xs text-gray-500">Record of actions performed by administrators.</p>
+                    </div>
+                    {pagination?.totalResults != null && (
+                      <span className="badge badge-gray text-xs">
+                        {pagination.totalResults} {pagination.totalResults === 1 ? 'action' : 'actions'}
+                      </span>
+                    )}
+                  </div>
+
+                  {activityLogs.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Activity size={40} className="text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500 text-sm">No activity recorded yet.</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs sm:text-sm">
+                        <thead>
+                          <tr className="bg-slate-50 border-b border-gray-200 text-gray-600 font-semibold text-[11px] uppercase tracking-wider">
+                            <th className="py-3 px-4">Date</th>
+                            <th className="py-3 px-4">Admin</th>
+                            <th className="py-3 px-4">Action</th>
+                            <th className="py-3 px-4">Target</th>
+                            <th className="py-3 px-4">Details</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100 bg-white">
+                          {activityLogs.map((log) => {
+                            const actionLabel = ACTIVITY_ACTIONS.find((a) => a.value === log.action)?.label || log.action;
+                            const isDanger =
+                              log.action.startsWith('delete_') ||
+                              log.action.startsWith('reject_') ||
+                              log.action === 'spam_user';
+                            const isSuccess =
+                              log.action.startsWith('approve_') ||
+                              log.action.startsWith('verify_') ||
+                              log.action === 'unspam_user';
+                            const badgeClass = isDanger
+                              ? 'badge-red'
+                              : isSuccess
+                              ? 'badge-green'
+                              : 'badge-blue';
+
+                            return (
+                              <tr key={log._id} className="hover:bg-slate-50/50 transition-colors">
+                                <td className="py-3 px-4 text-gray-500 whitespace-nowrap">
+                                  {new Date(log.createdAt).toLocaleString(undefined, {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </td>
+                                <td className="py-3 px-4 font-medium text-gray-900 whitespace-nowrap">
+                                  {log.actorName || log.actor?.name || 'Admin'}
+                                </td>
+                                <td className="py-3 px-4 whitespace-nowrap">
+                                  <span className={`badge ${badgeClass}`}>
+                                    {actionLabel}
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="flex flex-col">
+                                    <span className="font-medium text-gray-800 break-all">{log.targetLabel || '—'}</span>
+                                    <span className="text-[10px] text-gray-400 capitalize">{log.targetType}</span>
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 text-gray-600 max-w-xs break-words">
+                                  {log.details || '—'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
             ) : tab === 'payment-settings' ? (
               /* Payment Settings Panel */
               <div className="max-w-3xl mx-auto py-2 space-y-6">
@@ -2678,7 +3563,7 @@ export default function AdminDashboardClient() {
                   Raast Payment Screenshot
                 </h3>
                 <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                  {selectedReceiptBiz.title} • Fee: Rs. {selectedReceiptBiz.paymentAmount || 500} • Status: <span className="capitalize font-semibold text-gray-800">{selectedReceiptBiz.paymentStatus || 'pending'}</span>
+                  {selectedReceiptBiz.title} • Fee: {selectedReceiptBiz.address?.country === 'UAE' ? 'AED ' : selectedReceiptBiz.address?.country === 'USA' ? '$' : 'Rs. '}{selectedReceiptBiz.paymentAmount || 500} • Status: <span className="capitalize font-semibold text-gray-800">{selectedReceiptBiz.paymentStatus || 'pending'}</span>
                 </p>
               </div>
               <button
@@ -2955,6 +3840,256 @@ export default function AdminDashboardClient() {
               >
                 <Shield size={14} />
                 <span>{isPromotingAdmin ? 'Granting Access...' : 'Yes, Make Admin'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal: Mark User as Spam */}
+      {spamTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
+          onClick={() => {
+            if (!isSpamSubmitting) {
+              setSpamTarget(null);
+              setSpamReason('');
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="spam-user-modal-title"
+        >
+          <div
+            className="relative bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-gray-100 my-8 animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header / Icon & Close Button */}
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="w-11 h-11 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shrink-0 shadow-2xs">
+                <AlertTriangle size={22} className="text-red-600" />
+              </div>
+              <button
+                type="button"
+                disabled={isSpamSubmitting}
+                onClick={() => {
+                  setSpamTarget(null);
+                  setSpamReason('');
+                }}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                style={{ border: 'none', cursor: 'pointer' }}
+                aria-label="Close dialog"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Warning Title */}
+            <h3
+              id="spam-user-modal-title"
+              className="text-lg sm:text-xl font-bold text-gray-950 leading-snug mb-2"
+            >
+              Flag User as Spam?
+            </h3>
+
+            {/* Target User Info */}
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200/80 mb-3 text-xs sm:text-sm">
+              <span className="text-gray-500">Target User: </span>
+              <span className="font-bold text-gray-900">{spamTarget.user?.name || 'User'}</span>
+              <span className="text-gray-500 block truncate text-xs mt-0.5">{spamTarget.user?.email}</span>
+            </div>
+
+            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-3">
+              Flagging this user will execute the following actions:
+            </p>
+
+            <ul className="text-xs sm:text-sm text-gray-600 space-y-1.5 mb-4 pl-1">
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                <span>Mark user as <strong>spam</strong> and block future registrations with this email.</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                <span><strong>Hide all approved business listings</strong> owned by this user from public view.</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                <span>Send notification email with WhatsApp contact info for appeals.</span>
+              </li>
+            </ul>
+
+            {/* Reason Input (Required) */}
+            <div className="mb-5">
+              <label htmlFor="spam-reason-input" className="block text-xs sm:text-sm font-semibold text-gray-800 mb-1.5">
+                Reason for flagging <span className="text-red-500">*</span>
+                <span className="font-normal text-gray-500 text-xs ml-1">(max 200 chars)</span>
+              </label>
+              <textarea
+                id="spam-reason-input"
+                rows={3}
+                maxLength={200}
+                value={spamReason}
+                onChange={(e) => setSpamReason(e.target.value)}
+                placeholder="Enter a reason (e.g., Fake listings, abusive behavior, promotional spam)..."
+                className="w-full text-xs sm:text-sm p-3 rounded-xl border border-gray-300 focus:outline-hidden focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none text-gray-900 placeholder:text-gray-400"
+                disabled={isSpamSubmitting}
+                autoFocus
+              />
+              <div className="flex justify-between items-center text-[11px] text-gray-500 mt-1">
+                <span>Required field</span>
+                <span>{spamReason.length}/200</span>
+              </div>
+            </div>
+
+            {/* Actions: Cancel and Confirm */}
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 sm:gap-3">
+              <button
+                type="button"
+                disabled={isSpamSubmitting}
+                onClick={() => {
+                  setSpamTarget(null);
+                  setSpamReason('');
+                }}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 transition-colors cursor-pointer min-h-[44px] text-center"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isSpamSubmitting || !spamReason.trim()}
+                onClick={handleConfirmSpam}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-red-600 hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer min-h-[44px] shadow-sm flex items-center justify-center gap-1.5"
+              >
+                <AlertTriangle size={14} />
+                <span>{isSpamSubmitting ? 'Flagging User...' : 'Flag as Spam'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal: Delete User Permanently */}
+      {deleteUserTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
+          onClick={() => {
+            if (!isDeletingUser) {
+              setDeleteUserTarget(null);
+              setDeleteUserAcknowledged(false);
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-user-modal-title"
+        >
+          <div
+            className="relative bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-gray-100 my-8 animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header / Icon & Close Button */}
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="w-11 h-11 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shrink-0 shadow-2xs">
+                <Trash2 size={22} className="text-red-600" />
+              </div>
+              <button
+                type="button"
+                disabled={isDeletingUser}
+                onClick={() => {
+                  setDeleteUserTarget(null);
+                  setDeleteUserAcknowledged(false);
+                }}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                style={{ border: 'none', cursor: 'pointer' }}
+                aria-label="Close dialog"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Warning Title */}
+            <h3
+              id="delete-user-modal-title"
+              className="text-lg sm:text-xl font-bold text-gray-950 leading-snug mb-2"
+            >
+              Permanently delete this user?
+            </h3>
+
+            {/* Target User Info & Counts */}
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200/80 mb-3 text-xs sm:text-sm space-y-1.5">
+              <div>
+                <span className="text-gray-500">Target User: </span>
+                <span className="font-bold text-gray-900">{deleteUserTarget.name}</span>
+                <span className="text-gray-500 block truncate text-xs mt-0.5">{deleteUserTarget.email}</span>
+              </div>
+              <div className="flex items-center gap-4 pt-1.5 border-t border-gray-200 text-xs">
+                <span className="text-gray-600">
+                  Businesses: <strong className="text-gray-900">{deleteUserTarget.businessCount ?? 0}</strong>
+                </span>
+                <span className="text-gray-600">
+                  Reviews: <strong className="text-gray-900">{deleteUserTarget.reviewCount ?? 0}</strong>
+                </span>
+              </div>
+            </div>
+
+            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-3">
+              This action is a <strong>hard delete</strong> and <strong>cannot be undone</strong>. Deleting this account permanently removes:
+            </p>
+
+            <ul className="text-xs sm:text-sm text-gray-600 space-y-1.5 mb-4 pl-1">
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                <span>The user account and profile data</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                <span><strong>ALL business listings</strong> owned by this user (including all uploaded Cloudinary images and payment receipts)</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />
+                <span><strong>ALL reviews</strong> submitted by this user</span>
+              </li>
+            </ul>
+
+            <div className="p-3 bg-red-50/80 border border-red-200/90 rounded-xl text-xs text-red-900 leading-relaxed mb-4">
+              ⚠️ <strong>Critical Warning:</strong> Once deleted, all associated listings, photos, reviews, and transaction records will be permanently erased. There is no way to recover this data.
+            </div>
+
+            {/* Checkbox Acknowledgment */}
+            <label className="flex items-start gap-2.5 p-3 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer mb-5">
+              <input
+                type="checkbox"
+                id="delete-user-ack-checkbox"
+                checked={deleteUserAcknowledged}
+                onChange={(e) => setDeleteUserAcknowledged(e.target.checked)}
+                disabled={isDeletingUser}
+                className="mt-0.5 rounded text-red-600 focus:ring-red-500 w-4 h-4 cursor-pointer"
+              />
+              <span className="text-xs font-semibold text-gray-800 select-none">
+                I understand this cannot be undone
+              </span>
+            </label>
+
+            {/* Actions: Cancel and Confirm / Delete permanently */}
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 sm:gap-3">
+              <button
+                type="button"
+                disabled={isDeletingUser}
+                onClick={() => {
+                  setDeleteUserTarget(null);
+                  setDeleteUserAcknowledged(false);
+                }}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 transition-colors cursor-pointer min-h-[44px] text-center"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!deleteUserAcknowledged || isDeletingUser}
+                onClick={handleConfirmDeleteUser}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-red-600 hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer min-h-[44px] shadow-sm flex items-center justify-center gap-1.5"
+              >
+                <Trash2 size={14} />
+                <span>{isDeletingUser ? 'Deleting Permanently...' : 'Delete permanently'}</span>
               </button>
             </div>
           </div>

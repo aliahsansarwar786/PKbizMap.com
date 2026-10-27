@@ -122,6 +122,10 @@ const businessSchema = new mongoose.Schema(
       type: Boolean,
       default: false, // All new businesses start unapproved
     },
+    hiddenBySpam: {
+      type: Boolean,
+      default: false,
+    },
     // Denormalized average rating for fast queries
     averageRating: {
       type: Number,

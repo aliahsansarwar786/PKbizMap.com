@@ -921,6 +921,247 @@ const getClaimRejectedEmailHtml = ({ claimantName, businessTitle }) => {
   `.trim();
 };
 
+/**
+ * Generates the Spam Notice Email HTML
+ * @param {Object} params
+ * @param {string} [params.name]
+ * @param {string} [params.reason]
+ * @returns {string} HTML string
+ */
+const getSpamNoticeHtml = ({ name, reason } = {}) => {
+  const safeName = escapeHtml(name || 'there');
+  const safeReason = escapeHtml(reason || 'Violation of platform policies');
+  const waNum = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || process.env.WHATSAPP_NUMBER || '').trim();
+
+  if (!waNum) {
+    console.warn('⚠️ [EmailTemplates:SpamNotice] WhatsApp number is not configured in environment variables.');
+  }
+
+  const contactHtml = waNum
+    ? `
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: #4b5563; line-height: 1.6;">
+          If you believe this was done by mistake, or if you would like to appeal this decision, please contact the website owner directly:
+        </p>
+        <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; margin: 20px 0; font-size: 14px; color: #111827; font-weight: 600;">
+          WhatsApp: ${escapeHtml(waNum)}
+        </div>
+      `
+    : `
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: #4b5563; line-height: 1.6;">
+          If you believe this was done by mistake, or if you would like to appeal this decision, please contact the website owner.
+        </p>
+      `;
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account Notice - BizPrimeHub</title>
+</head>
+<body style="${getBaseStyles()} padding: 32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #991b1b 0%, #dc2626 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">
+          BizPrimeHub
+        </h1>
+        <p style="color: #fecaca; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+          Account Status Notification
+        </p>
+      </td>
+    </tr>
+
+    <!-- Body Content -->
+    <tr>
+      <td style="padding: 32px 28px;">
+        <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #111827;">
+          Hello ${safeName},
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; color: #4b5563;">
+          Your account has been flagged as spam and your email is blocked from BizPrimeHub.
+        </p>
+        <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 14px 16px; border-radius: 6px; margin: 20px 0;">
+          <p style="margin: 0; font-size: 14px; color: #991b1b; font-weight: 600;">
+            Reason for action:
+          </p>
+          <p style="margin: 6px 0 0 0; font-size: 14px; color: #7f1d1d;">
+            ${safeReason}
+          </p>
+        </div>
+        <p style="margin: 0 0 20px 0; font-size: 14px; color: #4b5563; line-height: 1.6;">
+          As a consequence of this action, any active business listings associated with your account have been hidden from public view.
+        </p>
+        ${contactHtml}
+        <p style="margin: 24px 0 0 0; font-size: 13px; color: #6b7280; border-top: 1px solid #f3f4f6; padding-top: 20px;">
+          BizPrimeHub Trust &amp; Safety Team
+        </p>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f9fafb; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+          &copy; ${new Date().getFullYear()} BizPrimeHub. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+};
+
+/**
+ * Generates the Un-spam / Account Restored Notice Email HTML
+ * @param {Object} params
+ * @param {string} [params.name]
+ * @returns {string} HTML string
+ */
+const getUnspamNoticeHtml = ({ name } = {}) => {
+  const safeName = escapeHtml(name || 'there');
+  const waNum = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || process.env.WHATSAPP_NUMBER || '').trim();
+
+  if (!waNum) {
+    console.warn('⚠️ [EmailTemplates:UnspamNotice] WhatsApp number is not configured in environment variables.');
+  }
+
+  const contactHtml = waNum
+    ? `
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: #4b5563; line-height: 1.6;">
+          If you encounter any issues or have any questions, you can contact our support team:
+        </p>
+        <div style="background-color: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 16px; margin: 20px 0; font-size: 14px; color: #111827; font-weight: 600;">
+          WhatsApp: ${escapeHtml(waNum)}
+        </div>
+      `
+    : `
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: #4b5563; line-height: 1.6;">
+          If you encounter any issues or have any questions, please contact our support team.
+        </p>
+      `;
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account Restored - BizPrimeHub</title>
+</head>
+<body style="${getBaseStyles()} padding: 32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">
+          BizPrimeHub
+        </h1>
+        <p style="color: #d1fae5; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+          Account Status Notification
+        </p>
+      </td>
+    </tr>
+
+    <!-- Body Content -->
+    <tr>
+      <td style="padding: 32px 28px;">
+        <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #111827;">
+          Hello ${safeName},
+        </h2>
+        <p style="margin: 0 0 16px 0; font-size: 15px; color: #4b5563;">
+          We are pleased to inform you that your account has been restored and you can use BizPrimeHub normally again.
+        </p>
+        <p style="margin: 0 0 20px 0; font-size: 14px; color: #4b5563; line-height: 1.6;">
+          Any business listings that were hidden due to the spam flag have now been restored and are publicly visible.
+        </p>
+        ${contactHtml}
+        <p style="margin: 24px 0 0 0; font-size: 13px; color: #6b7280; border-top: 1px solid #f3f4f6; padding-top: 20px;">
+          Thank you for being a part of BizPrimeHub.<br>
+          BizPrimeHub Team
+        </p>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f9fafb; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+          &copy; ${new Date().getFullYear()} BizPrimeHub. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+};
+
+/**
+ * Generates the Admin Manual Email HTML
+ * @param {Object} params
+ * @param {string} params.subject
+ * @param {string} params.message
+ * @returns {string} HTML string
+ */
+const getAdminManualEmailHtml = ({ subject, message }) => {
+  const safeSubject = escapeHtml(subject || 'Message from BizPrimeHub');
+  const formattedMessage = escapeHtml(message || '').replace(/\r?\n/g, '<br>');
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${safeSubject}</title>
+</head>
+<body style="${getBaseStyles()} padding: 32px 16px;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
+    <!-- Header -->
+    <tr>
+      <td style="background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); padding: 32px 24px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">
+          BizPrimeHub
+        </h1>
+        <p style="color: #bfdbfe; margin: 6px 0 0 0; font-size: 13px; font-weight: 500;">
+          Direct Administration Message
+        </p>
+      </td>
+    </tr>
+
+    <!-- Body Content -->
+    <tr>
+      <td style="padding: 32px 28px;">
+        <h2 style="margin: 0 0 16px 0; font-size: 20px; font-weight: 700; color: #111827;">
+          ${safeSubject}
+        </h2>
+        <div style="font-size: 15px; color: #374151; line-height: 1.7; margin: 0 0 24px 0;">
+          ${formattedMessage}
+        </div>
+        <p style="margin: 24px 0 0 0; font-size: 13px; color: #6b7280; border-top: 1px solid #f3f4f6; padding-top: 20px;">
+          BizPrimeHub Team
+        </p>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="background-color: #f9fafb; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="margin: 0; font-size: 12px; color: #9ca3af;">
+          &copy; ${new Date().getFullYear()} BizPrimeHub. All rights reserved.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `.trim();
+};
+
 module.exports = {
   escapeHtml,
   getWelcomeEmailHtml,
@@ -933,6 +1174,9 @@ module.exports = {
   getNewClaimNotificationHtml,
   getClaimApprovedEmailHtml,
   getClaimRejectedEmailHtml,
+  getSpamNoticeHtml,
+  getUnspamNoticeHtml,
+  getAdminManualEmailHtml,
 };
 
 

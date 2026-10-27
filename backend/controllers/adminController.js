@@ -3,13 +3,22 @@ const User = require('../models/User');
 const Business = require('../models/Business');
 const Review = require('../models/Review');
 const PaymentSetting = require('../models/PaymentSetting');
+const SpamBlockedEmail = require('../models/SpamBlockedEmail');
+const EmailLog = require('../models/EmailLog');
 const asyncHandler = require('../utils/asyncHandler');
 const cloudinary = require('../config/cloudinary');
 const escapeRegex = require('../utils/escapeRegex');
 const sendEmail = require('../utils/sendEmail');
-const { getClaimApprovedEmailHtml, getClaimRejectedEmailHtml } = require('../utils/emailTemplates');
+const {
+  getClaimApprovedEmailHtml,
+  getClaimRejectedEmailHtml,
+  getSpamNoticeHtml,
+  getUnspamNoticeHtml,
+  getAdminManualEmailHtml,
+} = require('../utils/emailTemplates');
 const getFrontendUrl = require('../utils/getFrontendUrl');
 const { validate, objectIdValidator, updateBusinessValidator } = require('../utils/validators');
+const { logActivity } = require('../utils/activityLogger');
 
 const isValidHttpUrl = (str) => {
   if (!str || typeof str !== 'string') return true;
@@ -127,11 +136,25 @@ const getUsers = asyncHandler(async (req, res) => {
     User.countDocuments(queryObj),
   ]);
 
+  const usersWithCounts = await Promise.all(
+    users.map(async (u) => {
+      const [businessCount, reviewCount] = await Promise.all([
+        Business.countDocuments({ owner: u._id }),
+        Review.countDocuments({ user: u._id }),
+      ]);
+      return {
+        ...u,
+        businessCount,
+        reviewCount,
+      };
+    })
+  );
+
   res.status(200).json({
     success: true,
     message: 'Users retrieved successfully.',
     data: {
-      users,
+      users: usersWithCounts,
       pagination: {
         currentPage: pageNum,
         totalPages: Math.ceil(total / limitNum),
@@ -225,8 +248,8 @@ const getPendingBusinesses = asyncHandler(async (req, res) => {
 
   const [businesses, total] = await Promise.all([
     Business.find({ isApproved: false })
-      .populate('owner', 'name email')
-      .sort('-createdAt')
+      .populate('owner', '_id name email isSpam spamReason')
+      .sort('createdAt')
       .skip(skip)
       .limit(limitNum)
       .lean(),
@@ -257,9 +280,21 @@ const approveBusiness = [
   asyncHandler(async (req, res) => {
     validate(req);
 
-    const business = await Business.findById(req.params.id).populate('owner', 'name email');
+    const business = await Business.findById(req.params.id).populate('owner', 'name email isSpam');
     if (!business) {
       return res.status(404).json({ success: false, message: 'Business not found.' });
+    }
+
+    // Enforcement: Reject approval if business owner is flagged as spam
+    const ownerDoc = business.owner && business.owner.isSpam !== undefined
+      ? business.owner
+      : (business.owner ? await User.findById(business.owner).select('isSpam') : null);
+
+    if (ownerDoc?.isSpam) {
+      return res.status(403).json({
+        success: false,
+        message: 'Cannot approve listing: the business owner has been flagged as spam.',
+      });
     }
 
     // FIX 4: approveBusiness must require paymentStatus === 'verified' whenever the
@@ -282,6 +317,16 @@ const approveBusiness = [
 
     business.isApproved = true;
     await business.save();
+
+    logActivity({
+      actorId: req.user?._id,
+      actorName: req.user?.name,
+      action: 'approve_business',
+      targetType: 'business',
+      targetId: business._id,
+      targetLabel: business.title,
+      details: 'Approved listing',
+    });
 
     res.status(200).json({
       success: true,
@@ -308,6 +353,16 @@ const rejectBusiness = [
       return res.status(404).json({ success: false, message: 'Business not found.' });
     }
 
+    logActivity({
+      actorId: req.user?._id,
+      actorName: req.user?.name,
+      action: 'reject_business',
+      targetType: 'business',
+      targetId: business._id,
+      targetLabel: business.title,
+      details: req.body?.reason ? String(req.body.reason).trim().slice(0, 200) : 'Rejected listing',
+    });
+
     res.status(200).json({
       success: true,
       message: `"${business.title}" has been rejected.`,
@@ -328,6 +383,9 @@ const adminDeleteBusiness = [
       return res.status(404).json({ success: false, message: 'Business not found.' });
     }
 
+    const businessTitle = business.title;
+    const businessId = business._id;
+
     // Delete all Cloudinary images and receipt
     const deletePromises = business.images.map((img) =>
       cloudinary.uploader.destroy(img.publicId).catch((err) => {
@@ -346,6 +404,16 @@ const adminDeleteBusiness = [
     // Delete all reviews
     await Review.deleteMany({ business: business._id });
     await Business.findByIdAndDelete(req.params.id);
+
+    logActivity({
+      actorId: req.user?._id,
+      actorName: req.user?.name,
+      action: 'delete_business',
+      targetType: 'business',
+      targetId: businessId,
+      targetLabel: businessTitle,
+      details: 'Deleted business listing',
+    });
 
     res.status(200).json({
       success: true,
@@ -409,6 +477,16 @@ const updateUserRole = [
     }
 
     await targetUser.save();
+
+    logActivity({
+      actorId: req.user?._id,
+      actorName: req.user?.name,
+      action: 'change_role',
+      targetType: 'user',
+      targetId: targetUser._id,
+      targetLabel: `${targetUser.name} (${targetUser.email})`,
+      details: `Changed role to ${role}`,
+    });
 
     res.status(200).json({
       success: true,
@@ -525,7 +603,28 @@ const deleteUser = [
 
     // Delete user's reviews
     await Review.deleteMany({ user: req.params.id });
+
+    // If the deleted user was spam-flagged, record their email in the blocklist collection
+    if (user.isSpam && user.email) {
+      const normalizedEmail = user.email.toLowerCase().trim();
+      await SpamBlockedEmail.findOneAndUpdate(
+        { email: normalizedEmail },
+        { email: normalizedEmail },
+        { upsert: true, new: true }
+      );
+    }
+
     await User.findByIdAndDelete(req.params.id);
+
+    logActivity({
+      actorId: req.user?._id,
+      actorName: req.user?.name,
+      action: 'delete_user',
+      targetType: 'user',
+      targetId: user._id,
+      targetLabel: `${user.name} (${user.email})`,
+      details: 'Deleted user and associated data',
+    });
 
     res.status(200).json({
       success: true,
@@ -533,6 +632,371 @@ const deleteUser = [
     });
   }),
 ];
+
+// ─── PATCH /api/admin/users/:id/spam ─────────────────────────────────────────
+// Main Admin: Flag a user as spam, hide approved listings, send notice
+const spamUser = [
+  ...objectIdValidator('id'),
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    // Refuse self-flagging
+    if (req.params.id === req.user._id.toString()) {
+      return res.status(400).json({
+        success: false,
+        message: 'You cannot flag your own account as spam.',
+      });
+    }
+
+    // Reason is REQUIRED, short text, max 200 chars, trimmed
+    const rawReason = req.body?.reason;
+    if (!rawReason || typeof rawReason !== 'string' || !rawReason.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Spam reason is required.',
+      });
+    }
+
+    const trimmedReason = rawReason.trim();
+    if (trimmedReason.length > 200) {
+      return res.status(400).json({
+        success: false,
+        message: 'Spam reason must be at most 200 characters.',
+      });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    // If user is already flagged -> 400
+    if (user.isSpam) {
+      return res.status(400).json({
+        success: false,
+        message: 'User is already flagged as spam.',
+      });
+    }
+
+    // Refuse flagging the last remaining admin
+    if (user.role === 'admin') {
+      const adminCount = await User.countDocuments({ role: 'admin' });
+      if (adminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot flag the last remaining admin as spam.',
+        });
+      }
+    }
+
+    // Effects in this order:
+    // (a) set user isSpam=true, spamReason=reason, spamAt=now
+    user.isSpam = true;
+    user.spamReason = trimmedReason;
+    user.spamAt = new Date();
+    await user.save();
+
+    // (b) for every APPROVED business owned by the user: set isApproved=false AND hiddenBySpam=true
+    await Business.updateMany(
+      { owner: user._id, isApproved: true },
+      { isApproved: false, hiddenBySpam: true }
+    );
+
+    // (c) send the spam email via the existing sendEmail (best-effort)
+    try {
+      const waNum = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || process.env.WHATSAPP_NUMBER || '').trim();
+      if (!waNum) {
+        console.warn('⚠️ [User:Spam] WhatsApp number is not configured in environment variables.');
+      }
+      const contactText = waNum
+        ? `\nIf you believe this was done by mistake, or if you would like to appeal this decision, please contact the website owner directly.\nWhatsApp: ${waNum}`
+        : '\nIf you believe this was done by mistake, or if you would like to appeal this decision, please contact the website owner.';
+
+      await sendEmail({
+        to: user.email,
+        subject: 'Notice: Your BizPrimeHub Account Has Been Flagged',
+        html: getSpamNoticeHtml({
+          name: user.name,
+          reason: trimmedReason,
+        }),
+        text: `Hello ${user.name || 'User'},\n\nYour account has been flagged as spam and your email is blocked from BizPrimeHub.\nReason: ${trimmedReason}\n\nAny active business listings associated with your account have been hidden.\n${contactText}\n\nThank you,\nBizPrimeHub Team`,
+        type: 'spam',
+        sentBy: req.user._id,
+      });
+    } catch (emailErr) {
+      console.error('⚠️ [User:Spam] Non-fatal error sending spam notice email:', emailErr.message);
+    }
+
+    // (d) return the updated user
+    logActivity({
+      actorId: req.user?._id,
+      actorName: req.user?.name,
+      action: 'spam_user',
+      targetType: 'user',
+      targetId: user._id,
+      targetLabel: `${user.name} (${user.email})`,
+      details: trimmedReason,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'User has been flagged as spam successfully.',
+      data: { user },
+    });
+  }),
+];
+
+// ─── PATCH /api/admin/users/:id/unspam ───────────────────────────────────────
+// Main Admin: Un-flag a user, restore listings hidden by spam action, send notice
+const unspamUser = [
+  ...objectIdValidator('id'),
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    // If the user is not flagged -> 400
+    if (!user.isSpam) {
+      return res.status(400).json({
+        success: false,
+        message: 'User is not flagged as spam.',
+      });
+    }
+
+    // Effects in this order:
+    // (a) set isSpam=false, clear spamReason and spamAt
+    user.isSpam = false;
+    user.spamReason = '';
+    user.spamAt = null;
+    await user.save();
+
+    // (b) for the owner's businesses with hiddenBySpam=true: set isApproved=true AND hiddenBySpam=false
+    await Business.updateMany(
+      { owner: user._id, hiddenBySpam: true },
+      { isApproved: true, hiddenBySpam: false }
+    );
+
+    // (c) send the un-spam email (best-effort)
+    try {
+      const waNum = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || process.env.WHATSAPP_NUMBER || '').trim();
+      if (!waNum) {
+        console.warn('⚠️ [User:Unspam] WhatsApp number is not configured in environment variables.');
+      }
+      const contactText = waNum
+        ? `\nIf you encounter any issues or have any questions, you can contact our support team:\nWhatsApp: ${waNum}`
+        : '\nIf you encounter any issues or have any questions, please contact our support team.';
+
+      await sendEmail({
+        to: user.email,
+        subject: 'Notice: Your BizPrimeHub Account Has Been Restored',
+        html: getUnspamNoticeHtml({
+          name: user.name,
+        }),
+        text: `Hello ${user.name || 'User'},\n\nYour account has been restored and you can use BizPrimeHub normally again. Any business listings hidden due to the spam flag have been reactivated.\n${contactText}\n\nThank you,\nBizPrimeHub Team`,
+        type: 'unspam',
+        sentBy: req.user._id,
+      });
+    } catch (emailErr) {
+      console.error('⚠️ [User:Unspam] Non-fatal error sending un-spam notice email:', emailErr.message);
+    }
+
+    // (d) return the updated user
+    logActivity({
+      actorId: req.user?._id,
+      actorName: req.user?.name,
+      action: 'unspam_user',
+      targetType: 'user',
+      targetId: user._id,
+      targetLabel: `${user.name} (${user.email})`,
+      details: 'Account unflagged and listings restored',
+    });
+
+    res.status(200).json({
+      success: true,
+      message: 'User has been un-flagged successfully.',
+      data: { user },
+    });
+  }),
+];
+
+// ─── GET /api/admin/emails/stats ──────────────────────────────────────────────
+// Main Admin: Email metrics (total all-time and today)
+const getEmailStats = asyncHandler(async (req, res) => {
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+
+  const [total, today] = await Promise.all([
+    EmailLog.countDocuments(),
+    EmailLog.countDocuments({ createdAt: { $gte: startOfToday } }),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    message: 'Email statistics retrieved successfully.',
+    data: {
+      total,
+      today,
+    },
+    total,
+    today,
+  });
+});
+
+// ─── GET /api/admin/emails/log ────────────────────────────────────────────────
+// Main Admin: Paginated sent email log
+const getEmailLog = asyncHandler(async (req, res) => {
+  const { page = 1, limit = 20 } = req.query;
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+  const skip = (pageNum - 1) * limitNum;
+
+  const [logs, total] = await Promise.all([
+    EmailLog.find()
+      .populate('sentBy', 'name email')
+      .sort('-createdAt')
+      .skip(skip)
+      .limit(limitNum)
+      .lean(),
+    EmailLog.countDocuments(),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    message: 'Email logs retrieved successfully.',
+    data: {
+      logs,
+      emailLogs: logs,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(total / limitNum),
+        totalResults: total,
+        resultsPerPage: limitNum,
+        hasNextPage: pageNum < Math.ceil(total / limitNum),
+        hasPrevPage: pageNum > 1,
+      },
+    },
+  });
+});
+
+// ─── POST /api/admin/emails/send ──────────────────────────────────────────────
+// Main Admin: Manually send a direct branded email to a single recipient
+const sendAdminEmail = asyncHandler(async (req, res) => {
+  const { to, subject, message } = req.body || {};
+
+  // All three required, trimmed, non-empty
+  if (!to || typeof to !== 'string' || !to.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Recipient email address is required.',
+    });
+  }
+
+  if (!subject || typeof subject !== 'string' || !subject.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Email subject is required.',
+    });
+  }
+
+  if (!message || typeof message !== 'string' || !message.trim()) {
+    return res.status(400).json({
+      success: false,
+      message: 'Email message is required.',
+    });
+  }
+
+  const trimmedTo = to.trim();
+  const trimmedSubject = subject.trim();
+  const trimmedMessage = message.trim();
+
+  // Validate single email address: reject arrays, commas, semicolons, whitespace, no bulk sending
+  if (Array.isArray(to) || trimmedTo.includes(',') || trimmedTo.includes(';') || /\s/.test(trimmedTo)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Only a single recipient email address is allowed. Bulk sending is not permitted.',
+    });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(trimmedTo)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Please provide a valid recipient email address.',
+    });
+  }
+
+  if (trimmedSubject.length > 200) {
+    return res.status(400).json({
+      success: false,
+      message: 'Subject must be at most 200 characters.',
+    });
+  }
+
+  if (trimmedMessage.length > 5000) {
+    return res.status(400).json({
+      success: false,
+      message: 'Message must be at most 5000 characters.',
+    });
+  }
+
+  const normalizedTo = trimmedTo.toLowerCase();
+
+  const html = getAdminManualEmailHtml({
+    subject: trimmedSubject,
+    message: trimmedMessage,
+  });
+
+  const sent = await sendEmail({
+    to: normalizedTo,
+    subject: trimmedSubject,
+    html,
+    text: trimmedMessage,
+    type: 'manual',
+    sentBy: req.user._id,
+  });
+
+  // Fetch or construct the log entry
+  let log = await EmailLog.findOne({
+    to: normalizedTo,
+    type: 'manual',
+    sentBy: req.user._id,
+  })
+    .sort('-createdAt')
+    .lean();
+
+  if (!log) {
+    await new Promise((r) => setTimeout(r, 60));
+    log = await EmailLog.findOne({
+      to: normalizedTo,
+      type: 'manual',
+      sentBy: req.user._id,
+    })
+      .sort('-createdAt')
+      .lean();
+  }
+
+  const logEntry = log || {
+    to: normalizedTo,
+    subject: trimmedSubject,
+    type: 'manual',
+    status: sent ? 'sent' : 'failed',
+    sentBy: req.user._id,
+    createdAt: new Date(),
+  };
+
+  res.status(200).json({
+    success: true,
+    message: sent ? 'Email sent successfully.' : 'Email queued / processed.',
+    data: {
+      sent,
+      log: logEntry,
+    },
+    log: logEntry,
+  });
+});
 
 // ─── GET /api/admin/reviews ───────────────────────────────────────────────────
 // Admin: Get all reviews with search and pagination
@@ -582,10 +1046,23 @@ const adminDeleteReview = [
   asyncHandler(async (req, res) => {
     validate(req);
 
-    const review = await Review.findByIdAndDelete(req.params.id);
+    const review = await Review.findById(req.params.id).populate('business', 'title');
     if (!review) {
       return res.status(404).json({ success: false, message: 'Review not found.' });
     }
+
+    const businessTitle = review.business?.title || 'Review';
+    await Review.findByIdAndDelete(req.params.id);
+
+    logActivity({
+      actorId: req.user?._id,
+      actorName: req.user?.name,
+      action: 'delete_review',
+      targetType: 'review',
+      targetId: review._id,
+      targetLabel: businessTitle,
+      details: review.comment ? String(review.comment).slice(0, 100) : 'Deleted review',
+    });
 
     res.status(200).json({
       success: true,
@@ -812,6 +1289,16 @@ const deleteBusinessReceipt = [
     business.paymentStatus = 'none';
     await business.save();
 
+    logActivity({
+      actorId: req.user?._id,
+      actorName: req.user?.name,
+      action: 'delete_receipt',
+      targetType: 'business',
+      targetId: business._id,
+      targetLabel: business.title,
+      details: 'Deleted payment receipt',
+    });
+
     res.status(200).json({
       success: true,
       message: 'Payment receipt deleted successfully.',
@@ -842,6 +1329,16 @@ const updateBusinessPaymentStatus = [
 
     business.paymentStatus = status;
     await business.save();
+
+    logActivity({
+      actorId: req.user?._id,
+      actorName: req.user?.name,
+      action: status === 'verified' ? 'verify_payment' : 'reject_payment',
+      targetType: 'payment',
+      targetId: business._id,
+      targetLabel: business.title,
+      details: status === 'verified' ? 'Payment receipt verified' : 'Payment receipt rejected',
+    });
 
     res.status(200).json({
       success: true,
@@ -981,6 +1478,16 @@ const approveClaimRequest = asyncHandler(async (req, res) => {
     console.error('⚠️ [Claim:Approve] Non-fatal error sending approval email:', emailErr.message);
   }
 
+  logActivity({
+    actorId: req.user?._id,
+    actorName: req.user?.name,
+    action: 'approve_claim',
+    targetType: 'claim',
+    targetId: claim._id,
+    targetLabel: business.title,
+    details: `Claim approved for ${claimantEmail}`,
+  });
+
   res.status(200).json({
     success: true,
     message: `Claim approved successfully. Ownership of "${business.title}" has been transferred to ${claimantEmail}.`,
@@ -1013,6 +1520,19 @@ const rejectClaimRequest = asyncHandler(async (req, res) => {
   claim.status = 'rejected';
   await claim.save();
 
+  const business = await Business.findById(claim.business).select('title');
+  const businessTitle = business?.title || 'Business';
+
+  logActivity({
+    actorId: req.user?._id,
+    actorName: req.user?.name,
+    action: 'reject_claim',
+    targetType: 'claim',
+    targetId: claim._id,
+    targetLabel: businessTitle,
+    details: 'Claim request rejected',
+  });
+
   // FIX 6: Send rejection email to claimant
   try {
     const claimantEmail = (claim.chosenEmail || '').trim().toLowerCase();
@@ -1042,6 +1562,129 @@ const rejectClaimRequest = asyncHandler(async (req, res) => {
   });
 });
 
+// ─── GET /api/admin/activity-log ──────────────────────────────────────────────
+// Main Admin ONLY: Paginated admin activity log
+const getActivityLog = asyncHandler(async (req, res) => {
+  const ActivityLog = require('../models/ActivityLog');
+  const { page = 1, limit = 20, action } = req.query;
+  const pageNum = Math.max(1, parseInt(page, 10) || 1);
+  const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+  const skip = (pageNum - 1) * limitNum;
+
+  const queryObj = {};
+  if (action && typeof action === 'string' && action.trim() && action !== 'all') {
+    queryObj.action = action.trim();
+  }
+
+  const [logs, total] = await Promise.all([
+    ActivityLog.find(queryObj)
+      .populate('actor', 'name email role')
+      .sort('-createdAt')
+      .skip(skip)
+      .limit(limitNum)
+      .lean(),
+    ActivityLog.countDocuments(queryObj),
+  ]);
+
+  res.status(200).json({
+    success: true,
+    message: 'Activity log retrieved successfully.',
+    data: {
+      logs,
+      activityLogs: logs,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(total / limitNum),
+        totalResults: total,
+        resultsPerPage: limitNum,
+        hasNextPage: pageNum < Math.ceil(total / limitNum),
+        hasPrevPage: pageNum > 1,
+      },
+    },
+  });
+});
+
+// ─── GET /api/admin/export ───────────────────────────────────────────────────
+// Main Admin ONLY: One-click full JSON backup export with strict secret exclusion
+const exportBackup = asyncHandler(async (req, res) => {
+  const SENSITIVE_USER_FIELDS = [
+    'password',
+    'emailVerificationOTP',
+    'emailVerificationOTPExpires',
+    'emailVerificationOTPAttempts',
+    'emailVerificationOTPBlockedUntil',
+    'emailVerificationLastResend',
+    'resetPasswordOTP',
+    'resetPasswordOTPExpires',
+    'resetPasswordOTPAttempts',
+    'resetPasswordOTPBlockedUntil',
+    'resetPasswordLastResend',
+    'resetPasswordTokenHash',
+    'resetPasswordTokenExpires',
+    'resetPasswordToken',
+    'resetPasswordExpire',
+    'passwordChangedAt',
+    'loginAttempts',
+    'lockUntil',
+    '__v',
+  ];
+
+  // 1. Query users WITHOUT .lean() so the User model's toJSON stripping applies
+  // Businesses and reviews: full documents minus __v (plain ObjectIds, no population)
+  const [userDocs, rawBusinesses, rawReviews] = await Promise.all([
+    User.find().sort({ _id: 1 }),
+    Business.find().sort({ _id: 1 }).lean(),
+    Review.find().sort({ _id: 1 }).lean(),
+  ]);
+
+  // 2. Defensively delete every secret field by name before serializing
+  const sanitizedUsers = userDocs.map((doc) => {
+    const obj = doc && typeof doc.toJSON === 'function' ? doc.toJSON() : (doc && typeof doc.toObject === 'function' ? doc.toObject() : { ...doc });
+    for (const field of SENSITIVE_USER_FIELDS) {
+      delete obj[field];
+    }
+    return obj;
+  });
+
+  // 3. Clean businesses minus __v
+  const sanitizedBusinesses = rawBusinesses.map((biz) => {
+    const { __v, ...rest } = biz;
+    return rest;
+  });
+
+  // 4. Clean reviews minus __v
+  const sanitizedReviews = rawReviews.map((rev) => {
+    const { __v, ...rest } = rev;
+    return rest;
+  });
+
+  // 5. Construct snapshot payload
+  const exportedAt = new Date().toISOString();
+  const payload = {
+    exportedAt,
+    counts: {
+      users: sanitizedUsers.length,
+      businesses: sanitizedBusinesses.length,
+      reviews: sanitizedReviews.length,
+    },
+    users: sanitizedUsers,
+    businesses: sanitizedBusinesses,
+    reviews: sanitizedReviews,
+  };
+
+  // 6. Set response headers Content-Type and Content-Disposition (UTC date)
+  const now = new Date();
+  const yyyy = now.getUTCFullYear();
+  const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(now.getUTCDate()).padStart(2, '0');
+  const filename = `bizprimehub-backup-${yyyy}-${mm}-${dd}.json`;
+
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+  return res.status(200).json(payload);
+});
+
 module.exports = {
   getDashboard,
   getUsers,
@@ -1063,6 +1706,13 @@ module.exports = {
   getClaimRequests,
   approveClaimRequest,
   rejectClaimRequest,
+  spamUser,
+  unspamUser,
+  getEmailStats,
+  getEmailLog,
+  sendAdminEmail,
+  getActivityLog,
+  exportBackup,
 };
 
 

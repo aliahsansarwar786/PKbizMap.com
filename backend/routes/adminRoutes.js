@@ -21,6 +21,13 @@ const {
   getClaimRequests,
   approveClaimRequest,
   rejectClaimRequest,
+  spamUser,
+  unspamUser,
+  getEmailStats,
+  getEmailLog,
+  sendAdminEmail,
+  getActivityLog,
+  exportBackup,
 } = require('../controllers/adminController');
 const {
   getPaymentSettings,
@@ -60,7 +67,20 @@ router.patch('/businesses/:id/payment', authorize('admin'), updateBusinessPaymen
 router.get('/users', authorize('admin'), getUsers);
 router.patch('/users/:id/role', authorize('admin'), updateUserRole);
 router.patch('/users/:id/permissions', authorize('admin'), updateUserPermissions);
+router.patch('/users/:id/spam', authorize('admin'), spamUser);
+router.patch('/users/:id/unspam', authorize('admin'), unspamUser);
 router.delete('/users/:id', authorize('admin'), deleteUser);
+
+// ─── Email Management & Logs (Main Admin ONLY) ────────────────────────────────
+router.get('/emails/stats', authorize('admin'), getEmailStats);
+router.get('/emails/log', authorize('admin'), getEmailLog);
+router.post('/emails/send', authorize('admin'), sendAdminEmail);
+
+// ─── Activity Log (Main Admin ONLY) ──────────────────────────────────────────
+router.get('/activity-log', authorize('admin'), getActivityLog);
+
+// ─── Export / Backup (Main Admin ONLY) ────────────────────────────────────────
+router.get('/export', authorize('admin'), exportBackup);
 
 // ─── Businesses Management (Permission controlled) ────────────────────────────
 router.get('/businesses/pending', checkPermission('canApproveListings'), getPendingBusinesses);

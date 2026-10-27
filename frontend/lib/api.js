@@ -290,6 +290,8 @@ export const adminAPI = {
   },
   approveBusiness: (id) => api.patch(`/admin/businesses/${id}/approve`),
   rejectBusiness: (id) => api.patch(`/admin/businesses/${id}/reject`),
+  spamUser: (id, reason) => api.patch(`/admin/users/${id}/spam`, { reason }),
+  unspamUser: (id) => api.patch(`/admin/users/${id}/unspam`),
   updateUserRole: (id, role, permissions) => api.patch(`/admin/users/${id}/role`, { role, permissions }),
   updateUserPermissions: (id, permissions) => api.patch(`/admin/users/${id}/permissions`, { permissions }),
   deleteUser: (id) => api.delete(`/admin/users/${id}`),
@@ -320,6 +322,60 @@ export const adminAPI = {
   getClaims: () => api.get('/admin/claims'),
   approveClaim: (claimId) => api.patch(`/admin/claims/${claimId}/approve`),
   rejectClaim: (claimId) => api.patch(`/admin/claims/${claimId}/reject`),
+  getEmailStats: () => api.get('/admin/emails/stats'),
+  getEmailLog: (params = {}) => {
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v !== '' && v != null))
+    ).toString();
+    return api.get(`/admin/emails/log${qs ? `?${qs}` : ''}`);
+  },
+  sendAdminEmail: (data) => api.post('/admin/emails/send', data),
+  getActivityLog: (params = {}) => {
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params).filter(([, v]) => v !== '' && v != null))
+    ).toString();
+    return api.get(`/admin/activity-log${qs ? `?${qs}` : ''}`);
+  },
+  exportBackup: async () => {
+    const url = `${API_URL}/admin/export`;
+    const response = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store',
+    });
+
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new ApiError(errData.message || 'Failed to download backup', response.status);
+    }
+
+    const disposition = response.headers.get('Content-Disposition') || response.headers.get('content-disposition');
+    let filename = '';
+    if (disposition) {
+      const match = disposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
+      if (match && match[1]) {
+        filename = match[1].replace(/['"]/g, '').trim();
+      }
+    }
+    if (!filename) {
+      const now = new Date();
+      const yyyy = now.getUTCFullYear();
+      const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(now.getUTCDate()).padStart(2, '0');
+      filename = `bizprimehub-backup-${yyyy}-${mm}-${dd}.json`;
+    }
+
+    const blob = await response.blob();
+    const objectUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(objectUrl);
+    return { success: true, filename };
+  },
 };
 
 // ─── Claim API ────────────────────────────────────────────────────────────────

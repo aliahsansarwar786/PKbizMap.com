@@ -204,6 +204,24 @@ const getBusiness = [
 const createBusiness = [
   ...businessValidator,
   asyncHandler(async (req, res) => {
+    // Spam account enforcement: prevent flagged accounts from creating businesses
+    if (req.user?.isSpam) {
+      const imageFiles = Array.isArray(req.files) ? req.files : (req.files?.images || []);
+      if (imageFiles.length > 0) {
+        await Promise.all(
+          imageFiles.map((file) => cloudinary.uploader.destroy(file.filename).catch(() => {}))
+        );
+      }
+      const receiptFile = req.files?.paymentReceipt?.[0];
+      if (receiptFile?.filename) {
+        await cloudinary.uploader.destroy(receiptFile.filename).catch(() => {});
+      }
+      return res.status(403).json({
+        success: false,
+        message: 'Your account is restricted from creating new business listings.',
+      });
+    }
+
     // Require verified email before adding a business (admins and subadmins bypass)
     const isAdmin = req.user?.role === 'admin' || req.user?.role === 'subadmin';
     if (!isAdmin && !req.user?.emailVerified) {

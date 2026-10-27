@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const User = require('../models/User');
+const SpamBlockedEmail = require('../models/SpamBlockedEmail');
 const asyncHandler = require('../utils/asyncHandler');
 const generateTokenAndSend = require('../utils/generateToken');
 const { setCsrfToken } = require('../middlewares/csrfProtection');
@@ -69,6 +70,12 @@ const register = [
       requiresVerification: true,
       email: normalizedEmail,
     };
+
+    // Check if email is in spam blocklist or belongs to a spam-flagged account
+    const isBlocked = await SpamBlockedEmail.findOne({ email: normalizedEmail });
+    if (isBlocked) {
+      return res.status(201).json(genericSuccess);
+    }
 
     // Check if user exists: if so, return the same generic success response without creating duplicate
     const existingUser = await User.findOne({ email: normalizedEmail });

@@ -112,7 +112,7 @@ const { getClientIp } = require('./utils/otpManager');
 // General API rate limit
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+  max: 101,
   keyGenerator: (req) => getClientIp(req),
   message: {
     success: false,
