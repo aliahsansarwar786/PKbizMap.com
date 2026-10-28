@@ -11,11 +11,8 @@ import {
   Mail,
   Activity,
   QrCode,
-  LayoutGrid,
-  MapPin,
   BarChart3,
   Settings,
-  FileText,
   ExternalLink,
   Download,
   LogOut,
@@ -65,7 +62,7 @@ export default function AdminBottomNav({
 
   const isDashboardActive = activeSection === 'dashboard' && !['all-businesses', 'payments'].includes(activeTab);
   const isBusinessesActive = activeSection === 'dashboard' && activeTab === 'all-businesses';
-  const isPaymentsActive = activeSection === 'dashboard' && activeTab === 'payments';
+  const isPaymentsActive = activeSection === 'payments' || (activeSection === 'dashboard' && activeTab === 'payments');
   const isMoreActive = isMoreOpen || (!isDashboardActive && !isBusinessesActive && !isPaymentsActive);
 
   return (
@@ -102,7 +99,7 @@ export default function AdminBottomNav({
         {/* 3. Payments */}
         <button
           type="button"
-          onClick={() => handleNavClick('dashboard', 'payments')}
+          onClick={() => handleNavClick('payments')}
           className={`flex flex-col items-center justify-center flex-1 h-full min-h-[44px] cursor-pointer transition-colors ${
             isPaymentsActive ? 'text-blue-600 font-semibold' : 'text-gray-500 hover:text-gray-900'
           }`}
@@ -253,12 +250,8 @@ export default function AdminBottomNav({
               </p>
               <div className="space-y-1">
                 {[
-                  { id: 'categories', label: 'Categories', icon: LayoutGrid },
-                  { id: 'locations', label: 'Locations', icon: MapPin },
-                  { id: 'reports', label: 'Reports', icon: BarChart3 },
-                  { id: 'settings', label: 'Settings', icon: Settings },
-                  { id: 'manage-pages', label: 'Manage Pages', icon: FileText },
-                  { id: 'jazzcash-settings', label: 'JazzCash Settings', icon: CreditCard },
+                  ...(isSuperAdmin ? [{ id: 'reports', label: 'Reports', icon: BarChart3 }] : []),
+                  ...(isSuperAdmin ? [{ id: 'settings', label: 'Settings', icon: Settings }] : []),
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
@@ -278,7 +271,7 @@ export default function AdminBottomNav({
                   type="button"
                   onClick={() => {
                     setIsMoreOpen(false);
-                    if (typeof window !== 'undefined') window.open('/', '_blank');
+                    if (typeof window !== 'undefined') window.open('/', '_blank', 'noopener,noreferrer');
                   }}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-gray-700 hover:bg-gray-100 min-h-[44px] cursor-pointer"
                 >

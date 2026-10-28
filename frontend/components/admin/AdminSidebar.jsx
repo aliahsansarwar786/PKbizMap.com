@@ -1,16 +1,13 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   LayoutDashboard,
   Building2,
   Users,
   CreditCard,
-  LayoutGrid,
-  MapPin,
   BarChart3,
   Settings,
-  FileText,
   ExternalLink,
   Store,
   X,
@@ -24,8 +21,21 @@ export default function AdminSidebar({
   isOpen = false,
   onClose,
   dashStats,
+  isSuperAdmin = true,
 }) {
-  const mainNavItems = [
+  // Close drawer on Escape key
+  useEffect(() => {
+    if (!isMobileDrawer || !isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && onClose) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMobileDrawer, isOpen, onClose]);
+
+  const allNavItems = [
     {
       id: 'dashboard',
       label: 'Dashboard',
@@ -51,48 +61,27 @@ export default function AdminSidebar({
       id: 'payments',
       label: 'Payments',
       icon: CreditCard,
-      section: 'dashboard',
-      targetTab: 'payments',
-    },
-    {
-      id: 'categories',
-      label: 'Categories',
-      icon: LayoutGrid,
-      section: 'categories',
-    },
-    {
-      id: 'locations',
-      label: 'Locations',
-      icon: MapPin,
-      section: 'locations',
+      section: 'payments',
     },
     {
       id: 'reports',
       label: 'Reports',
       icon: BarChart3,
       section: 'reports',
+      superAdminOnly: true,
     },
     {
       id: 'settings',
       label: 'Settings',
       icon: Settings,
       section: 'settings',
+      superAdminOnly: true,
     },
   ];
 
+  const mainNavItems = allNavItems.filter((item) => !item.superAdminOnly || isSuperAdmin);
+
   const adminToolItems = [
-    {
-      id: 'jazzcash-settings',
-      label: 'JazzCash Settings',
-      icon: CreditCard,
-      section: 'jazzcash-settings',
-    },
-    {
-      id: 'manage-pages',
-      label: 'Manage Pages',
-      icon: FileText,
-      section: 'manage-pages',
-    },
     {
       id: 'view-website',
       label: 'View Website',
@@ -123,16 +112,13 @@ export default function AdminSidebar({
     }
     // Dashboard section items
     if (item.id === 'dashboard') {
-      return activeSection === 'dashboard' && !['all-businesses', 'users', 'payments'].includes(activeTab);
+      return activeSection === 'dashboard' && !['all-businesses', 'users'].includes(activeTab);
     }
     if (item.id === 'businesses') {
       return activeSection === 'dashboard' && activeTab === 'all-businesses';
     }
     if (item.id === 'users') {
       return activeSection === 'dashboard' && activeTab === 'users';
-    }
-    if (item.id === 'payments') {
-      return activeSection === 'dashboard' && activeTab === 'payments';
     }
     return false;
   };

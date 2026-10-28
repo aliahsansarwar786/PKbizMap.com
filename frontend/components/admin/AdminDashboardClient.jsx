@@ -14,11 +14,10 @@ import {
   DollarSign, CheckCircle, AlertCircle, Phone, ArrowUpRight,
   QrCode, Upload, MessageSquare, Search, Filter, Plus, Mail, Bell,
   ArrowLeft, AlertTriangle, ShieldCheck, Send, Activity, Download,
-  Calendar
+  Calendar, Menu, BarChart3, RefreshCw
 } from 'lucide-react';
 import BusinessForm from '@/components/business/BusinessForm';
 import AdminSidebar from './AdminSidebar';
-import AdminHeader from './AdminHeader';
 import AdminQuotaCards from './AdminQuotaCards';
 import AdminBottomNav from './AdminBottomNav';
 import AdminPlaceholderView from './AdminPlaceholderView';
@@ -54,7 +53,7 @@ const normalizePaymentConfig = (s) => {
   const legacyPakistanFee = s.fees?.Pakistan?.amount ?? s.feeAmount ?? 50;
   return {
     ...s,
-    ownerNotificationEmail: s.ownerNotificationEmail ?? 'ahsanalisarwar555@gmail.com',
+    ownerNotificationEmail: s.ownerNotificationEmail ?? '',
     ownerNotificationsEnabled: s.ownerNotificationsEnabled !== false,
     feeAmount: legacyPakistanFee,
     fees: {
@@ -175,7 +174,7 @@ const ACTIVITY_ACTIONS = [
 ];
 
 export default function AdminDashboardClient() {
-  const { user, isAuthenticated, isAdmin, hasAdminAccess, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, isAdmin, hasAdminAccess, loading: authLoading, logout } = useAuth();
   const router = useRouter();
 
   const isSuperAdmin = user?.role === 'admin';
@@ -189,7 +188,6 @@ export default function AdminDashboardClient() {
   }, [user?.permissions]);
 
   const [tab, setTab] = useState('pending');
-  const [mobileActive, setMobileActive] = useState(false);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
@@ -208,7 +206,7 @@ export default function AdminDashboardClient() {
   // Raast QR Payment Gateway Settings & Payment Methods
   const [paymentConfig, setPaymentConfig] = useState({
     isEnabled: false,
-    ownerNotificationEmail: 'ahsanalisarwar555@gmail.com',
+    ownerNotificationEmail: '',
     ownerNotificationsEnabled: true,
     feeAmount: 50,
     fees: {
@@ -249,6 +247,17 @@ export default function AdminDashboardClient() {
   const [savingMethod, setSavingMethod] = useState(false);
   const [togglingMethodId, setTogglingMethodId] = useState(null);
   const [deletingMethodId, setDeletingMethodId] = useState(null);
+
+  // Delete Payment Method Checkbox Confirmation State (Batch 3 Pattern)
+  const [deleteMethodTarget, setDeleteMethodTarget] = useState(null);
+  const [deleteMethodAcknowledged, setDeleteMethodAcknowledged] = useState(false);
+  const [isDeletingMethod, setIsDeletingMethod] = useState(false);
+
+  // Reports State
+  const [reportsData, setReportsData] = useState(null);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [reportsError, setReportsError] = useState(null);
+  const [reportsFetched, setReportsFetched] = useState(false);
 
   // Reviews Moderation State
   const [reviews, setReviews] = useState([]);
@@ -377,6 +386,19 @@ export default function AdminDashboardClient() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [spamTarget, isSpamSubmitting]);
 
+  // Close Delete Payment Method confirmation dialog on Escape key
+  useEffect(() => {
+    if (!deleteMethodTarget) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !isDeletingMethod) {
+        setDeleteMethodTarget(null);
+        setDeleteMethodAcknowledged(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [deleteMethodTarget, isDeletingMethod]);
+
   // Dynamic tabs based on user role & permissions
   const tabs = useMemo(() => {
     const list = [];
@@ -440,16 +462,6 @@ export default function AdminDashboardClient() {
     }
   }, [tabs, tab]);
 
-  const handleMobileSelectTab = (selectedId) => {
-    setTab(selectedId);
-    setPage(1);
-    setMobileActive(true);
-  };
-
-  const handleMobileBack = () => {
-    setMobileActive(false);
-  };
-
   const currentTabObj = tabs.find((t) => t.id === tab) || tabs[0];
 
   // Load stats & initial payment settings
@@ -479,6 +491,50 @@ export default function AdminDashboardClient() {
         .finally(() => setQuotaLoading(false));
     }
   }, [isSuperAdmin, isSubAdmin]);
+
+  // Load real reports data
+  const loadReports = useCallback(async () => {
+    if (!isSuperAdmin) return;
+    setReportsLoading(true);
+    setReportsError(null);
+    try {
+      const res = await adminAPI.getReports();
+      const data = res?.data?.data || res?.data || {};
+      setReportsData(data);
+      setReportsFetched(true);
+    } catch (err) {
+      setReportsError(err.message || 'Failed to load reports.');
+      toast.error(err.message || 'Failed to load reports.');
+    } finally {
+      setReportsLoading(false);
+    }
+  }, [isSuperAdmin]);
+
+  // Fetch reports on first open
+  useEffect(() => {
+    if (activeSection === 'reports' && !reportsFetched && isSuperAdmin) {
+      loadReports();
+    }
+  }, [activeSection, reportsFetched, isSuperAdmin, loadReports]);
+
+  // Load payment history when entering payments section if empty
+  useEffect(() => {
+    if (activeSection === 'payments' && isSuperAdmin && payments.length === 0) {
+      adminAPI.getPaymentHistory({ page: 1, limit: 50 })
+        .then((res) => {
+          setPayments(res.data?.payments || []);
+        })
+        .catch(() => {});
+    }
+  }, [activeSection, isSuperAdmin, payments.length]);
+
+  // Validate activeSection against valid sections
+  useEffect(() => {
+    const validSections = ['dashboard', 'payments', 'reports', 'settings'];
+    if (activeSection && !validSections.includes(activeSection)) {
+      setActiveSection('dashboard');
+    }
+  }, [activeSection]);
 
   // Load tab data
   const loadTabData = useCallback(async () => {
@@ -1218,11 +1274,17 @@ export default function AdminDashboardClient() {
     }
   };
 
-  const handleDeleteMethod = async (methodId, methodName) => {
-    if (!confirm(`Are you sure you want to permanently delete the "${methodName || 'this'}" payment method card?`)) return;
-    setDeletingMethodId(methodId);
+  const handleDeleteMethod = (methodId, methodName) => {
+    setDeleteMethodTarget({ id: methodId, name: methodName || 'this' });
+    setDeleteMethodAcknowledged(false);
+  };
+
+  const handleConfirmDeleteMethod = async () => {
+    if (!deleteMethodTarget || !deleteMethodAcknowledged || isDeletingMethod) return;
+    setIsDeletingMethod(true);
+    setDeletingMethodId(deleteMethodTarget.id);
     try {
-      const res = await adminAPI.deletePaymentMethod(methodId);
+      const res = await adminAPI.deletePaymentMethod(deleteMethodTarget.id);
       const updatedSettings = res.data?.settings;
       if (updatedSettings) {
         setPaymentConfig(normalizePaymentConfig(updatedSettings) || updatedSettings);
@@ -1230,9 +1292,12 @@ export default function AdminDashboardClient() {
         setPaymentConfig((prev) => ({ ...prev, paymentMethods: res.data.paymentMethods }));
       }
       toast.success('Payment method card deleted successfully.');
+      setDeleteMethodTarget(null);
+      setDeleteMethodAcknowledged(false);
     } catch (err) {
       toast.error(err.message || 'Failed to delete payment method.');
     } finally {
+      setIsDeletingMethod(false);
       setDeletingMethodId(null);
     }
   };
@@ -1306,7 +1371,9 @@ export default function AdminDashboardClient() {
   };
 
   const handleSelectSection = (section, targetTab) => {
-    setActiveSection(section);
+    const validSections = ['dashboard', 'payments', 'reports', 'settings'];
+    const safeSection = validSections.includes(section) ? section : 'dashboard';
+    setActiveSection(safeSection);
     if (targetTab) {
       setTab(targetTab);
       setPage(1);
@@ -1329,6 +1396,1323 @@ export default function AdminDashboardClient() {
     }
   };
 
+  // ─── Reusable Payment & Settings Section Renderers ──────────────────────────
+  const renderPaymentMasterToggleCard = () => (
+    <div
+      className="p-6 rounded-2xl transition-all"
+      style={{
+        background: paymentConfig.isEnabled
+          ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
+          : 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
+        border: paymentConfig.isEnabled ? '2px solid #86efac' : '2px solid #e5e7eb',
+      }}
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <QrCode size={20} style={{ color: paymentConfig.isEnabled ? '#15803d' : '#6b7280' }} />
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>
+              Directory Listing Payment Requirement
+            </h2>
+            <span
+              className={`badge ${paymentConfig.isEnabled ? 'badge-green' : 'badge-gray'}`}
+              style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px' }}
+            >
+              {paymentConfig.isEnabled ? 'ACTIVE / ON' : 'DISABLED / OFF'}
+            </span>
+          </div>
+          <p style={{ fontSize: '0.875rem', color: paymentConfig.isEnabled ? '#166534' : '#4b5563' }}>
+            {paymentConfig.isEnabled
+              ? 'Currently ON: Users must complete payment according to their country fee and submit proof/receipt to submit or verify their listing.'
+              : 'Currently OFF: Business submissions are 100% FREE. No payment or receipt screenshot is required.'}
+          </p>
+        </div>
+
+        {/* Big ON / OFF Toggle Button */}
+        <button
+          type="button"
+          onClick={handleTogglePaymentEnabled}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow transition-all hover:scale-102 shrink-0 cursor-pointer min-h-[44px]"
+          style={{
+            background: paymentConfig.isEnabled ? '#16a34a' : '#4b5563',
+            color: '#ffffff',
+            border: 'none',
+          }}
+          title="Click to toggle Payment requirement ON or OFF"
+        >
+          <span
+            className={`w-3 h-3 rounded-full ${paymentConfig.isEnabled ? 'bg-white animate-pulse' : 'bg-gray-300'}`}
+          />
+          {paymentConfig.isEnabled ? 'Turn Payment OFF' : 'Turn Payment ON'}
+        </button>
+      </div>
+
+      {/* Standing Rule Note */}
+      <div className="mt-4 p-3 bg-amber-50/90 border border-amber-200/90 rounded-xl text-xs text-amber-900 leading-relaxed flex items-start gap-2">
+        <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+        <span>
+          <strong>Standing Rule Note:</strong> Payments stay OFF until sir says so — the toggle only reflects/changes the real setting, it never auto-enables anything.
+        </span>
+      </div>
+    </div>
+  );
+
+  const renderCountryFeesCard = () => (
+    <div className="card p-5 space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+            Listing Fee per Country
+          </h3>
+          <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+            Set the business listing fee for each country. Currencies are fixed server-side. Amount 0 = <strong>FREE listing</strong> for that country.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-3 pt-1">
+        {[
+          { country: 'Pakistan', code: 'PK', currency: 'PKR', symbol: 'Rs.', flagColor: 'bg-emerald-600', placeholder: 'e.g. 50' },
+          { country: 'UAE', code: 'AE', currency: 'AED', symbol: 'AED ', flagColor: 'bg-rose-600', placeholder: 'e.g. 0' },
+          { country: 'USA', code: 'US', currency: 'USD', symbol: '$', flagColor: 'bg-blue-600', placeholder: 'e.g. 0' },
+        ].map(({ country, code, currency, symbol, flagColor, placeholder }) => {
+          const currentAmount = paymentConfig.fees?.[country]?.amount ?? 0;
+          const isFree = Number(currentAmount) === 0;
+
+          return (
+            <div
+              key={country}
+              className="p-4 rounded-xl border border-gray-200 bg-gray-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-gray-300 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className={`w-8 h-8 rounded-lg ${flagColor} text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs`}>
+                  {code}
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-gray-900">{country}</span>
+                    {isFree ? (
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        FREE LISTING
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800">
+                        {symbol}{currentAmount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    Fixed Currency: <strong className="text-gray-700">{currency} ({symbol.trim()})</strong>
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 sm:w-72">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500 select-none">
+                    {symbol}
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={paymentConfig.fees?.[country]?.amount ?? 0}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                      setPaymentConfig((prev) => ({
+                        ...prev,
+                        fees: {
+                          ...prev.fees,
+                          [country]: {
+                            amount: val,
+                            currency,
+                            symbol,
+                          },
+                        },
+                        ...(country === 'Pakistan' ? { feeAmount: val === '' ? 0 : val } : {}),
+                      }));
+                    }}
+                    placeholder={placeholder}
+                    className="form-input pl-12 text-sm font-semibold"
+                  />
+                </div>
+                <span className="text-xs font-semibold text-gray-500 whitespace-nowrap">
+                  {currency}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderRaastQrGatewayCard = () => (
+    <div className="card p-5 space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-gray-100">
+        <div>
+          <div className="flex items-center gap-2">
+            <QrCode size={18} className="text-emerald-600" />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+              Raast QR Gateway Configuration
+            </h3>
+          </div>
+          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '2px' }}>
+            Instant QR payment receiver for Pakistani banks and digital wallets.
+          </p>
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
+          <input
+            type="checkbox"
+            checked={paymentConfig.qrEnabled !== false}
+            onChange={(e) => setPaymentConfig({ ...paymentConfig, qrEnabled: e.target.checked })}
+            className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+          />
+          <span className="text-xs font-bold text-gray-800 select-none">Enable Raast QR</span>
+        </label>
+      </div>
+
+      {/* QR Code Upload / Preview */}
+      <div className="space-y-3">
+        <label className="block text-xs font-bold text-gray-700">Raast QR Code Image</label>
+        {qrCodePreview || paymentConfig.qrCode?.url ? (
+          <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50">
+            <div className="relative w-40 h-40 rounded-xl overflow-hidden border border-gray-300 bg-white shadow-xs shrink-0">
+              <img
+                src={qrCodePreview || paymentConfig.qrCode?.url}
+                alt="Raast QR Code"
+                className="w-full h-full object-contain p-2"
+              />
+            </div>
+            <div className="space-y-2 text-center sm:text-left flex-1 min-w-0">
+              <p className="text-xs font-semibold text-gray-800">
+                {qrCodeFile ? 'New QR file selected (ready to save)' : 'Active Raast QR on Cloudinary'}
+              </p>
+              <p className="text-[11px] text-gray-500">
+                Ensure this is the official static merchant/personal QR code generated from your banking app.
+              </p>
+              <div className="flex items-center justify-center sm:justify-start gap-2 pt-1">
+                <label className="btn-secondary text-xs px-3 py-1.5 font-semibold cursor-pointer inline-flex items-center gap-1.5">
+                  <Upload size={13} /> Change QR
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleQrUpload}
+                    className="hidden"
+                  />
+                </label>
+                {paymentConfig.qrCode?.url && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveQr}
+                    disabled={deletingQrCode}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Trash2 size={13} /> {deletingQrCode ? 'Deleting…' : 'Delete QR'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-2xl bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer group">
+            <div className="w-12 h-12 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-400 group-hover:text-emerald-600 group-hover:border-emerald-300 transition-colors shadow-2xs mb-2">
+              <Upload size={22} />
+            </div>
+            <span className="text-xs font-bold text-gray-800 group-hover:text-emerald-600">
+              Click to upload Raast QR Code image
+            </span>
+            <span className="text-[11px] text-gray-400 mt-1">PNG, JPG or WebP up to 5MB</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleQrUpload}
+              className="hidden"
+            />
+          </label>
+        )}
+      </div>
+
+      {/* Raast QR Details Fields */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1">
+            Account / Merchant Title <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={paymentConfig.accountTitle || ''}
+            onChange={(e) => setPaymentConfig({ ...paymentConfig, accountTitle: e.target.value })}
+            placeholder="e.g. BizPrimeHub"
+            className="form-input text-xs sm:text-sm"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1">
+            Bank / Wallet Name
+          </label>
+          <input
+            type="text"
+            value={paymentConfig.bankName || ''}
+            onChange={(e) => setPaymentConfig({ ...paymentConfig, bankName: e.target.value })}
+            placeholder="e.g. Raast Instant Payment / HBL"
+            className="form-input text-xs sm:text-sm"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className="block text-xs font-bold text-gray-700 mb-1">
+            Raast ID / IBAN / Phone <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={paymentConfig.raastId || ''}
+            onChange={(e) => setPaymentConfig({ ...paymentConfig, raastId: e.target.value })}
+            placeholder="e.g. PK00RAAST0123456789012345 or mobile number"
+            className="form-input text-xs sm:text-sm font-mono"
+          />
+        </div>
+      </div>
+
+      {/* Countries where Raast QR is shown */}
+      <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-100 space-y-2">
+        <label className="block text-xs font-bold text-gray-700">
+          Countries Showing Raast QR Gateway:
+        </label>
+        <div className="flex items-center gap-4 flex-wrap">
+          {['Pakistan', 'UAE', 'USA'].map((c) => {
+            const isChecked = (paymentConfig.qrCountries || ['Pakistan']).includes(c);
+            return (
+              <label key={c} className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-800">
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={(e) => {
+                    const current = paymentConfig.qrCountries || ['Pakistan'];
+                    const next = e.target.checked
+                      ? [...new Set([...current, c])]
+                      : current.filter((x) => x !== c);
+                    setPaymentConfig({ ...paymentConfig, qrCountries: next.length > 0 ? next : ['Pakistan'] });
+                  }}
+                  className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                />
+                <span>{c}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPaymentMethodsCard = () => (
+    <div className="card p-5 space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-gray-100">
+        <div>
+          <div className="flex items-center gap-2">
+            <CreditCard size={18} className="text-blue-600" />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+              Custom Payment Methods & Bank Accounts
+            </h3>
+            <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+              {paymentConfig.paymentMethods?.length || 0}
+            </span>
+          </div>
+          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '2px' }}>
+            Add branded bank cards (Meezan, SadaPay, NayaPay, JazzCash, EasyPaisa, etc.) with custom IBAN/number details.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleOpenAddMethod}
+          className="btn-secondary text-xs px-3 py-1.5 font-bold inline-flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+        >
+          <Plus size={14} /> Add Payment Method
+        </button>
+      </div>
+
+      {(!paymentConfig.paymentMethods || paymentConfig.paymentMethods.length === 0) ? (
+        <div className="text-center py-8 px-4 rounded-xl border border-dashed border-gray-200 bg-gray-50/50">
+          <CreditCard size={32} className="text-gray-300 mx-auto mb-2" />
+          <p className="text-xs font-semibold text-gray-700">No custom payment methods configured yet</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            Click &ldquo;Add Payment Method&rdquo; above to add bank account or wallet cards.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {paymentConfig.paymentMethods.map((method) => {
+            const isToggling = togglingMethodId === method._id;
+
+            return (
+              <div
+                key={method._id}
+                className="relative rounded-2xl overflow-hidden border border-gray-200 bg-white p-4 shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between gap-3"
+              >
+                {/* Method Header */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    {method.cardImage?.url ? (
+                      <div className="w-10 h-10 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 shrink-0">
+                        <img
+                          src={method.cardImage.url}
+                          alt={method.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
+                        {method.name.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <h4 className="font-bold text-sm text-gray-900 leading-tight">{method.name}</h4>
+                      <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+                        {method.kind === 'iban' ? 'IBAN Account' : 'Account Number'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Active / Inactive Badge */}
+                  <span
+                    className={`badge ${method.isEnabled ? 'badge-green' : 'badge-gray'}`}
+                    style={{ fontSize: '0.65rem', padding: '2px 6px' }}
+                  >
+                    {method.isEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+
+                {/* Account Details */}
+                <div className="bg-gray-50/80 rounded-xl p-3 border border-gray-100 space-y-1 text-xs">
+                  <div className="flex items-center justify-between text-gray-600">
+                    <span>Title:</span>
+                    <strong className="text-gray-900">{method.accountTitle}</strong>
+                  </div>
+                  <div className="flex items-center justify-between text-gray-600 font-mono text-[11px]">
+                    <span>{method.kind === 'iban' ? 'IBAN:' : 'Number:'}</span>
+                    <strong className="text-gray-900 break-all select-all">{method.accountValue}</strong>
+                  </div>
+                  {method.details && (
+                    <p className="text-[11px] text-gray-500 pt-1 border-t border-gray-100 line-clamp-2">
+                      {method.details}
+                    </p>
+                  )}
+                </div>
+
+                {/* Country Badges */}
+                <div className="flex items-center gap-1 flex-wrap">
+                  {(method.countries || ['Pakistan']).map((c) => (
+                    <span
+                      key={c}
+                      className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-700"
+                    >
+                      {c}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Actions: Edit, Toggle, Delete */}
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    disabled={isToggling}
+                    onClick={() => handleToggleMethod(method._id)}
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors cursor-pointer min-h-[32px] flex items-center gap-1 ${
+                      method.isEnabled
+                        ? 'text-gray-600 hover:bg-gray-100'
+                        : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                    }`}
+                  >
+                    {method.isEnabled ? 'Disable' : 'Enable'}
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleEditMethod(method)}
+                      className="p-1.5 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer min-h-[32px] min-w-[32px] flex items-center justify-center"
+                      title="Edit method details"
+                    >
+                      <Edit3 size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteMethod(method._id, method.name)}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer min-h-[32px] min-w-[32px] flex items-center justify-center"
+                      title="Delete payment method"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderPaymentInstructionsCard = () => (
+    <div className="card p-5 space-y-3">
+      <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+        Payment Instructions for Users
+      </h3>
+      <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+        These instructions are displayed to users on the submission and claim verification pages.
+      </p>
+      <textarea
+        rows={3}
+        value={paymentConfig.instructions || ''}
+        onChange={(e) => setPaymentConfig({ ...paymentConfig, instructions: e.target.value })}
+        className="form-input text-xs sm:text-sm leading-relaxed"
+        placeholder="Enter payment instructions for users..."
+      />
+    </div>
+  );
+
+  const renderOwnerNotificationsCard = () => (
+    <div className="card p-5 space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-gray-100">
+        <div>
+          <div className="flex items-center gap-2">
+            <Bell size={18} className="text-blue-600" />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+              Admin & Owner Email Notifications
+            </h3>
+            <span
+              className={`badge ${paymentConfig.ownerNotificationsEnabled ? 'badge-blue' : 'badge-gray'}`}
+              style={{ fontSize: '0.65rem', padding: '2px 6px' }}
+            >
+              {paymentConfig.ownerNotificationsEnabled ? 'ACTIVE / ON' : 'PAUSED / OFF'}
+            </span>
+          </div>
+          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '2px' }}>
+            Receive automated alert emails whenever a user submits a new business listing or uploads a payment receipt.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleToggleOwnerNotifications}
+          className="text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors cursor-pointer min-h-[38px] flex items-center gap-1.5"
+          style={{
+            background: paymentConfig.ownerNotificationsEnabled ? '#eff6ff' : '#f3f4f6',
+            color: paymentConfig.ownerNotificationsEnabled ? '#1d4ed8' : '#4b5563',
+            borderColor: paymentConfig.ownerNotificationsEnabled ? '#bfdbfe' : '#d1d5db',
+          }}
+        >
+          <span
+            className={`w-2 h-2 rounded-full ${paymentConfig.ownerNotificationsEnabled ? 'bg-blue-600 animate-pulse' : 'bg-gray-400'}`}
+          />
+          {paymentConfig.ownerNotificationsEnabled ? 'Notifications Active' : 'Notifications Paused'}
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={paymentConfig.ownerNotificationsEnabled !== false}
+            onChange={(e) =>
+              setPaymentConfig({
+                ...paymentConfig,
+                ownerNotificationsEnabled: e.target.checked,
+              })
+            }
+            className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+          />
+          <span className="text-xs font-bold text-gray-800 select-none">
+            Send email notifications for new business submissions & payment receipts
+          </span>
+        </label>
+
+        <div>
+          <label htmlFor="ownerNotificationEmail" className="block text-xs font-bold text-gray-700 mb-1">
+            Notification Recipient Email Address
+          </label>
+          <input
+            id="ownerNotificationEmail"
+            type="email"
+            value={paymentConfig.ownerNotificationEmail || ''}
+            onChange={(e) =>
+              setPaymentConfig({
+                ...paymentConfig,
+                ownerNotificationEmail: e.target.value,
+              })
+            }
+            className="form-input text-xs sm:text-sm font-mono sm:font-sans"
+            placeholder="Enter notification recipient email address"
+          />
+          <p className="text-[11px] text-gray-400 mt-1">
+            Initial value loaded from server payment settings. If empty or disabled, notification emails will be skipped.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPaymentStatsRow = () => {
+    const methodsActive = paymentConfig.paymentMethods?.filter((m) => m.isEnabled).length || 0;
+    const receiptsPending = payments.filter((p) => p.paymentStatus === 'pending').length;
+    const receiptsVerified = payments.filter((p) => p.paymentStatus === 'verified').length;
+    const receiptsRejected = payments.filter((p) => p.paymentStatus === 'rejected').length;
+
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard
+          label="Active Methods"
+          value={methodsActive}
+          icon={CreditCard}
+          color="#2563eb"
+          bg="#eff6ff"
+        />
+        <StatCard
+          label="Receipts Pending"
+          value={receiptsPending}
+          icon={Clock}
+          color="#d97706"
+          bg="#fffbeb"
+        />
+        <StatCard
+          label="Receipts Verified"
+          value={receiptsVerified}
+          icon={CheckCircle2}
+          color="#059669"
+          bg="#ecfdf5"
+        />
+        <StatCard
+          label="Receipts Rejected"
+          value={receiptsRejected}
+          icon={X}
+          color="#dc2626"
+          bg="#fef2f2"
+        />
+      </div>
+    );
+  };
+
+  const renderReceiptVerificationQueue = () => (
+    <div className="card p-5 space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-gray-100">
+        <div>
+          <div className="flex items-center gap-2">
+            <Clock size={18} className="text-amber-600" />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+              Receipt Verification Queue
+            </h3>
+          </div>
+          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '2px' }}>
+            Review incoming payment screenshots and approve or reject submissions.
+          </p>
+        </div>
+      </div>
+
+      {payments.length === 0 ? (
+        <div className="text-center py-8 px-4 rounded-xl border border-dashed border-gray-200 bg-gray-50/50">
+          <CreditCard size={32} className="text-gray-300 mx-auto mb-2" />
+          <p className="text-xs font-semibold text-gray-700">No payment records found</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            Incoming listing payments and uploaded receipts will appear here for verification.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {payments.map((p) => (
+            <div
+              key={p._id}
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/70 hover:border-gray-200 transition-colors"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-bold text-sm text-gray-900 truncate">
+                    {p.title}
+                  </p>
+                  <span
+                    className={`badge ${
+                      p.paymentStatus === 'verified'
+                        ? 'badge-green'
+                        : p.paymentStatus === 'rejected'
+                        ? 'badge-red'
+                        : p.paymentStatus === 'pending'
+                        ? 'badge-yellow'
+                        : 'badge-gray'
+                    }`}
+                    style={{ fontSize: '0.65rem', padding: '2px 6px', textTransform: 'capitalize' }}
+                  >
+                    Payment: {p.paymentStatus || 'pending'}
+                  </span>
+                  <span
+                    className={`badge ${p.isApproved ? 'badge-green' : 'badge-yellow'}`}
+                    style={{ fontSize: '0.65rem', padding: '2px 6px' }}
+                  >
+                    Listing: {p.isApproved ? 'Approved' : 'Pending'}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-gray-500">
+                  <span className="font-bold text-gray-900">
+                    Amount: Rs. {p.paymentAmount || 0}
+                  </span>
+                  {p.owner && (
+                    <span>
+                      Owner: <strong className="text-gray-700">{p.owner.name}</strong> ({p.owner.email})
+                    </span>
+                  )}
+                  <span>
+                    Date: {new Date(p.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap pt-3 sm:pt-0 border-t border-gray-200/80 sm:border-0 w-full sm:w-auto justify-start sm:justify-end">
+                {isSuperAdmin && p.paymentStatus !== 'verified' && (
+                  <button
+                    type="button"
+                    disabled={updatingPaymentStatus}
+                    onClick={() => handleUpdatePaymentStatus(p._id, 'verified')}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-300 cursor-pointer min-h-[36px]"
+                    title="Verify Payment Receipt"
+                  >
+                    <Check size={13} /> Verify
+                  </button>
+                )}
+                {isSuperAdmin && p.paymentStatus !== 'rejected' && (
+                  <button
+                    type="button"
+                    disabled={updatingPaymentStatus}
+                    onClick={() => handleUpdatePaymentStatus(p._id, 'rejected')}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors border border-rose-300 cursor-pointer min-h-[36px]"
+                    title="Reject Payment Receipt"
+                  >
+                    <X size={13} /> Reject
+                  </button>
+                )}
+                {p.paymentReceipt?.url && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedReceiptBiz(p)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200 cursor-pointer min-h-[36px]"
+                    title="View Receipt Screenshot"
+                  >
+                    <Eye size={13} /> View Receipt
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderPaymentsView = () => (
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setActiveSection('dashboard')}
+            className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer transition-colors shadow-2xs"
+            title="Return to Dashboard"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Payments Operations</h1>
+            <p className="text-xs sm:text-sm text-gray-500">Live gateway status, per-country fees, payment accounts, and receipt approvals</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActiveSection('dashboard')}
+          className="text-xs sm:text-sm font-semibold text-blue-600 hover:text-blue-700 cursor-pointer min-h-[44px] px-3 py-2 flex items-center"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+
+      {/* Payment Stats Row */}
+      {renderPaymentStatsRow()}
+
+      {/* Master Toggle Banner with Standing Rule */}
+      {renderPaymentMasterToggleCard()}
+
+      {/* Settings Form: Fees + Raast QR + Payment Methods + Instructions */}
+      <form onSubmit={handleSavePaymentSettings} className="space-y-6">
+        {renderCountryFeesCard()}
+        {renderRaastQrGatewayCard()}
+        {renderPaymentMethodsCard()}
+        {renderPaymentInstructionsCard()}
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={savingPaymentConfig}
+            className="btn-primary flex items-center gap-2 px-6 py-2.5 text-sm font-semibold shadow"
+          >
+            <Save size={16} />
+            {savingPaymentConfig ? 'Saving Settings...' : 'Save Payment Settings'}
+          </button>
+        </div>
+      </form>
+
+      {/* Receipt Verification Queue */}
+      {renderReceiptVerificationQueue()}
+    </div>
+  );
+
+  const renderSettingsView = () => (
+    <div className="space-y-6 max-w-5xl mx-auto">
+      {/* Top Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setActiveSection('dashboard')}
+            className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer transition-colors shadow-2xs"
+            title="Return to Dashboard"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Settings & Controls</h1>
+            <p className="text-xs sm:text-sm text-gray-500">Website payment configuration, automated notifications, database backups, and administrative tools</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActiveSection('dashboard')}
+          className="text-xs sm:text-sm font-semibold text-blue-600 hover:text-blue-700 cursor-pointer min-h-[44px] px-3 py-2 flex items-center"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+
+      {/* Master Toggle Banner */}
+      {renderPaymentMasterToggleCard()}
+
+      {/* Website Settings Form */}
+      <form onSubmit={handleSavePaymentSettings} className="space-y-6">
+        {renderCountryFeesCard()}
+        {renderRaastQrGatewayCard()}
+        {renderPaymentMethodsCard()}
+        {renderOwnerNotificationsCard()}
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={savingPaymentConfig}
+            className="btn-primary flex items-center gap-2 px-6 py-2.5 text-sm font-semibold shadow"
+          >
+            <Save size={16} />
+            {savingPaymentConfig ? 'Saving Settings...' : 'Save Settings'}
+          </button>
+        </div>
+      </form>
+
+      {/* Admin Panel Tools Section */}
+      <div className="space-y-4 pt-4 border-t border-gray-200">
+        <h2 className="text-base sm:text-lg font-bold text-gray-900">Admin Panel Tools</h2>
+
+        {/* (6) Backup Database Card */}
+        {isSuperAdmin && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-gray-900">Database Backup & Export</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                  Download a complete JSON backup archive of all directory data (businesses, users, reviews) with passwords and secrets stripped.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDownloadBackup}
+                disabled={isExportingBackup}
+                className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-4 py-2.5 cursor-pointer disabled:opacity-50 min-h-[44px]"
+              >
+                <Download size={16} />
+                <span>{isExportingBackup ? 'Preparing backup…' : 'Download Backup'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* (7) Shortcuts to Emails and Activity */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs flex flex-col justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Mail size={18} className="text-indigo-600" />
+                <h3 className="text-sm font-bold text-gray-900">Email Center</h3>
+              </div>
+              <p className="text-xs text-gray-500">
+                Send administrative emails to business owners, monitor sent logs, and review daily email limits.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSelectSection('dashboard', 'emails')}
+              className="btn-secondary text-xs font-semibold py-2 px-3 text-center self-start"
+            >
+              Open Email Center &rarr;
+            </button>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs flex flex-col justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Activity size={18} className="text-cyan-600" />
+                <h3 className="text-sm font-bold text-gray-900">Admin Activity Log</h3>
+              </div>
+              <p className="text-xs text-gray-500">
+                Inspect the audit trail of approvals, rejections, user roles, permission edits, and payment verifications.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSelectSection('dashboard', 'activity')}
+              className="btn-secondary text-xs font-semibold py-2 px-3 text-center self-start"
+            >
+              Open Activity Log &rarr;
+            </button>
+          </div>
+        </div>
+
+        {/* (8) Sign Out Card */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-gray-900">Admin Account Session</h3>
+              <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                Securely sign out of your administrative session on this device.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-xs sm:text-sm px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-semibold rounded-xl min-h-[44px] cursor-pointer transition-colors"
+            >
+              <LogOut size={16} />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderReportsView = () => (
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setActiveSection('dashboard')}
+            className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer transition-colors shadow-2xs"
+            title="Return to Dashboard"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Reports & Analytics</h1>
+            <p className="text-xs sm:text-sm text-gray-500">Live platform totals, category performance, city coverage, and trends</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={loadReports}
+            disabled={reportsLoading}
+            className="btn-secondary flex items-center gap-1.5 text-xs sm:text-sm px-3.5 py-2 font-semibold cursor-pointer disabled:opacity-50 min-h-[40px]"
+          >
+            <RefreshCw size={14} className={reportsLoading ? 'animate-spin' : ''} />
+            <span>{reportsLoading ? 'Refreshing…' : 'Refetch Data'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSection('dashboard')}
+            className="text-xs sm:text-sm font-semibold text-blue-600 hover:text-blue-700 cursor-pointer min-h-[40px] px-3 py-2 flex items-center"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+
+      {reportsError ? (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
+          <AlertTriangle size={32} className="text-red-500 mx-auto mb-2" />
+          <p className="text-sm font-bold text-red-900">{reportsError}</p>
+          <button
+            type="button"
+            onClick={loadReports}
+            className="btn-primary mt-4 text-xs px-4 py-2"
+          >
+            Try Again
+          </button>
+        </div>
+      ) : reportsLoading && !reportsData ? (
+        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center shadow-xs">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3" />
+          <p className="text-sm text-gray-500">Loading platform reports & analytics...</p>
+        </div>
+      ) : reportsData ? (
+        <>
+          {/* 7 StatCards Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
+            <StatCard
+              label="Total Users"
+              value={reportsData.totals?.users?.toLocaleString() ?? 0}
+              icon={Users}
+              color="#2563eb"
+              bg="#eff6ff"
+            />
+            <StatCard
+              label="Businesses"
+              value={reportsData.totals?.businesses?.toLocaleString() ?? 0}
+              icon={Building2}
+              color="#0891b2"
+              bg="#ecfeff"
+            />
+            <StatCard
+              label="Pending"
+              value={reportsData.totals?.pending?.toLocaleString() ?? 0}
+              icon={Clock}
+              color="#d97706"
+              bg="#fffbeb"
+            />
+            <StatCard
+              label="Approved"
+              value={reportsData.totals?.approved?.toLocaleString() ?? 0}
+              icon={CheckCircle2}
+              color="#059669"
+              bg="#ecfdf5"
+            />
+            <StatCard
+              label="Spam Hidden"
+              value={reportsData.totals?.hiddenBySpam?.toLocaleString() ?? 0}
+              icon={AlertTriangle}
+              color="#dc2626"
+              bg="#fef2f2"
+            />
+            <StatCard
+              label="Total Reviews"
+              value={reportsData.totals?.reviews?.toLocaleString() ?? 0}
+              icon={Star}
+              color="#ec4899"
+              bg="#fdf2f8"
+            />
+            <StatCard
+              label="Avg Rating"
+              value={reportsData.reviews?.avgRating != null ? `${reportsData.reviews.avgRating} / 5` : '0 / 5'}
+              icon={Star}
+              color="#8b5cf6"
+              bg="#f5f3ff"
+            />
+          </div>
+
+          {/* Breakdown Grid: CSS Progress Bars (NO Chart Library) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {/* Category Distribution (CSS Bars) */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sm sm:text-base text-gray-900">By Category</h3>
+                <span className="text-xs font-semibold text-gray-400">
+                  {reportsData.byCategory?.length || 0} total
+                </span>
+              </div>
+              {(!reportsData.byCategory || reportsData.byCategory.length === 0) ? (
+                <p className="text-xs text-gray-400 py-6 text-center">No data yet</p>
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-auto pr-1">
+                  {(() => {
+                    const maxCount = Math.max(...reportsData.byCategory.map((c) => c.count), 1);
+                    return reportsData.byCategory.map((cat) => {
+                      const pct = Math.round((cat.count / maxCount) * 100);
+                      return (
+                        <div key={cat.name} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-medium text-gray-700 truncate pr-2">{cat.name}</span>
+                            <span className="font-bold text-gray-900 shrink-0">{cat.count}</span>
+                          </div>
+                          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
+            </div>
+
+            {/* Countries Bar Chart */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sm sm:text-base text-gray-900">By Country</h3>
+                <span className="text-xs font-semibold text-gray-400">Coverage</span>
+              </div>
+              {(!reportsData.byCountry || reportsData.byCountry.length === 0) ? (
+                <p className="text-xs text-gray-400 py-6 text-center">No data yet</p>
+              ) : (
+                <div className="space-y-4">
+                  {(() => {
+                    const maxCount = Math.max(...reportsData.byCountry.map((c) => c.count), 1);
+                    return reportsData.byCountry.map((cnt) => {
+                      const pct = Math.round((cnt.count / maxCount) * 100);
+                      return (
+                        <div key={cnt.name} className="space-y-1.5 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-gray-800">{cnt.name}</span>
+                            <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                              {cnt.count} businesses
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                            <div
+                              className="bg-emerald-500 h-2.5 rounded-full transition-all duration-300"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
+            </div>
+
+            {/* Top 10 Cities Bar Chart */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sm sm:text-base text-gray-900">Top 10 Cities</h3>
+                <span className="text-xs font-semibold text-gray-400">Leaderboard</span>
+              </div>
+              {(!reportsData.topCities || reportsData.topCities.length === 0) ? (
+                <p className="text-xs text-gray-400 py-6 text-center">No data yet</p>
+              ) : (
+                <div className="space-y-2.5 max-h-96 overflow-auto pr-1">
+                  {(() => {
+                    const maxCount = Math.max(...reportsData.topCities.map((c) => c.count), 1);
+                    return reportsData.topCities.map((city, idx) => {
+                      const pct = Math.round((city.count / maxCount) * 100);
+                      return (
+                        <div key={city.name} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-medium text-gray-700 truncate pr-2">
+                              <strong className="text-gray-400 mr-1.5">#{idx + 1}</strong>
+                              {city.name}
+                            </span>
+                            <span className="font-bold text-gray-900 shrink-0">{city.count}</span>
+                          </div>
+                          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-indigo-500 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Month-wise Tables Grid (Last 12 Months) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Businesses by Month */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sm sm:text-base text-gray-900">Businesses by Month (Last 12 Months)</h3>
+                <span className="text-xs font-semibold text-gray-400">Timeline</span>
+              </div>
+              {(!reportsData.businessesByMonth || reportsData.businessesByMonth.length === 0) ? (
+                <p className="text-xs text-gray-400 py-6 text-center">No data yet</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-gray-400 uppercase tracking-wider font-semibold">
+                        <th className="pb-2.5">Month</th>
+                        <th className="pb-2.5 text-right">New Listings</th>
+                        <th className="pb-2.5 pl-4">Distribution</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {(() => {
+                        const maxB = Math.max(...reportsData.businessesByMonth.map((m) => m.count), 1);
+                        return reportsData.businessesByMonth.map((m) => (
+                          <tr key={m.month} className="hover:bg-gray-50/70">
+                            <td className="py-2.5 font-semibold text-gray-800">{m.month}</td>
+                            <td className="py-2.5 text-right font-bold text-gray-900">{m.count}</td>
+                            <td className="py-2.5 pl-4 w-1/2">
+                              <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className="bg-blue-500 h-1.5 rounded-full"
+                                  style={{ width: `${Math.round((m.count / maxB) * 100)}%` }}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Users by Month */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sm sm:text-base text-gray-900">Users Registered by Month (Last 12 Months)</h3>
+                <span className="text-xs font-semibold text-gray-400">Growth</span>
+              </div>
+              {(!reportsData.usersByMonth || reportsData.usersByMonth.length === 0) ? (
+                <p className="text-xs text-gray-400 py-6 text-center">No data yet</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-gray-400 uppercase tracking-wider font-semibold">
+                        <th className="pb-2.5">Month</th>
+                        <th className="pb-2.5 text-right">New Users</th>
+                        <th className="pb-2.5 pl-4">Distribution</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {(() => {
+                        const maxU = Math.max(...reportsData.usersByMonth.map((m) => m.count), 1);
+                        return reportsData.usersByMonth.map((m) => (
+                          <tr key={m.month} className="hover:bg-gray-50/70">
+                            <td className="py-2.5 font-semibold text-gray-800">{m.month}</td>
+                            <td className="py-2.5 text-right font-bold text-gray-900">{m.count}</td>
+                            <td className="py-2.5 pl-4 w-1/2">
+                              <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className="bg-emerald-500 h-1.5 rounded-full"
+                                  style={{ width: `${Math.round((m.count / maxU) * 100)}%` }}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Summary Blocks: Payments + Pending Aging + Reviews */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Payments Summary Card */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                  <CreditCard size={18} />
+                </div>
+                <h3 className="font-bold text-sm text-gray-900">Payments & Receipts</h3>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between py-1 border-b border-gray-50">
+                  <span className="text-gray-500">Receipts Uploaded:</span>
+                  <strong className="text-gray-900">{reportsData.payments?.totalReceipts ?? 0}</strong>
+                </div>
+                <div className="flex justify-between py-1 border-b border-gray-50">
+                  <span className="text-gray-500">Verified Receipts:</span>
+                  <strong className="text-emerald-600">{reportsData.payments?.byStatus?.verified ?? 0}</strong>
+                </div>
+                <div className="flex justify-between py-1 border-b border-gray-50">
+                  <span className="text-gray-500">Pending Receipts:</span>
+                  <strong className="text-amber-600">{reportsData.payments?.byStatus?.pending ?? 0}</strong>
+                </div>
+                <div className="flex justify-between py-1 border-b border-gray-50">
+                  <span className="text-gray-500">Rejected Receipts:</span>
+                  <strong className="text-rose-600">{reportsData.payments?.byStatus?.rejected ?? 0}</strong>
+                </div>
+                <div className="flex justify-between pt-1">
+                  <span className="font-semibold text-gray-700">Verified Sum Collected:</span>
+                  <strong className="font-bold text-emerald-700">
+                    Rs. {(reportsData.payments?.verifiedAmount ?? 0).toLocaleString()}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Pending Listings Aging Card */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                  <Clock size={18} />
+                </div>
+                <h3 className="font-bold text-sm text-gray-900">Pending Listings Aging</h3>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between py-1 border-b border-gray-50">
+                  <span className="text-gray-500">Waiting &gt; 7 Days:</span>
+                  <strong className="text-rose-600 font-bold">
+                    {reportsData.pendingAging?.waitingOver7Days ?? 0}
+                  </strong>
+                </div>
+                <div className="py-1 border-b border-gray-50">
+                  <span className="text-gray-500 block mb-0.5">Oldest Submission Date:</span>
+                  <strong className="text-gray-900">
+                    {reportsData.pendingAging?.oldestPendingDate
+                      ? new Date(reportsData.pendingAging.oldestPendingDate).toLocaleDateString()
+                      : 'No pending submissions'}
+                  </strong>
+                </div>
+                <div className="py-1">
+                  <span className="text-gray-500 block mb-0.5">Oldest Listing Title:</span>
+                  <p className="font-semibold text-gray-800 truncate">
+                    {reportsData.pendingAging?.oldestPendingTitle || '—'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Reviews Summary Card */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center font-bold">
+                  <Star size={18} />
+                </div>
+                <h3 className="font-bold text-sm text-gray-900">Reviews & Ratings</h3>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between py-1 border-b border-gray-50">
+                  <span className="text-gray-500">Total Reviews:</span>
+                  <strong className="text-gray-900">{reportsData.reviews?.total ?? 0}</strong>
+                </div>
+                <div className="flex justify-between py-1 border-b border-gray-50">
+                  <span className="text-gray-500">Overall Avg Rating:</span>
+                  <strong className="text-amber-600 font-bold">
+                    {reportsData.reviews?.avgRating != null ? `${reportsData.reviews.avgRating} / 5.0` : '0 / 5.0'}
+                  </strong>
+                </div>
+                <div className="pt-2 text-gray-400 text-[11px] leading-relaxed">
+                  Calculated across all customer reviews and ratings submitted for directory businesses.
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center shadow-xs">
+          <p className="text-sm text-gray-400">No data yet</p>
+        </div>
+      )}
+    </div>
+  );
+
   const todayFormatted = new Intl.DateTimeFormat('en-US', {
     month: 'short',
     day: 'numeric',
@@ -1340,13 +2724,14 @@ export default function AdminDashboardClient() {
   }
 
   return (
-    <div className="fixed inset-0 z-40 bg-[#f8fafc] flex flex-col lg:flex-row overflow-hidden text-gray-900">
+    <div className="flex flex-col lg:flex-row bg-[#f8fafc] min-h-screen">
       {/* Desktop Fixed Sidebar */}
       <AdminSidebar
         activeSection={activeSection}
         activeTab={tab}
         onSelectSection={handleSelectSection}
         dashStats={dashStats}
+        isSuperAdmin={isSuperAdmin}
       />
 
       {/* Mobile / Tablet Drawer Sidebar */}
@@ -1358,33 +2743,24 @@ export default function AdminDashboardClient() {
         activeTab={tab}
         onSelectSection={handleSelectSection}
         dashStats={dashStats}
+        isSuperAdmin={isSuperAdmin}
       />
 
-      {/* Main Viewport Container */}
-      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
-        {/* Top Header */}
-        <AdminHeader
-          onOpenDrawer={() => setSidebarDrawerOpen(true)}
-          dashStats={dashStats}
-          onSelectPendingTab={() => {
-            setActiveSection('dashboard');
-            setTab('pending');
-            setPage(1);
-          }}
-          user={user}
-          onLogout={handleLogout}
-          onDownloadBackup={handleDownloadBackup}
-          isExportingBackup={isExportingBackup}
-          onSearchUserSelect={handleSearchUserSelect}
-          isSuperAdmin={isSuperAdmin}
-        />
-
-        {/* Scrollable Main Area */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-5 lg:p-7 pb-24 lg:pb-8 space-y-5 max-w-full">
-          {activeSection === 'dashboard' ? (
-            <>
-              {/* Greeting & Date Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      {/* Main Content Area in normal document flow */}
+      <main className="flex-1 p-3.5 sm:p-5 lg:p-7 pb-24 lg:pb-8 space-y-5 w-full min-w-0">
+        {activeSection === 'dashboard' ? (
+          <>
+            {/* Greeting & Date Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setSidebarDrawerOpen(true)}
+                  aria-label="Open navigation drawer"
+                  className="lg:hidden p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-white min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer transition-colors shrink-0 border border-gray-200/80 bg-white shadow-2xs"
+                >
+                  <Menu size={22} />
+                </button>
                 <div>
                   <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
                     Welcome back, {user?.name || 'Admin'}! 👋
@@ -1393,11 +2769,12 @@ export default function AdminDashboardClient() {
                     Manage your business directory, users, payments and more — all in one place.
                   </p>
                 </div>
-                <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 bg-white border border-gray-200/80 rounded-xl text-xs font-semibold text-gray-600 shadow-2xs self-start sm:self-auto">
-                  <Calendar size={14} className="text-gray-400" />
-                  <span>{todayFormatted}</span>
-                </div>
               </div>
+              <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 bg-white border border-gray-200/80 rounded-xl text-xs font-semibold text-gray-600 shadow-2xs self-start sm:self-auto">
+                <Calendar size={14} className="text-gray-400" />
+                <span>{todayFormatted}</span>
+              </div>
+            </div>
 
               {/* 5 Stat Cards */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -2351,7 +3728,7 @@ export default function AdminDashboardClient() {
                                 autoFocus
                               />
                             </div>
-                            <div className="overflow-y-auto flex-1 divide-y divide-gray-50">
+                            <div className="overflow-auto flex-1 divide-y divide-gray-50">
                               {userPickerLoading ? (
                                 <p className="text-xs text-gray-400 text-center py-4">Searching users...</p>
                               ) : userPickerResults.length === 0 ? (
@@ -2641,626 +4018,13 @@ export default function AdminDashboardClient() {
             ) : tab === 'payment-settings' ? (
               /* Payment Settings Panel */
               <div className="max-w-3xl mx-auto py-2 space-y-6">
-                {/* Status Banner & Main Switch */}
-                <div
-                  className="p-6 rounded-2xl transition-all"
-                  style={{
-                    background: paymentConfig.isEnabled
-                      ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
-                      : 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
-                    border: paymentConfig.isEnabled ? '2px solid #86efac' : '2px solid #e5e7eb',
-                  }}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <QrCode size={20} style={{ color: paymentConfig.isEnabled ? '#15803d' : '#6b7280' }} />
-                        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>
-                          Raast QR Business Listing Payment
-                        </h2>
-                        <span
-                          className={`badge ${paymentConfig.isEnabled ? 'badge-green' : 'badge-gray'}`}
-                          style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px' }}
-                        >
-                          {paymentConfig.isEnabled ? 'ACTIVE / ON' : 'DISABLED / OFF'}
-                        </span>
-                      </div>
-                      <p style={{ fontSize: '0.875rem', color: paymentConfig.isEnabled ? '#166534' : '#4b5563' }}>
-                        {paymentConfig.isEnabled
-                          ? `Currently ON: Users must scan your Raast QR Code, pay Rs. ${paymentConfig.feeAmount} & submit screenshot to list their business.`
-                          : 'Currently OFF: Business submissions are 100% FREE. No payment or screenshot is required from users.'}
-                      </p>
-                    </div>
-
-                    {/* Big ON / OFF Toggle Button */}
-                    <button
-                      type="button"
-                      onClick={handleTogglePaymentEnabled}
-                      className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow transition-all hover:scale-102 flex-shrink-0"
-                      style={{
-                        background: paymentConfig.isEnabled ? '#16a34a' : '#4b5563',
-                        color: '#ffffff',
-                        border: 'none',
-                        cursor: 'pointer',
-                      }}
-                      title="Click to toggle Payment requirement ON or OFF"
-                    >
-                      <span
-                        className={`w-3 h-3 rounded-full ${paymentConfig.isEnabled ? 'bg-white animate-pulse' : 'bg-gray-300'}`}
-                      />
-                      {paymentConfig.isEnabled ? 'Turn Payment OFF' : 'Turn Payment ON'}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Detailed Settings Form */}
+                {renderPaymentMasterToggleCard()}
                 <form onSubmit={handleSavePaymentSettings} className="space-y-6">
-                  {/* Multi-Country Listing Fees Section */}
-                  <div className="card p-5 space-y-4">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
-                          Listing Fee per Country
-                        </h3>
-                        <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                          Set the business listing fee for each country. Currencies are fixed. Amount 0 = <strong>FREE listing</strong> for that country.
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 pt-1">
-                      {[
-                        { country: 'Pakistan', code: 'PK', currency: 'PKR', symbol: 'Rs.', flagColor: 'bg-emerald-600', placeholder: 'e.g. 50' },
-                        { country: 'UAE', code: 'AE', currency: 'AED', symbol: 'AED ', flagColor: 'bg-rose-600', placeholder: 'e.g. 0' },
-                        { country: 'USA', code: 'US', currency: 'USD', symbol: '$', flagColor: 'bg-blue-600', placeholder: 'e.g. 0' },
-                      ].map(({ country, code, currency, symbol, flagColor, placeholder }) => {
-                        const currentAmount = paymentConfig.fees?.[country]?.amount ?? 0;
-                        const isFree = Number(currentAmount) === 0;
-
-                        return (
-                          <div
-                            key={country}
-                            className="p-4 rounded-xl border border-gray-200 bg-gray-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-gray-300 transition-colors"
-                          >
-                            <div className="flex items-center gap-3">
-                              <span className={`w-8 h-8 rounded-lg ${flagColor} text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs`}>
-                                {code}
-                              </span>
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-bold text-sm text-gray-900">{country}</span>
-                                  {isFree ? (
-                                    <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                                      FREE LISTING
-                                    </span>
-                                  ) : (
-                                    <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800">
-                                      {symbol}{currentAmount}
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-xs text-gray-500">
-                                  Fixed Currency: <strong className="text-gray-700">{currency} ({symbol.trim()})</strong>
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 sm:w-72">
-                              <div className="relative flex-1">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500 select-none">
-                                  {symbol}
-                                </span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="1"
-                                  value={paymentConfig.fees?.[country]?.amount ?? 0}
-                                  onChange={(e) => {
-                                    const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
-                                    setPaymentConfig((prev) => ({
-                                      ...prev,
-                                      fees: {
-                                        ...prev.fees,
-                                        [country]: {
-                                          amount: val,
-                                          currency,
-                                          symbol,
-                                        },
-                                      },
-                                      ...(country === 'Pakistan' ? { feeAmount: val === '' ? 0 : val } : {}),
-                                    }));
-                                  }}
-                                  className="form-input pl-12 pr-3 text-sm font-bold text-gray-900"
-                                  placeholder={placeholder}
-                                />
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setPaymentConfig((prev) => ({
-                                    ...prev,
-                                    fees: {
-                                      ...prev.fees,
-                                      [country]: {
-                                        amount: 0,
-                                        currency,
-                                        symbol,
-                                      },
-                                    },
-                                    ...(country === 'Pakistan' ? { feeAmount: 0 } : {}),
-                                  }));
-                                }}
-                                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
-                                  isFree
-                                    ? 'bg-emerald-600 text-white shadow-xs'
-                                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
-                                }`}
-                                title="Set to 0 (FREE)"
-                              >
-                                Set FREE
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-
-                    <p style={{ fontSize: '0.75rem', color: '#6b7280', background: '#f9fafb', padding: '0.5rem 0.75rem', borderRadius: '0.5rem', border: '1px solid #f3f4f6' }}>
-                      💡 <strong>Multi-Country Pricing:</strong> Set fee to <strong>0</strong> for any country to make listings 100% FREE for that country. User form will automatically adapt based on selected country.
-                    </p>
-                  </div>
-
-                  {/* Raast QR Code & Account Information Card */}
-                  <div className="card p-5 space-y-5">
-                    <div className="flex items-center justify-between flex-wrap gap-2">
-                      <div>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }} className="flex items-center gap-2">
-                          <QrCode size={18} className="text-emerald-600" />
-                          Raast QR Code &amp; Account Details
-                        </h3>
-                        <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
-                          Upload your official Raast QR Code. Users across Pakistan can scan it via JazzCash, EasyPaisa, SadaPay, or any Mobile Banking app.
-                        </p>
-                      </div>
-                      <span className="badge badge-green" style={{ fontSize: '0.75rem', padding: '3px 8px' }}>
-                        ⚡ Raast P2M / Instant Pay
-                      </span>
-                    </div>
-
-                    {/* QR Code Upload / Preview Box */}
-                    <div className="p-4 rounded-xl border border-gray-200 bg-gray-50/70">
-                      <label className="form-label mb-2 block font-semibold text-gray-800">
-                        Raast QR Code Image <span style={{ color: '#dc2626' }}>*</span>
-                      </label>
-
-                      {qrCodePreview || paymentConfig.qrCode?.url ? (
-                        <div className="flex flex-col sm:flex-row items-center gap-5 p-3 bg-white rounded-xl border border-gray-200">
-                          <div className="relative w-36 h-36 rounded-lg overflow-hidden border border-gray-200 bg-white flex items-center justify-center p-2 flex-shrink-0 shadow-xs">
-                            <img
-                              src={qrCodePreview || paymentConfig.qrCode?.url}
-                              alt="Raast QR Code"
-                              className="w-full h-full object-contain"
-                            />
-                          </div>
-
-                          <div className="flex-1 space-y-2 text-center sm:text-left">
-                            <div className="flex items-center justify-center sm:justify-start gap-2">
-                              <span className="badge badge-green" style={{ fontSize: '0.7rem' }}>
-                                ✓ QR Image Active
-                              </span>
-                              {qrCodeFile && (
-                                <span className="badge badge-blue" style={{ fontSize: '0.7rem' }}>
-                                  New file selected (Click Save)
-                                </span>
-                              )}
-                            </div>
-                            <p style={{ fontSize: '0.8125rem', color: '#4b5563' }}>
-                              This QR code will be displayed to users in a scanner frame when adding a business.
-                            </p>
-
-                            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-1">
-                              <label
-                                className="btn-secondary text-xs px-3 py-1.5 cursor-pointer flex items-center gap-1.5 hover:bg-gray-100"
-                                title="Upload a new QR code image"
-                              >
-                                <Upload size={13} />
-                                <span>Change / Replace QR</span>
-                                <input
-                                  type="file"
-                                  accept="image/png,image/jpeg,image/jpg,image/webp"
-                                  onChange={handleQrCodeFileChange}
-                                  className="hidden"
-                                />
-                              </label>
-
-                              {paymentConfig.qrCode?.url && (
-                                <button
-                                  type="button"
-                                  onClick={handleDeleteQrCode}
-                                  disabled={deletingQrCode}
-                                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-lg font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors border border-red-200"
-                                  title="Delete Raast QR Code image"
-                                >
-                                  <Trash2 size={13} />
-                                  {deletingQrCode ? 'Deleting...' : 'Delete QR Image'}
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <label className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 hover:border-emerald-500 rounded-xl p-6 bg-white cursor-pointer transition-all hover:bg-emerald-50/20 group text-center">
-                          <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform mb-2">
-                            <Upload size={22} />
-                          </div>
-                          <p className="text-sm font-semibold text-gray-800">
-                            Click or drag to upload Raast QR Code image
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            Supports PNG, JPG, JPEG, WebP (Max 5MB)
-                          </p>
-                          <input
-                            type="file"
-                            accept="image/png,image/jpeg,image/jpg,image/webp"
-                            onChange={handleQrCodeFileChange}
-                            className="hidden"
-                          />
-                        </label>
-                      )}
-
-                      <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>
-                        💡 Raast QR code apne bank ya JazzCash/Easypaisa/SadaPay app se download ya screenshot le kar yahan upload karein.
-                      </p>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Account Title */}
-                      <div>
-                        <label className="form-label">
-                          Account Title (Holder Name) <span style={{ color: '#dc2626' }}>*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={paymentConfig.accountTitle || ''}
-                          onChange={(e) => setPaymentConfig({ ...paymentConfig, accountTitle: e.target.value })}
-                          className="form-input"
-                          placeholder="e.g. BizPrimeHub or Your Name"
-                          required
-                        />
-                      </div>
-
-                      {/* Raast ID / Number (Optional) */}
-                      <div>
-                        <label className="form-label flex items-center justify-between">
-                          <span>Raast ID / Registered Number (Optional)</span>
-                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Optional</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={paymentConfig.raastId || ''}
-                          onChange={(e) => setPaymentConfig({ ...paymentConfig, raastId: e.target.value })}
-                          className="form-input font-mono"
-                          placeholder="e.g. 03001234567"
-                        />
-                        <p style={{ fontSize: '0.72rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                          Users can also copy this Raast ID if their camera fails.
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Show QR in countries checkboxes */}
-                    <div className="p-3.5 rounded-xl border border-gray-200 bg-gray-50/70 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <label className="text-xs font-bold text-gray-800 uppercase tracking-wider block">
-                          Show QR in Countries:
-                        </label>
-                        <label className="flex items-center gap-1.5 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={paymentConfig.qrEnabled !== false}
-                            onChange={(e) => setPaymentConfig((prev) => ({ ...prev, qrEnabled: e.target.checked }))}
-                            className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
-                          />
-                          <span className="text-xs font-bold text-gray-700">QR Enabled</span>
-                        </label>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        Select which country forms will display this QR Code payment card.
-                      </p>
-                      <div className="flex flex-wrap gap-4 pt-1">
-                        {['Pakistan', 'UAE', 'USA'].map((c) => {
-                          const isChecked = (paymentConfig.qrCountries || ['Pakistan']).includes(c);
-                          return (
-                            <label key={c} className="flex items-center gap-2 cursor-pointer select-none">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={(e) => {
-                                  const current = paymentConfig.qrCountries || ['Pakistan'];
-                                  const updated = e.target.checked
-                                    ? [...new Set([...current, c])]
-                                    : current.filter((item) => item !== c);
-                                  setPaymentConfig((prev) => ({
-                                    ...prev,
-                                    qrCountries: updated,
-                                  }));
-                                }}
-                                className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
-                              />
-                              <span className="text-xs sm:text-sm font-semibold text-gray-800">{c}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Configurable Payment Methods Section */}
-                    <div className="p-5 rounded-xl border border-gray-200 bg-white shadow-xs space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-gray-100">
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h4 className="text-base font-bold text-gray-900">
-                              Payment Method Cards
-                            </h4>
-                            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
-                              {paymentConfig.paymentMethods?.length || 0}
-                            </span>
-                          </div>
-                          <p className="text-xs text-gray-500 mt-0.5">
-                            Add unlimited custom bank, wallet, or IBAN cards with blank background artwork. Details are dynamically overlaid on cards.
-                          </p>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={handleOpenAddMethod}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition-colors shrink-0 cursor-pointer"
-                        >
-                          <Plus size={14} /> Add Payment Method
-                        </button>
-                      </div>
-
-                      {/* Methods List */}
-                      {(!paymentConfig.paymentMethods || paymentConfig.paymentMethods.length === 0) ? (
-                        <div className="py-8 text-center border border-dashed border-gray-200 rounded-xl bg-gray-50/60">
-                          <CreditCard size={32} className="mx-auto text-gray-400 mb-2" />
-                          <p className="text-sm font-semibold text-gray-700">No payment methods configured yet</p>
-                          <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto">
-                            Click &ldquo;Add Payment Method&rdquo; to add custom JazzCash, Easypaisa, HBL, or any bank cards.
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                          {paymentConfig.paymentMethods.map((method) => {
-                            const isToggling = togglingMethodId === method._id;
-                            const isDeleting = deletingMethodId === method._id;
-
-                            return (
-                              <div
-                                key={method._id}
-                                className={`rounded-xl border p-3 flex flex-col justify-between transition-all ${
-                                  method.isEnabled
-                                    ? 'border-gray-200 bg-gray-50/50 shadow-xs'
-                                    : 'border-gray-200 bg-gray-100/60 opacity-75'
-                                }`}
-                              >
-                                {/* Top: Realistic Card Preview with dynamic overlay */}
-                                <div className="relative aspect-[1.586/1] w-full rounded-xl overflow-hidden shadow-sm border border-black/10 select-none bg-slate-900">
-                                  {method.cardImage?.url ? (
-                                    <img
-                                      src={method.cardImage.url}
-                                      alt={method.name}
-                                      className="absolute inset-0 w-full h-full object-cover"
-                                    />
-                                  ) : (
-                                    <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950" />
-                                  )}
-
-                                  <div className="absolute inset-0 p-[5%] flex flex-col justify-between text-white z-10">
-                                    <div className="flex items-center justify-between gap-1">
-                                      <span className="font-black text-xs sm:text-sm tracking-wide text-white uppercase px-2 py-0.5 rounded-md bg-black/25 backdrop-blur-[2px] border border-white/15 [text-shadow:_0_1px_3px_rgba(0,0,0,0.9)]">
-                                        {method.name}
-                                      </span>
-                                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md bg-black/25 backdrop-blur-[2px] border border-white/20 text-white [text-shadow:_0_1px_2px_rgba(0,0,0,0.85)]">
-                                        {method.kind === 'iban' ? 'IBAN' : 'NUMBER'}
-                                      </span>
-                                    </div>
-
-                                    <div className="my-auto py-1 px-2 rounded-lg bg-black/25 backdrop-blur-[2px] border border-white/15 space-y-0.5 shadow-sm">
-                                      <div className="text-[9px] uppercase font-bold text-white/80 [text-shadow:_0_1px_2px_rgba(0,0,0,0.9)]">
-                                        {method.kind === 'iban' ? 'IBAN' : 'Account Number'}
-                                      </div>
-                                      <div className="font-mono font-black text-xs sm:text-sm text-white break-all px-2 py-0.5 rounded bg-slate-900 border border-slate-700/80">
-                                        {method.accountValue}
-                                      </div>
-                                    </div>
-
-                                    <div className="pt-1 flex items-end justify-between text-[10px]">
-                                      <div className="px-1.5 py-0.5 rounded-md bg-black/25 backdrop-blur-[2px] border border-white/15">
-                                        <span className="text-white/80 uppercase text-[8px] font-bold block [text-shadow:_0_1px_2px_rgba(0,0,0,0.8)]">
-                                          Account Title
-                                        </span>
-                                        <span className="font-bold text-amber-300 [text-shadow:_0_1px_2px_rgba(0,0,0,0.9)]">
-                                          {method.accountTitle}
-                                        </span>
-                                      </div>
-                                      {method.details && (
-                                        <span className="text-white font-medium truncate max-w-[50%] px-1.5 py-0.5 rounded-md bg-black/25 backdrop-blur-[2px] [text-shadow:_0_1px_2px_rgba(0,0,0,0.8)]" title={method.details}>
-                                          {method.details}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Bottom Info & Actions */}
-                                <div className="mt-3 pt-3 border-t border-gray-200/80 flex items-center justify-between gap-2">
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleToggleMethod(method._id)}
-                                      disabled={isToggling}
-                                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                                        method.isEnabled ? 'bg-emerald-600' : 'bg-gray-300'
-                                      }`}
-                                      title={method.isEnabled ? 'Click to disable method' : 'Click to enable method'}
-                                    >
-                                      <span
-                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                                          method.isEnabled ? 'translate-x-5' : 'translate-x-0'
-                                        }`}
-                                      />
-                                    </button>
-                                    <span className="text-xs font-semibold text-gray-700">
-                                      {method.isEnabled ? 'Enabled' : 'Disabled'}
-                                    </span>
-                                    <div className="flex items-center gap-1 ml-1">
-                                      {(method.countries || ['Pakistan']).map((c) => (
-                                        <span
-                                          key={c}
-                                          className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200"
-                                          title={`Available in ${c}`}
-                                        >
-                                          {c === 'Pakistan' ? 'PK' : c === 'UAE' ? 'AE' : 'US'}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-
-                                  <div className="flex items-center gap-1.5">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleOpenEditMethod(method)}
-                                      className="p-1.5 text-xs font-semibold text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-                                      title="Edit Method"
-                                    >
-                                      <Edit3 size={14} /> Edit
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteMethod(method._id, method.name)}
-                                      disabled={isDeleting}
-                                      className="p-1.5 text-xs font-semibold text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-                                      title="Delete Method"
-                                    >
-                                      <Trash2 size={14} /> Delete
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Instructions */}
-                    <div>
-                      <label className="form-label">
-                        Payment Instructions for Users (Optional)
-                      </label>
-                      <textarea
-                        rows={3}
-                        value={paymentConfig.instructions || ''}
-                        onChange={(e) => setPaymentConfig({ ...paymentConfig, instructions: e.target.value })}
-                        className="form-input"
-                        placeholder="e.g. Scan the Raast QR Code with any banking app, send the exact fee amount, and upload the transaction screenshot."
-                      />
-                    </div>
-                  </div>
-
-                  {/* Owner Email Notifications Section */}
-                  <div className="card p-5 space-y-4">
-                    <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-gray-100">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <Mail size={18} className="text-blue-600" />
-                          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
-                            Owner Email Notifications
-                          </h3>
-                          <span
-                            className={`badge ${paymentConfig.ownerNotificationsEnabled ? 'badge-blue' : 'badge-gray'}`}
-                            style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px' }}
-                          >
-                            {paymentConfig.ownerNotificationsEnabled ? 'ACTIVE / ON' : 'PAUSED / OFF'}
-                          </span>
-                        </div>
-                        <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '2px' }}>
-                          Receive automated email alerts whenever a new business listing is submitted or a new user registers.
-                        </p>
-                      </div>
-
-                      {/* Quick ON / OFF toggle button */}
-                      <button
-                        type="button"
-                        onClick={handleToggleOwnerNotifications}
-                        className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold border transition-colors cursor-pointer"
-                        style={{
-                          background: paymentConfig.ownerNotificationsEnabled ? '#eff6ff' : '#f3f4f6',
-                          color: paymentConfig.ownerNotificationsEnabled ? '#1d4ed8' : '#4b5563',
-                          borderColor: paymentConfig.ownerNotificationsEnabled ? '#bfdbfe' : '#d1d5db',
-                        }}
-                      >
-                        <span
-                          className={`w-2 h-2 rounded-full ${paymentConfig.ownerNotificationsEnabled ? 'bg-blue-600 animate-pulse' : 'bg-gray-400'}`}
-                        />
-                        {paymentConfig.ownerNotificationsEnabled ? 'Notifications Active' : 'Notifications Paused'}
-                      </button>
-                    </div>
-
-                    <div className="space-y-4 pt-1">
-                      {/* Toggle Option (Full-Width) */}
-                      <div className="flex items-start gap-3 p-3.5 bg-gray-50/80 rounded-xl border border-gray-200 w-full">
-                        <input
-                          id="ownerNotificationsEnabled"
-                          type="checkbox"
-                          checked={paymentConfig.ownerNotificationsEnabled !== false}
-                          onChange={(e) =>
-                            setPaymentConfig((prev) => ({
-                              ...prev,
-                              ownerNotificationsEnabled: e.target.checked,
-                            }))
-                          }
-                          className="w-4 h-4 mt-0.5 text-blue-600 rounded border-gray-300 focus:ring-blue-500 cursor-pointer"
-                        />
-                        <label htmlFor="ownerNotificationsEnabled" className="cursor-pointer select-none flex-1">
-                          <p style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1f2937' }}>
-                            Send Alerts on New Listings &amp; Users
-                          </p>
-                          <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '2px' }}>
-                            Uncheck to mute email alerts without clearing your recipient address.
-                          </p>
-                        </label>
-                      </div>
-
-                      {/* Recipient Email Input (FULL-WIDTH) */}
-                      <div className="w-full">
-                        <label htmlFor="ownerNotificationEmail" className="form-label flex flex-wrap items-center justify-between gap-1 mb-1.5">
-                          <span className="font-bold text-gray-800">Owner Notification Email</span>
-                          <span style={{ fontSize: '0.75rem', color: '#6b7280' }}>Default: info@bizprimehub.com</span>
-                        </label>
-                        <input
-                          id="ownerNotificationEmail"
-                          type="email"
-                          value={paymentConfig.ownerNotificationEmail || ''}
-                          onChange={(e) =>
-                            setPaymentConfig({
-                              ...paymentConfig,
-                              ownerNotificationEmail: e.target.value,
-                            })
-                          }
-                          className="w-full h-12 px-4 rounded-xl border border-gray-200 bg-white text-sm sm:text-base text-gray-900 font-mono sm:font-sans focus:border-blue-600 focus:ring-2 focus:ring-blue-500/20 transition-all outline-none"
-                          placeholder="e.g. info@bizprimehub.com"
-                        />
-                        <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '4px' }}>
-                          If left blank or disabled, notification emails will be skipped. Both new listing submissions and new user registrations will notify this inbox.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Submit Button */}
+                  {renderCountryFeesCard()}
+                  {renderRaastQrGatewayCard()}
+                  {renderPaymentMethodsCard()}
+                  {renderPaymentInstructionsCard()}
+                  {renderOwnerNotificationsCard()}
                   <div className="flex items-center justify-end gap-3 pt-2">
                     <button
                       type="submit"
@@ -3464,6 +4228,12 @@ export default function AdminDashboardClient() {
                 </div>
               )}
             </>
+          ) : activeSection === 'payments' ? (
+            renderPaymentsView()
+          ) : activeSection === 'reports' ? (
+            renderReportsView()
+          ) : activeSection === 'settings' ? (
+            renderSettingsView()
           ) : (
             <AdminPlaceholderView
               section={activeSection}
@@ -3490,12 +4260,11 @@ export default function AdminDashboardClient() {
           isExportingBackup={isExportingBackup}
           isSuperAdmin={isSuperAdmin}
         />
-      </div>
 
       {/* Modal Dialog: View & Delete Payment Screenshot */}
       {selectedReceiptBiz && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs"
+          className="fixed inset-x-0 inset-y-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs"
           onClick={() => setSelectedReceiptBiz(null)}
           role="dialog"
           aria-modal="true"
@@ -3528,7 +4297,7 @@ export default function AdminDashboardClient() {
             </div>
 
             {/* Modal Image Body */}
-            <div className="p-4 overflow-y-auto flex-1 flex flex-col items-center justify-center bg-gray-50">
+            <div className="p-4 overflow-auto flex-1 flex flex-col items-center justify-center bg-gray-50">
               {selectedReceiptBiz.paymentReceipt?.url ? (
                 <div className="relative max-w-full rounded-xl overflow-hidden shadow-sm border border-gray-200">
                   <img
@@ -3659,7 +4428,7 @@ export default function AdminDashboardClient() {
       {/* Admin Edit Business Modal */}
       {editingBusiness && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
+          className="fixed inset-x-0 inset-y-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-auto"
           onClick={() => setEditingBusiness(null)}
           role="dialog"
           aria-modal="true"
@@ -3687,7 +4456,7 @@ export default function AdminDashboardClient() {
                 <X size={18} />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto flex-1">
+            <div className="p-6 overflow-auto flex-1">
               <BusinessForm
                 existingBusiness={editingBusiness}
                 isAdminEdit={true}
@@ -3705,7 +4474,7 @@ export default function AdminDashboardClient() {
       {/* Confirmation Modal: Make Full Admin */}
       {makeAdminTarget && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
+          className="fixed inset-x-0 inset-y-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-auto"
           onClick={() => {
             if (!isPromotingAdmin) setMakeAdminTarget(null);
           }}
@@ -3799,7 +4568,7 @@ export default function AdminDashboardClient() {
       {/* Confirmation Modal: Mark User as Spam */}
       {spamTarget && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
+          className="fixed inset-x-0 inset-y-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-auto"
           onClick={() => {
             if (!isSpamSubmitting) {
               setSpamTarget(null);
@@ -3921,7 +4690,7 @@ export default function AdminDashboardClient() {
       {/* Confirmation Modal: Delete User Permanently */}
       {deleteUserTarget && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
+          className="fixed inset-x-0 inset-y-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-auto"
           onClick={() => {
             if (!isDeletingUser) {
               setDeleteUserTarget(null);
@@ -4046,10 +4815,108 @@ export default function AdminDashboardClient() {
         </div>
       )}
 
+      {/* Confirmation Modal: Delete Payment Method (Batch 3 Pattern) */}
+      {deleteMethodTarget && (
+        <div
+          className="fixed inset-x-0 inset-y-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-auto"
+          onClick={() => {
+            if (!isDeletingMethod) {
+              setDeleteMethodTarget(null);
+              setDeleteMethodAcknowledged(false);
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-method-modal-title"
+        >
+          <div
+            className="relative bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-gray-100 my-8 animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header / Icon & Close Button */}
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="w-11 h-11 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shrink-0 shadow-2xs">
+                <Trash2 size={22} className="text-red-600" />
+              </div>
+              <button
+                type="button"
+                disabled={isDeletingMethod}
+                onClick={() => {
+                  setDeleteMethodTarget(null);
+                  setDeleteMethodAcknowledged(false);
+                }}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                style={{ border: 'none', cursor: 'pointer' }}
+                aria-label="Close dialog"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Warning Title */}
+            <h3
+              id="delete-method-modal-title"
+              className="text-lg sm:text-xl font-bold text-gray-950 leading-snug mb-2"
+            >
+              Permanently delete this payment method?
+            </h3>
+
+            {/* Target Info */}
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200/80 mb-3 text-xs sm:text-sm">
+              <span className="text-gray-500">Method: </span>
+              <span className="font-bold text-gray-900">{deleteMethodTarget.name}</span>
+            </div>
+
+            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-4">
+              This action will remove this payment option immediately from the user-facing checkout and submission instructions.
+            </p>
+
+            {/* Checkbox Acknowledgment */}
+            <label className="flex items-start gap-2.5 p-3 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer mb-5">
+              <input
+                type="checkbox"
+                id="delete-method-ack-checkbox"
+                checked={deleteMethodAcknowledged}
+                onChange={(e) => setDeleteMethodAcknowledged(e.target.checked)}
+                disabled={isDeletingMethod}
+                className="mt-0.5 rounded text-red-600 focus:ring-red-500 w-4 h-4 cursor-pointer"
+              />
+              <span className="text-xs font-semibold text-gray-800 select-none">
+                I understand this cannot be undone
+              </span>
+            </label>
+
+            {/* Actions: Cancel and Confirm */}
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 sm:gap-3">
+              <button
+                type="button"
+                disabled={isDeletingMethod}
+                onClick={() => {
+                  setDeleteMethodTarget(null);
+                  setDeleteMethodAcknowledged(false);
+                }}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 transition-colors cursor-pointer min-h-[44px] text-center"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!deleteMethodAcknowledged || isDeletingMethod}
+                onClick={handleConfirmDeleteMethod}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-red-600 hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer min-h-[44px] shadow-sm flex items-center justify-center gap-1.5"
+              >
+                <Trash2 size={14} />
+                <span>{isDeletingMethod ? 'Deleting...' : 'Delete permanently'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Add / Edit Payment Method Modal */}
       {methodModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
+          className="fixed inset-x-0 inset-y-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-auto"
           onClick={() => {
             setMethodModalOpen(false);
             setEditingMethod(null);

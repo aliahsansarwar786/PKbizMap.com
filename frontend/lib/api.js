@@ -377,6 +377,7 @@ export const adminAPI = {
     return { success: true, filename };
   },
   getQuota: () => api.get('/admin/quota'),
+  getReports: () => api.get('/admin/reports'),
 };
 
 // ─── Claim API ────────────────────────────────────────────────────────────────
