@@ -1686,6 +1686,63 @@ const exportBackup = asyncHandler(async (req, res) => {
   return res.status(200).json(payload);
 });
 
+// In-memory cache for quota endpoint (60 seconds)
+let quotaCache = null;
+let quotaCacheExpiry = 0;
+
+// ─── GET /api/admin/quota ────────────────────────────────────────────────────
+// Main Admin ONLY: Quota stats for business count, mongo data size, and cloudinary credits
+const getQuota = asyncHandler(async (req, res) => {
+  const now = Date.now();
+  if (quotaCache && now < quotaCacheExpiry) {
+    return res.status(200).json({
+      success: true,
+      data: quotaCache,
+    });
+  }
+
+  let businessCount = null;
+  try {
+    businessCount = await Business.countDocuments();
+  } catch (err) {
+    console.error('Failed to get business count for quota:', err.message);
+  }
+
+  let mongoDataMB = null;
+  try {
+    const mongoose = require('mongoose');
+    const dbStats = await mongoose.connection.db.stats();
+    const rawBytes = dbStats.dataSize ?? dbStats.storageSize ?? 0;
+    mongoDataMB = parseFloat((rawBytes / (1024 * 1024)).toFixed(2));
+  } catch (err) {
+    console.error('Failed to get db stats for quota:', err.message);
+  }
+
+  let cloudinaryCreditsUsed = null;
+  try {
+    const usage = await cloudinary.api.usage();
+    if (usage && usage.credits && typeof usage.credits.usage === 'number') {
+      cloudinaryCreditsUsed = parseFloat(Math.max(0, usage.credits.usage).toFixed(1));
+    }
+  } catch (err) {
+    console.error('Failed to get cloudinary usage for quota:', err.message);
+  }
+
+  const result = {
+    businessCount,
+    mongoDataMB,
+    cloudinaryCreditsUsed,
+  };
+
+  quotaCache = result;
+  quotaCacheExpiry = now + 60 * 1000; // 60s TTL
+
+  res.status(200).json({
+    success: true,
+    data: result,
+  });
+});
+
 module.exports = {
   getDashboard,
   getUsers,
@@ -1714,6 +1771,7 @@ module.exports = {
   sendAdminEmail,
   getActivityLog,
   exportBackup,
+  getQuota,
 };
 
 

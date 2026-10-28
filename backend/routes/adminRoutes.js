@@ -28,6 +28,7 @@ const {
   sendAdminEmail,
   getActivityLog,
   exportBackup,
+  getQuota,
 } = require('../controllers/adminController');
 const {
   getPaymentSettings,
@@ -81,6 +82,9 @@ router.get('/activity-log', authorize('admin'), getActivityLog);
 
 // ─── Export / Backup (Main Admin ONLY) ────────────────────────────────────────
 router.get('/export', authorize('admin'), exportBackup);
+
+// ─── Quota Stats (Main Admin ONLY) ───────────────────────────────────────────
+router.get('/quota', authorize('admin'), getQuota);
 
 // ─── Businesses Management (Permission controlled) ────────────────────────────
 router.get('/businesses/pending', checkPermission('canApproveListings'), getPendingBusinesses);
