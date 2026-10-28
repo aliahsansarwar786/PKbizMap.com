@@ -13,21 +13,38 @@ import {
   CreditCard, Eye, Image as ImageIcon, Save, ExternalLink,
   DollarSign, CheckCircle, AlertCircle, Phone, ArrowUpRight,
   QrCode, Upload, MessageSquare, Search, Filter, Plus, Mail, Bell,
-  ArrowLeft, AlertTriangle, ShieldCheck, Send, Activity, Download
+  ArrowLeft, AlertTriangle, ShieldCheck, Send, Activity, Download,
+  Calendar
 } from 'lucide-react';
 import BusinessForm from '@/components/business/BusinessForm';
+import AdminSidebar from './AdminSidebar';
+import AdminHeader from './AdminHeader';
+import AdminQuotaCards from './AdminQuotaCards';
+import AdminBottomNav from './AdminBottomNav';
+import AdminPlaceholderView from './AdminPlaceholderView';
 
-function StatCard({ label, value, icon: Icon, color = '#2563eb' }) {
+function StatCard({ label, value, icon: Icon, color = '#2563eb', bg = '#eff6ff' }) {
   return (
-    <div className="card p-3.5 sm:p-5">
-      <div className="flex items-center justify-between mb-2 sm:mb-3">
-        <p className="text-xs sm:text-[0.8125rem] font-medium text-gray-500 truncate mr-1">{label}</p>
-        <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color}15` }}>
-          <Icon size={16} className="sm:hidden" style={{ color }} />
-          <Icon size={18} className="hidden sm:block" style={{ color }} />
+    <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-5 shadow-xs hover:shadow-sm transition-all relative overflow-hidden">
+      <div className="flex items-center gap-3 mb-2">
+        <div
+          className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0"
+          style={{ backgroundColor: bg, color }}
+        >
+          <Icon size={20} className="stroke-[2.2]" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-gray-500 truncate">{label}</p>
         </div>
       </div>
-      <p className="text-xl sm:text-2xl lg:text-[1.75rem] font-bold text-gray-800 tracking-tight">{value ?? '—'}</p>
+      <p className="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+        {value ?? '—'}
+      </p>
+      <Icon
+        size={54}
+        className="absolute -right-3 -bottom-3 opacity-5 pointer-events-none"
+        style={{ color }}
+      />
     </div>
   );
 }
@@ -173,6 +190,11 @@ export default function AdminDashboardClient() {
 
   const [tab, setTab] = useState('pending');
   const [mobileActive, setMobileActive] = useState(false);
+  const [activeSection, setActiveSection] = useState('dashboard');
+  const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const [quotaData, setQuotaData] = useState(null);
+  const [quotaLoading, setQuotaLoading] = useState(false);
   const [dashStats, setDashStats] = useState(null);
   const [businesses, setBusinesses] = useState([]);
   const [users, setUsers] = useState([]);
@@ -445,6 +467,16 @@ export default function AdminDashboardClient() {
           if (s) setPaymentConfig(normalizePaymentConfig(s) || s);
         })
         .catch(() => {});
+
+      setQuotaLoading(true);
+      adminAPI.getQuota()
+        .then((res) => {
+          if (res.data?.success && res.data?.data) {
+            setQuotaData(res.data.data);
+          }
+        })
+        .catch(() => {})
+        .finally(() => setQuotaLoading(false));
     }
   }, [isSuperAdmin, isSubAdmin]);
 
@@ -1273,291 +1305,182 @@ export default function AdminDashboardClient() {
     }
   };
 
+  const handleSelectSection = (section, targetTab) => {
+    setActiveSection(section);
+    if (targetTab) {
+      setTab(targetTab);
+      setPage(1);
+    }
+  };
+
+  const handleSearchUserSelect = (selectedUser) => {
+    setActiveSection('dashboard');
+    setTab('users');
+    setPage(1);
+    setUserSearch(selectedUser.name || selectedUser.email);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.push('/login');
+    } catch {
+      router.push('/login');
+    }
+  };
+
+  const todayFormatted = new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date());
+
   if (authLoading || (!isSuperAdmin && !isSubAdmin && !authLoading)) {
     return <div className="section container-max text-center"><p style={{ color: '#6b7280' }}>Loading...</p></div>;
   }
 
   return (
-    <div className="section-sm">
-      <div className="container-max">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6 flex-wrap gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: '#eff6ff' }}>
-              <Shield size={22} style={{ color: '#2563eb' }} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 style={{ fontSize: '1.375rem', fontWeight: 700, color: '#1f2937' }}>
-                  {isSuperAdmin ? 'Admin Dashboard' : 'Sub-Admin Dashboard'}
-                </h1>
-                <span
-                  className={`badge ${isSuperAdmin ? 'badge-blue' : 'badge-purple'}`}
-                  style={{ fontSize: '0.75rem', padding: '3px 8px' }}
-                >
-                  {isSuperAdmin ? 'Full Admin' : 'Sub-Admin'}
-                </span>
-              </div>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>
-                {isSuperAdmin
-                  ? 'Manage businesses, users, payment gateways, and moderation'
-                  : 'Manage businesses and reviews according to your assigned permissions'}
-              </p>
-            </div>
-          </div>
-          {isSuperAdmin && (
-            <button
-              type="button"
-              onClick={handleDownloadBackup}
-              disabled={isExportingBackup}
-              className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-3.5 py-2 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed shadow-xs"
-              title="Download full JSON backup"
-            >
-              <Download size={16} />
-              <span>{isExportingBackup ? 'Preparing backup…' : 'Download Backup'}</span>
-            </button>
-          )}
-        </div>
+    <div className="fixed inset-0 z-40 bg-[#f8fafc] flex flex-col lg:flex-row overflow-hidden text-gray-900">
+      {/* Desktop Fixed Sidebar */}
+      <AdminSidebar
+        activeSection={activeSection}
+        activeTab={tab}
+        onSelectSection={handleSelectSection}
+        dashStats={dashStats}
+      />
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 mb-6">
-          {statsLoading ? (
-            [...Array(5)].map((_, i) => <div key={i} className="skeleton rounded-xl h-24" />)
-          ) : (
+      {/* Mobile / Tablet Drawer Sidebar */}
+      <AdminSidebar
+        isMobileDrawer={true}
+        isOpen={sidebarDrawerOpen}
+        onClose={() => setSidebarDrawerOpen(false)}
+        activeSection={activeSection}
+        activeTab={tab}
+        onSelectSection={handleSelectSection}
+        dashStats={dashStats}
+      />
+
+      {/* Main Viewport Container */}
+      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
+        {/* Top Header */}
+        <AdminHeader
+          onOpenDrawer={() => setSidebarDrawerOpen(true)}
+          dashStats={dashStats}
+          onSelectPendingTab={() => {
+            setActiveSection('dashboard');
+            setTab('pending');
+            setPage(1);
+          }}
+          user={user}
+          onLogout={handleLogout}
+          onDownloadBackup={handleDownloadBackup}
+          isExportingBackup={isExportingBackup}
+          onSearchUserSelect={handleSearchUserSelect}
+          isSuperAdmin={isSuperAdmin}
+        />
+
+        {/* Scrollable Main Area */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-5 lg:p-7 pb-24 lg:pb-8 space-y-5 max-w-full">
+          {activeSection === 'dashboard' ? (
             <>
-              <StatCard label="Total Users" value={dashStats?.totalUsers} icon={Users} color="#2563eb" />
-              <StatCard label="Total Businesses" value={dashStats?.totalBusinesses} icon={Building2} color="#7c3aed" />
-              <StatCard label="Pending" value={dashStats?.pendingBusinesses} icon={Clock} color="#d97706" />
-              <StatCard label="Approved" value={dashStats?.approvedBusinesses} icon={CheckCircle2} color="#059669" />
-              <StatCard label="Reviews" value={dashStats?.totalReviews} icon={Star} color="#db2777" />
-            </>
-          )}
-        </div>
-
-        {/* Quota Limits */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          {dashStats?.limits && (
-            <>
-              {/* Business Limit */}
-              <div className="card p-5 border-t-4" style={{ borderColor: dashStats.limits.businesses.percentage > 80 ? '#dc2626' : '#2563eb' }}>
-                <div className="flex justify-between items-center mb-2">
-                  <p style={{ fontWeight: 600, color: '#1f2937' }}>Business Quota (Free Tier)</p>
-                  <span className="badge badge-gray">{dashStats.limits.businesses.used} / {dashStats.limits.businesses.max}</span>
+              {/* Greeting & Date Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
+                    Welcome back, {user?.name || 'Admin'}! 👋
+                  </h1>
+                  <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                    Manage your business directory, users, payments and more — all in one place.
+                  </p>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-1" style={{ background: '#e5e7eb' }}>
-                  <div className="h-2.5 rounded-full" style={{ width: `${Math.max(0, Math.min(dashStats.limits.businesses.percentage, 100))}%`, background: dashStats.limits.businesses.percentage > 80 ? '#dc2626' : '#2563eb' }}></div>
+                <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 bg-white border border-gray-200/80 rounded-xl text-xs font-semibold text-gray-600 shadow-2xs self-start sm:self-auto">
+                  <Calendar size={14} className="text-gray-400" />
+                  <span>{todayFormatted}</span>
                 </div>
-                <p style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'right' }}>{dashStats.limits.businesses.percentage}% Used</p>
               </div>
 
-              {/* Database Limit */}
-              <div className="card p-5 border-t-4" style={{ borderColor: dashStats.limits.database.percentage > 80 ? '#dc2626' : '#059669' }}>
-                <div className="flex justify-between items-center mb-2">
-                  <p style={{ fontWeight: 600, color: '#1f2937' }}>MongoDB Storage (Free Tier)</p>
-                  <span className="badge badge-gray">{dashStats.limits.database.usedMB}MB / {dashStats.limits.database.maxMB}MB</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2.5 mb-1" style={{ background: '#e5e7eb' }}>
-                  <div className="h-2.5 rounded-full" style={{ width: `${Math.max(0, Math.min(dashStats.limits.database.percentage, 100))}%`, background: dashStats.limits.database.percentage > 80 ? '#dc2626' : '#059669' }}></div>
-                </div>
-                <p style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'right' }}>{dashStats.limits.database.percentage}% Used</p>
+              {/* 5 Stat Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+                {statsLoading ? (
+                  [...Array(5)].map((_, i) => (
+                    <div key={i} className="bg-white rounded-2xl border border-gray-100 p-4 h-24 animate-pulse shadow-xs" />
+                  ))
+                ) : (
+                  <>
+                    <StatCard label="Total Users" value={dashStats?.totalUsers} icon={Users} color="#2563eb" bg="#eff6ff" />
+                    <StatCard label="Total Businesses" value={dashStats?.totalBusinesses} icon={Building2} color="#7c3aed" bg="#f5f3ff" />
+                    <StatCard label="Pending" value={dashStats?.pendingBusinesses} icon={Clock} color="#d97706" bg="#fffbeb" />
+                    <StatCard label="Approved" value={dashStats?.approvedBusinesses} icon={CheckCircle2} color="#059669" bg="#ecfdf5" />
+                    <div className="col-span-2 md:col-span-1">
+                      <StatCard label="Reviews" value={dashStats?.totalReviews} icon={Star} color="#db2777" bg="#fdf2f8" />
+                    </div>
+                  </>
+                )}
               </div>
 
-              {/* Cloudinary Limit */}
-              {dashStats.limits.cloudinary && (
-                <div className="card p-5 border-t-4" style={{ borderColor: dashStats.limits.cloudinary.percentage > 80 ? '#dc2626' : '#8b5cf6' }}>
-                  <div className="flex justify-between items-center mb-2">
-                    <p style={{ fontWeight: 600, color: '#1f2937' }}>Cloudinary Credits (Free Tier)</p>
-                    <span className="badge badge-gray">{dashStats.limits.cloudinary.usedCredits} / {dashStats.limits.cloudinary.maxCredits}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2.5 mb-1" style={{ background: '#e5e7eb' }}>
-                    <div className="h-2.5 rounded-full" style={{ width: `${Math.max(0, Math.min(dashStats.limits.cloudinary.percentage, 100))}%`, background: dashStats.limits.cloudinary.percentage > 80 ? '#dc2626' : '#8b5cf6' }}></div>
-                  </div>
-                  <p style={{ fontSize: '0.75rem', color: '#6b7280', textAlign: 'right' }}>{dashStats.limits.cloudinary.percentage}% Used</p>
+              {/* 3 Quota Cards */}
+              <AdminQuotaCards
+                quota={quotaData || (dashStats?.limits ? { businessCount: dashStats.limits.businesses?.used, mongoDataMB: dashStats.limits.database?.usedMB, cloudinaryCreditsUsed: dashStats.limits.cloudinary?.usedCredits } : null)}
+                loading={quotaLoading}
+              />
+
+              {/* Tabs Section */}
+              {tabs.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-gray-200 p-8 sm:p-12 text-center my-6 shadow-xs">
+                  <Shield size={48} className="mx-auto text-amber-500 mb-3" />
+                  <h3 className="text-lg font-bold text-gray-800 mb-1">Sub-Admin (No Permissions Assigned)</h3>
+                  <p className="text-sm text-gray-600 max-w-md mx-auto">
+                    You are logged in as a Sub-Admin, but no permissions (Approve Listings, Delete Listings, Moderate Reviews) have been assigned to your account yet. Please contact the main administrator.
+                  </p>
                 </div>
-              )}
-            </>
-          )}
-        </div>
-
-        {/* Tabs Bar or Empty State */}
-        {tabs.length === 0 ? (
-          <div className="card p-8 sm:p-12 text-center my-6">
-            <Shield size={48} className="mx-auto text-amber-500 mb-3" />
-            <h3 className="text-lg font-bold text-gray-800 mb-1">Sub-Admin (No Permissions Assigned)</h3>
-            <p className="text-sm text-gray-600 max-w-md mx-auto">
-              You are logged in as a Sub-Admin, but no permissions (Approve Listings, Delete Listings, Moderate Reviews) have been assigned to your account yet. Please contact the main administrator.
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Mobile Dashboard Card Grid (<768px, shown when not in a section) */}
-            {!mobileActive && (
-              <div className="md:hidden mb-6">
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-gray-500">
-                    Dashboard Sections
-                  </h2>
-                  <span className="text-xs font-semibold text-gray-400">
-                    {tabs.length} sections
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  {tabs.map((t) => {
-                    const meta = TAB_META[t.id] || {
-                      icon: Building2,
-                      color: '#2563eb',
-                      bgColor: '#eff6ff',
-                      borderColor: '#bfdbfe',
-                      desc: 'Manage section',
-                    };
-                    const Icon = meta.icon;
-                    const isPending = t.id === 'pending';
-
-                    if (isPending) {
-                      return (
-                        <button
-                          key={t.id}
-                          type="button"
-                          onClick={() => handleMobileSelectTab(t.id)}
-                          className="col-span-2 w-full p-4 rounded-2xl border-2 transition-all active:scale-[0.98] cursor-pointer text-left flex items-center justify-between gap-3 shadow-xs"
-                          style={{
-                            background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 50%, #ffffff 100%)',
-                            borderColor: '#f59e0b',
-                          }}
-                        >
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div
-                              className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 shadow-xs"
-                              style={{ background: '#fef3c7', color: '#b45309' }}
-                            >
-                              <Icon size={24} />
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-bold text-base text-gray-900 leading-snug">
-                                  Pending Listings
-                                </span>
-                                <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded-md bg-amber-200 text-amber-900 uppercase tracking-wider">
-                                  PRIORITY
-                                </span>
-                              </div>
-                              <p className="text-xs text-amber-900/80 mt-0.5">
-                                Businesses awaiting review &amp; approval
-                              </p>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="badge badge-yellow text-xs font-bold px-2.5 py-1">
-                              {t.badge ?? 0} Pending
-                            </span>
-                            <ChevronRight size={18} className="text-amber-700" />
-                          </div>
-                        </button>
-                      );
-                    }
-
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => handleMobileSelectTab(t.id)}
-                        className="col-span-1 w-full p-4 rounded-2xl border border-gray-200 bg-white transition-all active:scale-[0.98] cursor-pointer text-left flex flex-col justify-between gap-3 shadow-2xs hover:shadow-xs min-h-[110px]"
-                      >
-                        <div className="flex items-start justify-between gap-2 w-full">
-                          <div
-                            className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
-                            style={{ background: meta.bgColor, color: meta.color }}
+              ) : (
+                <div className="space-y-4">
+                  {/* Horizontal Tabs Bar */}
+                  <div className="bg-white border border-gray-200/80 rounded-2xl p-1.5 shadow-2xs">
+                    <nav
+                      className="flex items-center space-x-1 sm:space-x-1.5 overflow-x-auto no-scrollbar"
+                      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                      aria-label="Dashboard Tabs"
+                    >
+                      {tabs.map(({ id, label, badge, badgeClass }) => {
+                        const isActive = tab === id;
+                        return (
+                          <button
+                            key={id}
+                            type="button"
+                            onClick={() => { setTab(id); setPage(1); }}
+                            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all whitespace-nowrap cursor-pointer shrink-0 min-h-[44px] ${
+                              isActive
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                            }`}
+                            aria-selected={isActive}
                           >
-                            <Icon size={20} />
-                          </div>
-                          {t.badge != null && (
-                            <span
-                              className={`badge ${t.badgeClass || (t.id === 'reviews' ? 'badge-yellow' : 'badge-gray')} text-[11px] font-bold px-2 py-0.5 shrink-0`}
-                            >
-                              {t.badge}
-                            </span>
-                          )}
-                        </div>
-
-                        <div>
-                          <p className="font-bold text-sm text-gray-900 leading-snug line-clamp-1">
-                            {t.label}
-                          </p>
-                          <p className="text-[11px] text-gray-500 mt-0.5 line-clamp-1">
-                            {meta.desc}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Content Container (On desktop always visible; on mobile visible only when mobileActive is true) */}
-            <div className={`card overflow-hidden ${!mobileActive ? 'hidden md:block' : 'block'}`}>
-              {/* Desktop Tabs Bar (>=768px, identical to original) */}
-              <div
-                className="hidden md:flex border-b overflow-x-auto"
-                style={{
-                  borderColor: '#e5e7eb',
-                  WebkitOverflowScrolling: 'touch',
-                  scrollbarWidth: 'none',
-                  msOverflowStyle: 'none',
-                }}
-              >
-                {tabs.map(({ id, label, badge, badgeClass }) => (
-                  <button
-                    key={id}
-                    onClick={() => { setTab(id); setPage(1); }}
-                    className="flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-3 text-xs sm:text-sm font-semibold transition-colors relative whitespace-nowrap shrink-0 min-h-[44px]"
-                    style={{
-                      color: tab === id ? '#2563eb' : '#6b7280',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      borderBottom: tab === id ? '2px solid #2563eb' : '2px solid transparent',
-                      marginBottom: '-1px',
-                    }}
-                    aria-selected={tab === id}
-                  >
-                    {label}
-                    {badge != null && (
-                      <span
-                        className={`badge ${badgeClass || 'badge-yellow'}`}
-                        style={{ fontSize: '0.6875rem', padding: '1px 6px' }}
-                      >
-                        {badge}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              <div className="p-4">
-                {/* Mobile Back Button (<768px, visible when inside section) */}
-                <div className="md:hidden mb-4 flex items-center justify-between gap-3 pb-3 border-b border-gray-100">
-                  <button
-                    type="button"
-                    onClick={handleMobileBack}
-                    className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-blue-700 bg-blue-50 hover:bg-blue-100 active:bg-blue-200 border border-blue-200 transition-colors cursor-pointer min-h-[44px]"
-                  >
-                    <ArrowLeft size={16} />
-                    <span>Back to Dashboard</span>
-                  </button>
-                  <div className="flex items-center gap-1.5 text-right min-w-0">
-                    <span className="text-xs font-bold text-gray-800 truncate">
-                      {currentTabObj?.label}
-                    </span>
-                    {currentTabObj?.badge != null && (
-                      <span className={`badge ${currentTabObj.badgeClass || 'badge-yellow'} text-[10px] shrink-0`}>
-                        {currentTabObj.badge}
-                      </span>
-                    )}
+                            <span>{label}</span>
+                            {badge != null && (
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  isActive
+                                    ? 'bg-white/20 text-white'
+                                    : badgeClass === 'badge-green'
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : badgeClass === 'badge-yellow'
+                                    ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-gray-200 text-gray-800'
+                                }`}
+                              >
+                                {badge}
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </nav>
                   </div>
-                </div>
+
+                  {/* Tab Content Panel */}
+                  <div className="bg-white rounded-2xl border border-gray-200/80 shadow-xs overflow-hidden">
+                    <div className="p-4 sm:p-6">
             {loading ? (
               <div className="space-y-3">
                 {[...Array(5)].map((_, i) => <div key={i} className="skeleton h-16 rounded-lg" />)}
@@ -3536,10 +3459,37 @@ export default function AdminDashboardClient() {
                 </button>
               </div>
             )}
-          </div>
-        </div>
-        </>
-        )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <AdminPlaceholderView
+              section={activeSection}
+              onBackToDashboard={() => setActiveSection('dashboard')}
+              onDownloadBackup={handleDownloadBackup}
+              isExportingBackup={isExportingBackup}
+              onLogout={handleLogout}
+              isSuperAdmin={isSuperAdmin}
+            />
+          )}
+        </main>
+
+        {/* Mobile Bottom Navigation Bar (< 1024px) */}
+        <AdminBottomNav
+          activeSection={activeSection}
+          activeTab={tab}
+          onSelectSection={handleSelectSection}
+          isMoreOpen={mobileMoreOpen}
+          setIsMoreOpen={setMobileMoreOpen}
+          tabs={tabs}
+          dashStats={dashStats}
+          onLogout={handleLogout}
+          onDownloadBackup={handleDownloadBackup}
+          isExportingBackup={isExportingBackup}
+          isSuperAdmin={isSuperAdmin}
+        />
       </div>
 
       {/* Modal Dialog: View & Delete Payment Screenshot */}

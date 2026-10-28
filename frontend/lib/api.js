@@ -376,6 +376,7 @@ export const adminAPI = {
     window.URL.revokeObjectURL(objectUrl);
     return { success: true, filename };
   },
+  getQuota: () => api.get('/admin/quota'),
 };
 
 // ─── Claim API ────────────────────────────────────────────────────────────────
