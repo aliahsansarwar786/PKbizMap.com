@@ -206,6 +206,11 @@ export default function AdminDashboardClient() {
   const [statsLoading, setStatsLoading] = useState(true);
 
   // Raast QR Payment Gateway Settings & Payment Methods
+  // Delete Payment Method Confirmation Modal State
+  const [deleteMethodTarget, setDeleteMethodTarget] = useState(null);
+  const [deleteMethodAcknowledged, setDeleteMethodAcknowledged] = useState(false);
+  const [isDeletingMethod, setIsDeletingMethod] = useState(false);
+
   const [paymentConfig, setPaymentConfig] = useState({
     isEnabled: false,
     ownerNotificationEmail: 'ahsanalisarwar555@gmail.com',
@@ -1218,24 +1223,34 @@ export default function AdminDashboardClient() {
     }
   };
 
-  const handleDeleteMethod = async (methodId, methodName) => {
-    if (!confirm(`Are you sure you want to permanently delete the "${methodName || 'this'}" payment method card?`)) return;
-    setDeletingMethodId(methodId);
+  const handleDeleteMethod = (methodId, methodName) => {
+    setDeleteMethodTarget({ id: methodId, name: methodName || 'this' });
+    setDeleteMethodAcknowledged(false);
+  };
+
+  const handleConfirmDeleteMethod = async () => {
+    if (!deleteMethodTarget?.id) return;
+    setIsDeletingMethod(true);
     try {
-      const res = await adminAPI.deletePaymentMethod(methodId);
-      const updatedSettings = res.data?.settings;
-      if (updatedSettings) {
-        setPaymentConfig(normalizePaymentConfig(updatedSettings) || updatedSettings);
-      } else if (res.data?.paymentMethods) {
-        setPaymentConfig((prev) => ({ ...prev, paymentMethods: res.data.paymentMethods }));
-      }
-      toast.success('Payment method card deleted successfully.');
+      await adminAPI.deletePaymentMethod(deleteMethodTarget.id);
+      setPaymentConfig((prev) => ({
+        ...prev,
+        paymentMethods: (prev.paymentMethods || []).filter((m) => m._id !== deleteMethodTarget.id),
+      }));
+      toast.success('Payment method deleted successfully.');
+      setDeleteMethodTarget(null);
+      setDeleteMethodAcknowledged(false);
     } catch (err) {
       toast.error(err.message || 'Failed to delete payment method.');
     } finally {
-      setDeletingMethodId(null);
+      setIsDeletingMethod(false);
     }
   };
+
+  // Payments View Handlers / Aliases
+  const handleQrUpload = handleQrCodeFileChange;
+  const handleRemoveQr = handleDeleteQrCode;
+  const handleEditMethod = handleOpenEditMethod;
 
   const handleDeleteReceipt = async (bizId) => {
     if (!confirm('Are you sure you want to permanently delete this payment screenshot? This will remove the image from Cloudinary and mark receipt as removed.')) return;
@@ -1305,6 +1320,17 @@ export default function AdminDashboardClient() {
     }
   };
 
+  // Load payments data when navigating to payments section if empty
+  useEffect(() => {
+    if (activeSection === 'payments' && isSuperAdmin && payments.length === 0) {
+      adminAPI.getPaymentHistory({ page: 1, limit: 50 })
+        .then((res) => {
+          setPayments(res.data?.payments || []);
+        })
+        .catch(() => {});
+    }
+  }, [activeSection, isSuperAdmin, payments.length]);
+
   // Validate activeSection against valid sections
   useEffect(() => {
     const validSections = ['dashboard', 'payments', 'reports', 'settings'];
@@ -1315,7 +1341,10 @@ export default function AdminDashboardClient() {
 
   const handleSelectSection = (section, targetTab) => {
     const validSections = ['dashboard', 'payments', 'reports', 'settings'];
-    const safeSection = validSections.includes(section) ? section : 'dashboard';
+    let safeSection = validSections.includes(section) ? section : 'dashboard';
+    if (section === 'payments' || targetTab === 'payments') {
+      safeSection = 'payments';
+    }
     setActiveSection(safeSection);
     if (targetTab) {
       setTab(targetTab);
@@ -1338,6 +1367,773 @@ export default function AdminDashboardClient() {
       router.push('/login');
     }
   };
+
+  // ─── Real Payments Operations Section Renderers (Piece 2) ───────────────────
+  const renderPaymentMasterToggleCard = () => (
+    <div
+      className="p-6 rounded-2xl transition-all"
+      style={{
+        background: paymentConfig.isEnabled
+          ? 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)'
+          : 'linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%)',
+        border: paymentConfig.isEnabled ? '2px solid #86efac' : '2px solid #e5e7eb',
+      }}
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+            <QrCode size={20} style={{ color: paymentConfig.isEnabled ? '#15803d' : '#6b7280' }} />
+            <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#111827' }}>
+              Directory Listing Payment Requirement
+            </h2>
+            <span
+              className={`badge ${paymentConfig.isEnabled ? 'badge-green' : 'badge-gray'}`}
+              style={{ fontSize: '0.75rem', fontWeight: 700, padding: '3px 8px' }}
+            >
+              {paymentConfig.isEnabled ? 'ACTIVE / ON' : 'DISABLED / OFF'}
+            </span>
+          </div>
+          <p style={{ fontSize: '0.875rem', color: paymentConfig.isEnabled ? '#166534' : '#4b5563' }}>
+            {paymentConfig.isEnabled
+              ? 'Currently ON: Users must complete payment according to their country fee and submit proof/receipt to submit or verify their listing.'
+              : 'Currently OFF: Business submissions are 100% FREE. No payment or receipt screenshot is required.'}
+          </p>
+        </div>
+
+        {/* Big ON / OFF Toggle Button */}
+        <button
+          type="button"
+          onClick={handleTogglePaymentEnabled}
+          className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold shadow transition-all hover:scale-102 shrink-0 cursor-pointer min-h-[44px]"
+          style={{
+            background: paymentConfig.isEnabled ? '#16a34a' : '#4b5563',
+            color: '#ffffff',
+            border: 'none',
+          }}
+          title="Click to toggle Payment requirement ON or OFF"
+        >
+          <span
+            className={`w-3 h-3 rounded-full ${paymentConfig.isEnabled ? 'bg-white animate-pulse' : 'bg-gray-300'}`}
+          />
+          {paymentConfig.isEnabled ? 'Turn Payment OFF' : 'Turn Payment ON'}
+        </button>
+      </div>
+
+      {/* Standing Rule Note */}
+      <div className="mt-4 p-3 bg-amber-50/90 border border-amber-200/90 rounded-xl text-xs text-amber-900 leading-relaxed flex items-start gap-2">
+        <AlertCircle size={16} className="text-amber-600 shrink-0 mt-0.5" />
+        <span>
+          <strong>Standing Rule Note:</strong> Payments stay OFF until sir says so — the toggle only reflects/changes the real setting, it never auto-enables anything.
+        </span>
+      </div>
+    </div>
+  );
+
+  const renderCountryFeesCard = () => (
+    <div className="card p-5 space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+            Listing Fee per Country
+          </h3>
+          <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+            Set the business listing fee for each country. Currencies are fixed server-side. Amount 0 = <strong>FREE listing</strong> for that country.
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-3 pt-1">
+        {[
+          { country: 'Pakistan', code: 'PK', currency: 'PKR', symbol: 'Rs.', flagColor: 'bg-emerald-600', placeholder: 'e.g. 50' },
+          { country: 'UAE', code: 'AE', currency: 'AED', symbol: 'AED ', flagColor: 'bg-rose-600', placeholder: 'e.g. 0' },
+          { country: 'USA', code: 'US', currency: 'USD', symbol: '$', flagColor: 'bg-blue-600', placeholder: 'e.g. 0' },
+        ].map(({ country, code, currency, symbol, flagColor, placeholder }) => {
+          const currentAmount = paymentConfig.fees?.[country]?.amount ?? 0;
+          const isFree = Number(currentAmount) === 0;
+
+          return (
+            <div
+              key={country}
+              className="p-4 rounded-xl border border-gray-200 bg-gray-50/70 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-gray-300 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <span className={`w-8 h-8 rounded-lg ${flagColor} text-white font-extrabold text-xs flex items-center justify-center shrink-0 shadow-xs`}>
+                  {code}
+                </span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-gray-900">{country}</span>
+                    {isFree ? (
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                        FREE LISTING
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800">
+                        {symbol}{currentAmount}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    Fixed Currency: <strong className="text-gray-700">{currency} ({symbol.trim()})</strong>
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 sm:w-72">
+                <div className="relative flex-1">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-gray-500 select-none">
+                    {symbol}
+                  </span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={paymentConfig.fees?.[country]?.amount ?? 0}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                      setPaymentConfig((prev) => ({
+                        ...prev,
+                        fees: {
+                          ...prev.fees,
+                          [country]: {
+                            amount: val,
+                            currency,
+                            symbol,
+                          },
+                        },
+                        ...(country === 'Pakistan' ? { feeAmount: val === '' ? 0 : val } : {}),
+                      }));
+                    }}
+                    placeholder={placeholder}
+                    className="form-input pl-12 text-sm font-semibold"
+                  />
+                </div>
+                <span className="text-xs font-semibold text-gray-500 whitespace-nowrap">
+                  {currency}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderRaastQrGatewayCard = () => (
+    <div className="card p-5 space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-gray-100">
+        <div>
+          <div className="flex items-center gap-2">
+            <QrCode size={18} className="text-emerald-600" />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+              Raast QR Gateway Configuration
+            </h3>
+          </div>
+          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '2px' }}>
+            Instant QR payment receiver for Pakistani banks and digital wallets.
+          </p>
+        </div>
+        <label className="flex items-center gap-2 cursor-pointer bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-200">
+          <input
+            type="checkbox"
+            checked={paymentConfig.qrEnabled !== false}
+            onChange={(e) => setPaymentConfig({ ...paymentConfig, qrEnabled: e.target.checked })}
+            className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+          />
+          <span className="text-xs font-bold text-gray-800 select-none">Enable Raast QR</span>
+        </label>
+      </div>
+
+      {/* QR Code Upload / Preview */}
+      <div className="space-y-3">
+        <label className="block text-xs font-bold text-gray-700">Raast QR Code Image</label>
+        {qrCodePreview || paymentConfig.qrCode?.url ? (
+          <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-xl border border-gray-200 bg-gray-50">
+            <div className="relative w-40 h-40 rounded-xl overflow-hidden border border-gray-300 bg-white shadow-xs shrink-0">
+              <img
+                src={qrCodePreview || paymentConfig.qrCode?.url}
+                alt="Raast QR Code"
+                className="w-full h-full object-contain p-2"
+              />
+            </div>
+            <div className="space-y-2 text-center sm:text-left flex-1 min-w-0">
+              <p className="text-xs font-semibold text-gray-800">
+                {qrCodeFile ? 'New QR file selected (ready to save)' : 'Active Raast QR on Cloudinary'}
+              </p>
+              <p className="text-[11px] text-gray-500">
+                Ensure this is the official static merchant/personal QR code generated from your banking app.
+              </p>
+              <div className="flex items-center justify-center sm:justify-start gap-2 pt-1">
+                <label className="btn-secondary text-xs px-3 py-1.5 font-semibold cursor-pointer inline-flex items-center gap-1.5">
+                  <Upload size={13} /> Change QR
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleQrUpload}
+                    className="hidden"
+                  />
+                </label>
+                {paymentConfig.qrCode?.url && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveQr}
+                    disabled={deletingQrCode}
+                    className="px-3 py-1.5 rounded-xl text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 transition-colors inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Trash2 size={13} /> {deletingQrCode ? 'Deleting…' : 'Delete QR'}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <label className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-2xl bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer group">
+            <div className="w-12 h-12 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-400 group-hover:text-emerald-600 group-hover:border-emerald-300 transition-colors shadow-2xs mb-2">
+              <Upload size={22} />
+            </div>
+            <span className="text-xs font-bold text-gray-800 group-hover:text-emerald-600">
+              Click to upload Raast QR Code image
+            </span>
+            <span className="text-[11px] text-gray-400 mt-1">PNG, JPG or WebP up to 5MB</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleQrUpload}
+              className="hidden"
+            />
+          </label>
+        )}
+      </div>
+
+      {/* Raast QR Details Fields */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1">
+            Account / Merchant Title <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={paymentConfig.accountTitle || ''}
+            onChange={(e) => setPaymentConfig({ ...paymentConfig, accountTitle: e.target.value })}
+            placeholder="e.g. BizPrimeHub"
+            className="form-input text-xs sm:text-sm"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-bold text-gray-700 mb-1">
+            Bank / Wallet Name
+          </label>
+          <input
+            type="text"
+            value={paymentConfig.bankName || ''}
+            onChange={(e) => setPaymentConfig({ ...paymentConfig, bankName: e.target.value })}
+            placeholder="e.g. Raast Instant Payment / HBL"
+            className="form-input text-xs sm:text-sm"
+          />
+        </div>
+
+        <div className="sm:col-span-2">
+          <label className="block text-xs font-bold text-gray-700 mb-1">
+            Raast ID / IBAN / Phone <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={paymentConfig.raastId || ''}
+            onChange={(e) => setPaymentConfig({ ...paymentConfig, raastId: e.target.value })}
+            placeholder="e.g. PK00RAAST0123456789012345 or mobile number"
+            className="form-input text-xs sm:text-sm font-mono"
+          />
+        </div>
+      </div>
+
+      {/* Countries where Raast QR is shown */}
+      <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-100 space-y-2">
+        <label className="block text-xs font-bold text-gray-700">
+          Countries Showing Raast QR Gateway:
+        </label>
+        <div className="flex items-center gap-4 flex-wrap">
+          {['Pakistan', 'UAE', 'USA'].map((c) => {
+            const isChecked = (paymentConfig.qrCountries || ['Pakistan']).includes(c);
+            return (
+              <label key={c} className="flex items-center gap-2 cursor-pointer text-xs font-medium text-gray-800">
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={(e) => {
+                    const current = paymentConfig.qrCountries || ['Pakistan'];
+                    const next = e.target.checked
+                      ? [...new Set([...current, c])]
+                      : current.filter((x) => x !== c);
+                    setPaymentConfig({ ...paymentConfig, qrCountries: next.length > 0 ? next : ['Pakistan'] });
+                  }}
+                  className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4 cursor-pointer"
+                />
+                <span>{c}</span>
+              </label>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPaymentMethodsCard = () => (
+    <div className="card p-5 space-y-5">
+      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-gray-100">
+        <div>
+          <div className="flex items-center gap-2">
+            <CreditCard size={18} className="text-blue-600" />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+              Custom Payment Methods & Bank Accounts
+            </h3>
+            <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
+              {paymentConfig.paymentMethods?.length || 0}
+            </span>
+          </div>
+          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '2px' }}>
+            Add branded bank cards (Meezan, SadaPay, NayaPay, JazzCash, EasyPaisa, etc.) with custom IBAN/number details.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleOpenAddMethod}
+          className="btn-secondary text-xs px-3 py-1.5 font-bold inline-flex items-center gap-1.5 cursor-pointer min-h-[38px]"
+        >
+          <Plus size={14} /> Add Payment Method
+        </button>
+      </div>
+
+      {(!paymentConfig.paymentMethods || paymentConfig.paymentMethods.length === 0) ? (
+        <div className="text-center py-8 px-4 rounded-xl border border-dashed border-gray-200 bg-gray-50/50">
+          <CreditCard size={32} className="text-gray-300 mx-auto mb-2" />
+          <p className="text-xs font-semibold text-gray-700">No custom payment methods configured yet</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            Click &ldquo;Add Payment Method&rdquo; above to add bank account or wallet cards.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {paymentConfig.paymentMethods.map((method) => {
+            const isToggling = togglingMethodId === method._id;
+
+            return (
+              <div
+                key={method._id}
+                className="relative rounded-2xl overflow-hidden border border-gray-200 bg-white p-4 shadow-2xs hover:shadow-sm transition-all flex flex-col justify-between gap-3"
+              >
+                {/* Method Header */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    {method.cardImage?.url ? (
+                      <div className="w-10 h-10 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 shrink-0">
+                        <img
+                          src={method.cardImage.url}
+                          alt={method.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
+                        {method.name.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <h4 className="font-bold text-sm text-gray-900 leading-tight">{method.name}</h4>
+                      <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">
+                        {method.kind === 'iban' ? 'IBAN Account' : 'Account Number'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Active / Inactive Badge */}
+                  <span
+                    className={`badge ${method.isEnabled ? 'badge-green' : 'badge-gray'}`}
+                    style={{ fontSize: '0.65rem', padding: '2px 6px' }}
+                  >
+                    {method.isEnabled ? 'Enabled' : 'Disabled'}
+                  </span>
+                </div>
+
+                {/* Account Details */}
+                <div className="bg-gray-50/80 rounded-xl p-3 border border-gray-100 space-y-1 text-xs">
+                  <div className="flex items-center justify-between text-gray-600">
+                    <span>Title:</span>
+                    <strong className="text-gray-900">{method.accountTitle}</strong>
+                  </div>
+                  <div className="flex items-center justify-between text-gray-600 font-mono text-[11px]">
+                    <span>{method.kind === 'iban' ? 'IBAN:' : 'Number:'}</span>
+                    <strong className="text-gray-900 break-all select-all">{method.accountValue}</strong>
+                  </div>
+                  {method.details && (
+                    <p className="text-[11px] text-gray-500 pt-1 border-t border-gray-100 line-clamp-2">
+                      {method.details}
+                    </p>
+                  )}
+                </div>
+
+                {/* Country Badges */}
+                <div className="flex items-center gap-1 flex-wrap">
+                  {(method.countries || ['Pakistan']).map((c) => (
+                    <span
+                      key={c}
+                      className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-700"
+                    >
+                      {c}
+                    </span>
+                  ))}
+                </div>
+
+                {/* Actions: Edit, Toggle, Delete */}
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                  <button
+                    type="button"
+                    disabled={isToggling}
+                    onClick={() => handleToggleMethod(method._id)}
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-lg transition-colors cursor-pointer min-h-[32px] flex items-center gap-1 ${
+                      method.isEnabled
+                        ? 'text-gray-600 hover:bg-gray-100'
+                        : 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                    }`}
+                  >
+                    {method.isEnabled ? 'Disable' : 'Enable'}
+                  </button>
+
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleEditMethod(method)}
+                      className="p-1.5 rounded-lg text-gray-600 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer min-h-[32px] min-w-[32px] flex items-center justify-center"
+                      title="Edit method details"
+                    >
+                      <Edit3 size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteMethod(method._id, method.name)}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer min-h-[32px] min-w-[32px] flex items-center justify-center"
+                      title="Delete payment method"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderPaymentInstructionsCard = () => (
+    <div className="card p-5 space-y-3">
+      <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+        Payment Instructions for Users
+      </h3>
+      <p style={{ fontSize: '0.8125rem', color: '#6b7280' }}>
+        These instructions are displayed to users on the submission and claim verification pages.
+      </p>
+      <textarea
+        rows={3}
+        value={paymentConfig.instructions || ''}
+        onChange={(e) => setPaymentConfig({ ...paymentConfig, instructions: e.target.value })}
+        className="form-input text-xs sm:text-sm leading-relaxed"
+        placeholder="Enter payment instructions for users..."
+      />
+    </div>
+  );
+
+  const renderOwnerNotificationsCard = () => (
+    <div className="card p-5 space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-3 pb-3 border-b border-gray-100">
+        <div>
+          <div className="flex items-center gap-2">
+            <Bell size={18} className="text-blue-600" />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+              Admin & Owner Email Notifications
+            </h3>
+            <span
+              className={`badge ${paymentConfig.ownerNotificationsEnabled ? 'badge-blue' : 'badge-gray'}`}
+              style={{ fontSize: '0.65rem', padding: '2px 6px' }}
+            >
+              {paymentConfig.ownerNotificationsEnabled ? 'ACTIVE / ON' : 'PAUSED / OFF'}
+            </span>
+          </div>
+          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '2px' }}>
+            Receive automated alert emails whenever a user submits a new business listing or uploads a payment receipt.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={handleToggleOwnerNotifications}
+          className="text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors cursor-pointer min-h-[38px] flex items-center gap-1.5"
+          style={{
+            background: paymentConfig.ownerNotificationsEnabled ? '#eff6ff' : '#f3f4f6',
+            color: paymentConfig.ownerNotificationsEnabled ? '#1d4ed8' : '#4b5563',
+            borderColor: paymentConfig.ownerNotificationsEnabled ? '#bfdbfe' : '#d1d5db',
+          }}
+        >
+          <span
+            className={`w-2 h-2 rounded-full ${paymentConfig.ownerNotificationsEnabled ? 'bg-blue-600 animate-pulse' : 'bg-gray-400'}`}
+          />
+          {paymentConfig.ownerNotificationsEnabled ? 'Notifications Active' : 'Notifications Paused'}
+        </button>
+      </div>
+
+      <div className="space-y-3">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={paymentConfig.ownerNotificationsEnabled !== false}
+            onChange={(e) =>
+              setPaymentConfig({
+                ...paymentConfig,
+                ownerNotificationsEnabled: e.target.checked,
+              })
+            }
+            className="rounded text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+          />
+          <span className="text-xs font-bold text-gray-800 select-none">
+            Send email notifications for new business submissions & payment receipts
+          </span>
+        </label>
+
+        <div>
+          <label htmlFor="ownerNotificationEmail" className="block text-xs font-bold text-gray-700 mb-1">
+            Notification Recipient Email Address
+          </label>
+          <input
+            id="ownerNotificationEmail"
+            type="email"
+            value={paymentConfig.ownerNotificationEmail || ''}
+            onChange={(e) =>
+              setPaymentConfig({
+                ...paymentConfig,
+                ownerNotificationEmail: e.target.value,
+              })
+            }
+            className="form-input text-xs sm:text-sm font-mono sm:font-sans"
+            placeholder="Enter notification recipient email address"
+          />
+          <p className="text-[11px] text-gray-400 mt-1">
+            Initial value loaded from server payment settings. If empty or disabled, notification emails will be skipped.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderPaymentStatsRow = () => {
+    const methodsActive = paymentConfig.paymentMethods?.filter((m) => m.isEnabled).length || 0;
+    const receiptsPending = payments.filter((p) => p.paymentStatus === 'pending').length;
+    const receiptsVerified = payments.filter((p) => p.paymentStatus === 'verified').length;
+    const receiptsRejected = payments.filter((p) => p.paymentStatus === 'rejected').length;
+
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <StatCard
+          label="Active Methods"
+          value={methodsActive}
+          icon={CreditCard}
+          color="#2563eb"
+          bg="#eff6ff"
+        />
+        <StatCard
+          label="Receipts Pending"
+          value={receiptsPending}
+          icon={Clock}
+          color="#d97706"
+          bg="#fffbeb"
+        />
+        <StatCard
+          label="Receipts Verified"
+          value={receiptsVerified}
+          icon={CheckCircle2}
+          color="#059669"
+          bg="#ecfdf5"
+        />
+        <StatCard
+          label="Receipts Rejected"
+          value={receiptsRejected}
+          icon={X}
+          color="#dc2626"
+          bg="#fef2f2"
+        />
+      </div>
+    );
+  };
+
+  const renderReceiptVerificationQueue = () => (
+    <div className="card p-5 space-y-4">
+      <div className="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-gray-100">
+        <div>
+          <div className="flex items-center gap-2">
+            <Clock size={18} className="text-amber-600" />
+            <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1f2937' }}>
+              Receipt Verification Queue
+            </h3>
+          </div>
+          <p style={{ fontSize: '0.8125rem', color: '#6b7280', marginTop: '2px' }}>
+            Review incoming payment screenshots and approve or reject submissions.
+          </p>
+        </div>
+      </div>
+
+      {payments.length === 0 ? (
+        <div className="text-center py-8 px-4 rounded-xl border border-dashed border-gray-200 bg-gray-50/50">
+          <CreditCard size={32} className="text-gray-300 mx-auto mb-2" />
+          <p className="text-xs font-semibold text-gray-700">No payment records found</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">
+            Incoming listing payments and uploaded receipts will appear here for verification.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {payments.map((p) => (
+            <div
+              key={p._id}
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-gray-100 bg-gray-50/70 hover:border-gray-200 transition-colors"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-bold text-sm text-gray-900 truncate">
+                    {p.title}
+                  </p>
+                  <span
+                    className={`badge ${
+                      p.paymentStatus === 'verified'
+                        ? 'badge-green'
+                        : p.paymentStatus === 'rejected'
+                        ? 'badge-red'
+                        : p.paymentStatus === 'pending'
+                        ? 'badge-yellow'
+                        : 'badge-gray'
+                    }`}
+                    style={{ fontSize: '0.65rem', padding: '2px 6px', textTransform: 'capitalize' }}
+                  >
+                    Payment: {p.paymentStatus || 'pending'}
+                  </span>
+                  <span
+                    className={`badge ${p.isApproved ? 'badge-green' : 'badge-yellow'}`}
+                    style={{ fontSize: '0.65rem', padding: '2px 6px' }}
+                  >
+                    Listing: {p.isApproved ? 'Approved' : 'Pending'}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 mt-1.5 text-xs text-gray-500">
+                  <span className="font-bold text-gray-900">
+                    Amount: Rs. {p.paymentAmount || 0}
+                  </span>
+                  {p.owner && (
+                    <span>
+                      Owner: <strong className="text-gray-700">{p.owner.name}</strong> ({p.owner.email})
+                    </span>
+                  )}
+                  <span>
+                    Date: {new Date(p.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap pt-3 sm:pt-0 border-t border-gray-200/80 sm:border-0 w-full sm:w-auto justify-start sm:justify-end">
+                {isSuperAdmin && p.paymentStatus !== 'verified' && (
+                  <button
+                    type="button"
+                    disabled={updatingPaymentStatus}
+                    onClick={() => handleUpdatePaymentStatus(p._id, 'verified')}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 transition-colors border border-emerald-300 cursor-pointer min-h-[36px]"
+                    title="Verify Payment Receipt"
+                  >
+                    <Check size={13} /> Verify
+                  </button>
+                )}
+                {isSuperAdmin && p.paymentStatus !== 'rejected' && (
+                  <button
+                    type="button"
+                    disabled={updatingPaymentStatus}
+                    onClick={() => handleUpdatePaymentStatus(p._id, 'rejected')}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 transition-colors border border-rose-300 cursor-pointer min-h-[36px]"
+                    title="Reject Payment Receipt"
+                  >
+                    <X size={13} /> Reject
+                  </button>
+                )}
+                {p.paymentReceipt?.url && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedReceiptBiz(p)}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 transition-colors border border-blue-200 cursor-pointer min-h-[36px]"
+                    title="View Receipt Screenshot"
+                  >
+                    <Eye size={13} /> View Receipt
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderPaymentsView = () => (
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setActiveSection('dashboard')}
+            className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer transition-colors shadow-2xs"
+            title="Return to Dashboard"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Payments Operations</h1>
+            <p className="text-xs sm:text-sm text-gray-500">Live gateway status, per-country fees, payment accounts, and receipt approvals</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActiveSection('dashboard')}
+          className="text-xs sm:text-sm font-semibold text-blue-600 hover:text-blue-700 cursor-pointer min-h-[44px] px-3 py-2 flex items-center"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+
+      {/* Payment Stats Row */}
+      {renderPaymentStatsRow()}
+
+      {/* Master Toggle Banner with Standing Rule */}
+      {renderPaymentMasterToggleCard()}
+
+      {/* Settings Form: Fees + Raast QR + Payment Methods + Instructions */}
+      <form onSubmit={handleSavePaymentSettings} className="space-y-6">
+        {renderCountryFeesCard()}
+        {renderRaastQrGatewayCard()}
+        {renderPaymentMethodsCard()}
+        {renderPaymentInstructionsCard()}
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={savingPaymentConfig}
+            className="btn-primary flex items-center gap-2 px-6 py-2.5 text-sm font-semibold shadow"
+          >
+            <Save size={16} />
+            {savingPaymentConfig ? 'Saving Settings...' : 'Save Payment Settings'}
+          </button>
+        </div>
+      </form>
+
+      {/* Receipt Verification Queue */}
+      {renderReceiptVerificationQueue()}
+    </div>
+  );
 
   const todayFormatted = new Intl.DateTimeFormat('en-US', {
     month: 'short',
@@ -3474,6 +4270,8 @@ export default function AdminDashboardClient() {
                 </div>
               )}
             </>
+          ) : activeSection === 'payments' ? (
+            renderPaymentsView()
           ) : (
             <AdminPlaceholderView
               section={activeSection}
@@ -4050,6 +4848,104 @@ export default function AdminDashboardClient() {
               >
                 <Trash2 size={14} />
                 <span>{isDeletingUser ? 'Deleting Permanently...' : 'Delete permanently'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal: Delete Payment Method (Batch 3 Pattern) */}
+      {deleteMethodTarget && (
+        <div
+          className="fixed inset-x-0 inset-y-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-auto"
+          onClick={() => {
+            if (!isDeletingMethod) {
+              setDeleteMethodTarget(null);
+              setDeleteMethodAcknowledged(false);
+            }
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-method-modal-title"
+        >
+          <div
+            className="relative bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl border border-gray-100 my-8 animate-fade-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header / Icon & Close Button */}
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="w-11 h-11 rounded-xl bg-red-50 border border-red-200 flex items-center justify-center text-red-600 shrink-0 shadow-2xs">
+                <Trash2 size={22} className="text-red-600" />
+              </div>
+              <button
+                type="button"
+                disabled={isDeletingMethod}
+                onClick={() => {
+                  setDeleteMethodTarget(null);
+                  setDeleteMethodAcknowledged(false);
+                }}
+                className="w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                style={{ border: 'none', cursor: 'pointer' }}
+                aria-label="Close dialog"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Warning Title */}
+            <h3
+              id="delete-method-modal-title"
+              className="text-lg sm:text-xl font-bold text-gray-950 leading-snug mb-2"
+            >
+              Permanently delete this payment method?
+            </h3>
+
+            {/* Target Info */}
+            <div className="p-3 bg-gray-50 rounded-xl border border-gray-200/80 mb-3 text-xs sm:text-sm">
+              <span className="text-gray-500">Method: </span>
+              <span className="font-bold text-gray-900">{deleteMethodTarget.name}</span>
+            </div>
+
+            <p className="text-xs sm:text-sm text-gray-600 leading-relaxed mb-4">
+              This action will remove this payment option immediately from the user-facing checkout and submission instructions.
+            </p>
+
+            {/* Checkbox Acknowledgment */}
+            <label className="flex items-start gap-2.5 p-3 rounded-xl border border-gray-200 bg-gray-50/50 hover:bg-gray-50 transition-colors cursor-pointer mb-5">
+              <input
+                type="checkbox"
+                id="delete-method-ack-checkbox"
+                checked={deleteMethodAcknowledged}
+                onChange={(e) => setDeleteMethodAcknowledged(e.target.checked)}
+                disabled={isDeletingMethod}
+                className="mt-0.5 rounded text-red-600 focus:ring-red-500 w-4 h-4 cursor-pointer"
+              />
+              <span className="text-xs font-semibold text-gray-800 select-none">
+                I understand this cannot be undone
+              </span>
+            </label>
+
+            {/* Actions: Cancel and Confirm */}
+            <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2.5 sm:gap-3">
+              <button
+                type="button"
+                disabled={isDeletingMethod}
+                onClick={() => {
+                  setDeleteMethodTarget(null);
+                  setDeleteMethodAcknowledged(false);
+                }}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-gray-700 bg-gray-100 hover:bg-gray-200 border border-gray-200 transition-colors cursor-pointer min-h-[44px] text-center"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={!deleteMethodAcknowledged || isDeletingMethod}
+                onClick={handleConfirmDeleteMethod}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-red-600 hover:bg-red-700 active:bg-red-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all cursor-pointer min-h-[44px] shadow-sm flex items-center justify-center gap-1.5"
+              >
+                <Trash2 size={14} />
+                <span>{isDeletingMethod ? 'Deleting...' : 'Delete permanently'}</span>
               </button>
             </div>
           </div>
