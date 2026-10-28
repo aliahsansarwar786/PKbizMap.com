@@ -11,11 +11,8 @@ import {
   Mail,
   Activity,
   QrCode,
-  LayoutGrid,
-  MapPin,
   BarChart3,
   Settings,
-  FileText,
   ExternalLink,
   Download,
   LogOut,
@@ -253,12 +250,8 @@ export default function AdminBottomNav({
               </p>
               <div className="space-y-1">
                 {[
-                  { id: 'categories', label: 'Categories', icon: LayoutGrid },
-                  { id: 'locations', label: 'Locations', icon: MapPin },
-                  { id: 'reports', label: 'Reports', icon: BarChart3 },
-                  { id: 'settings', label: 'Settings', icon: Settings },
-                  { id: 'manage-pages', label: 'Manage Pages', icon: FileText },
-                  { id: 'jazzcash-settings', label: 'JazzCash Settings', icon: CreditCard },
+                  ...(isSuperAdmin ? [{ id: 'reports', label: 'Reports', icon: BarChart3 }] : []),
+                  ...(isSuperAdmin ? [{ id: 'settings', label: 'Settings', icon: Settings }] : []),
                 ].map((item) => {
                   const Icon = item.icon;
                   return (

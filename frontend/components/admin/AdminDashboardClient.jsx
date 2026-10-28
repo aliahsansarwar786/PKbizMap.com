@@ -1305,8 +1305,18 @@ export default function AdminDashboardClient() {
     }
   };
 
+  // Validate activeSection against valid sections
+  useEffect(() => {
+    const validSections = ['dashboard', 'payments', 'reports', 'settings'];
+    if (activeSection && !validSections.includes(activeSection)) {
+      setActiveSection('dashboard');
+    }
+  }, [activeSection]);
+
   const handleSelectSection = (section, targetTab) => {
-    setActiveSection(section);
+    const validSections = ['dashboard', 'payments', 'reports', 'settings'];
+    const safeSection = validSections.includes(section) ? section : 'dashboard';
+    setActiveSection(safeSection);
     if (targetTab) {
       setTab(targetTab);
       setPage(1);

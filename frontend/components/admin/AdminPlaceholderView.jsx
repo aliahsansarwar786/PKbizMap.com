@@ -4,11 +4,7 @@ import React from 'react';
 import {
   ArrowLeft,
   Settings,
-  LayoutGrid,
-  MapPin,
   BarChart3,
-  FileText,
-  CreditCard,
   Download,
   LogOut,
   Info,
@@ -23,18 +19,6 @@ export default function AdminPlaceholderView({
   isSuperAdmin = true,
 }) {
   const sectionMeta = {
-    categories: {
-      title: 'Categories',
-      subtitle: 'Manage directory business categories and classifications',
-      icon: LayoutGrid,
-      color: '#2563eb',
-    },
-    locations: {
-      title: 'Locations',
-      subtitle: 'Manage operational cities, regions, and geographical coverage',
-      icon: MapPin,
-      color: '#059669',
-    },
     reports: {
       title: 'Reports & Analytics',
       subtitle: 'System logs, engagement insights, and platform summaries',
@@ -46,18 +30,6 @@ export default function AdminPlaceholderView({
       subtitle: 'Configure platform parameters, backups, and security',
       icon: Settings,
       color: '#4b5563',
-    },
-    'manage-pages': {
-      title: 'Manage Pages',
-      subtitle: 'Static pages and directory content management',
-      icon: FileText,
-      color: '#0891b2',
-    },
-    'jazzcash-settings': {
-      title: 'JazzCash Settings',
-      subtitle: 'Payment gateway configuration and merchant details',
-      icon: CreditCard,
-      color: '#d97706',
     },
   };
 

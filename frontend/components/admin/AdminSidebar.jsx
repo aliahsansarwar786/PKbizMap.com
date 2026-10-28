@@ -6,11 +6,8 @@ import {
   Building2,
   Users,
   CreditCard,
-  LayoutGrid,
-  MapPin,
   BarChart3,
   Settings,
-  FileText,
   ExternalLink,
   Store,
   X,
@@ -55,18 +52,6 @@ export default function AdminSidebar({
       targetTab: 'payments',
     },
     {
-      id: 'categories',
-      label: 'Categories',
-      icon: LayoutGrid,
-      section: 'categories',
-    },
-    {
-      id: 'locations',
-      label: 'Locations',
-      icon: MapPin,
-      section: 'locations',
-    },
-    {
       id: 'reports',
       label: 'Reports',
       icon: BarChart3,
@@ -81,18 +66,6 @@ export default function AdminSidebar({
   ];
 
   const adminToolItems = [
-    {
-      id: 'jazzcash-settings',
-      label: 'JazzCash Settings',
-      icon: CreditCard,
-      section: 'jazzcash-settings',
-    },
-    {
-      id: 'manage-pages',
-      label: 'Manage Pages',
-      icon: FileText,
-      section: 'manage-pages',
-    },
     {
       id: 'view-website',
       label: 'View Website',
