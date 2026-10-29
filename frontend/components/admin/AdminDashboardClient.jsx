@@ -3841,7 +3841,61 @@ export default function AdminDashboardClient() {
                       <p className="text-gray-500 text-sm">No email logs recorded yet.</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                      {/* Mobile Card Layout (< 768px) */}
+                      <div className="md:hidden p-3 space-y-3 w-full min-w-0">
+                        {emailLogs.map((log) => (
+                          <div
+                            key={log._id}
+                            className="bg-white rounded-xl border border-gray-100 p-3.5 shadow-2xs space-y-2.5 w-full min-w-0"
+                          >
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span
+                                  className={`badge ${
+                                    log.type === 'manual'
+                                      ? 'badge-blue'
+                                      : log.type === 'spam'
+                                      ? 'badge-red'
+                                      : log.type === 'unspam'
+                                      ? 'badge-green'
+                                      : 'badge-gray'
+                                  } capitalize`}
+                                >
+                                  {log.type === 'unspam' ? 'Un-spam' : log.type}
+                                </span>
+                                <span
+                                  className={`badge ${log.status === 'sent' ? 'badge-green' : 'badge-red'} capitalize`}
+                                >
+                                  {log.status}
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-gray-500 whitespace-nowrap">
+                                {new Date(log.createdAt).toLocaleString(undefined, {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </span>
+                            </div>
+
+                            <div className="w-full min-w-0 text-xs">
+                              <span className="text-[11px] text-gray-400 font-medium block">To</span>
+                              <p className="font-medium text-gray-900 break-all text-xs sm:text-sm">{log.to}</p>
+                            </div>
+
+                            <div className="w-full min-w-0 text-xs">
+                              <span className="text-[11px] text-gray-400 font-medium block">Subject</span>
+                              <p className="text-gray-700 break-words text-xs sm:text-sm">{log.subject}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Desktop Table View (>= 768px) */}
+                      <div className="hidden md:block overflow-x-auto">
                       <table className="w-full text-left border-collapse text-xs sm:text-sm">
                         <thead>
                           <tr className="bg-slate-50 border-b border-gray-200 text-gray-600 font-semibold text-[11px] uppercase tracking-wider">
@@ -3895,6 +3949,7 @@ export default function AdminDashboardClient() {
                         </tbody>
                       </table>
                     </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -3951,7 +4006,69 @@ export default function AdminDashboardClient() {
                       <p className="text-gray-500 text-sm">No activity recorded yet.</p>
                     </div>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                      {/* Mobile Card Layout (< 768px) */}
+                      <div className="md:hidden p-3 space-y-3 w-full min-w-0">
+                        {activityLogs.map((log) => {
+                          const actionLabel = ACTIVITY_ACTIONS.find((a) => a.value === log.action)?.label || log.action;
+                          const isDanger =
+                            log.action.startsWith('delete_') ||
+                            log.action.startsWith('reject_') ||
+                            log.action === 'spam_user';
+                          const isSuccess =
+                            log.action.startsWith('approve_') ||
+                            log.action.startsWith('verify_') ||
+                            log.action === 'unspam_user';
+                          const badgeClass = isDanger
+                            ? 'badge-red'
+                            : isSuccess
+                            ? 'badge-green'
+                            : 'badge-blue';
+
+                          return (
+                            <div
+                              key={log._id}
+                              className="bg-white rounded-xl border border-gray-100 p-3.5 shadow-2xs space-y-2.5 w-full min-w-0"
+                            >
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <span className={`badge ${badgeClass}`}>
+                                  {actionLabel}
+                                </span>
+                                <span className="text-[11px] text-gray-500 whitespace-nowrap">
+                                  {new Date(log.createdAt).toLocaleString(undefined, {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                  })}
+                                </span>
+                              </div>
+
+                              <div className="flex items-center justify-between text-xs text-gray-600 flex-wrap gap-1">
+                                <span className="text-gray-400 font-medium">Admin:</span>
+                                <span className="font-semibold text-gray-900">{log.actorName || log.actor?.name || 'Admin'}</span>
+                              </div>
+
+                              <div className="w-full min-w-0 text-xs">
+                                <span className="text-[11px] text-gray-400 font-medium block">Target</span>
+                                <div className="flex flex-col">
+                                  <span className="font-medium text-gray-800 break-all">{log.targetLabel || '—'}</span>
+                                  <span className="text-[10px] text-gray-400 capitalize">{log.targetType}</span>
+                                </div>
+                              </div>
+
+                              <div className="w-full min-w-0 text-xs pt-1 border-t border-gray-50">
+                                <span className="text-[11px] text-gray-400 font-medium block">Details</span>
+                                <p className="text-gray-600 break-words">{log.details || '—'}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Desktop Table View (>= 768px) */}
+                      <div className="hidden md:block overflow-x-auto">
                       <table className="w-full text-left border-collapse text-xs sm:text-sm">
                         <thead>
                           <tr className="bg-slate-50 border-b border-gray-200 text-gray-600 font-semibold text-[11px] uppercase tracking-wider">
@@ -4013,6 +4130,7 @@ export default function AdminDashboardClient() {
                         </tbody>
                       </table>
                     </div>
+                    </>
                   )}
                 </div>
               </div>
