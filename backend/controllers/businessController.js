@@ -315,17 +315,6 @@ const createBusiness = [
       }
     }
 
-    // --- PRO TIER LIMIT CHECK ---
-    const MAX_BUSINESSES = 2000; // Increased limit for free tier
-    const totalCount = await Business.countDocuments();
-    if (totalCount >= MAX_BUSINESSES) {
-      console.log('🚨 ALERT: Business limit reached! Admin notified.');
-      return res.status(403).json({
-        success: false,
-        message: `System limit reached! Maximum ${MAX_BUSINESSES} businesses allowed in the free tier. Admin has been notified.`,
-      });
-    }
-
     const businessAddress = {
       country: address?.country || req.body?.country || req.body?.['address[country]'] || 'Pakistan',
       city: address?.city || req.body?.city || req.body?.['address[city]'] || '',

@@ -1712,7 +1712,7 @@ const getQuota = asyncHandler(async (req, res) => {
   try {
     const mongoose = require('mongoose');
     const dbStats = await mongoose.connection.db.stats();
-    const rawBytes = dbStats.dataSize ?? dbStats.storageSize ?? 0;
+    const rawBytes = dbStats.storageSize ?? 0;
     mongoDataMB = parseFloat((rawBytes / (1024 * 1024)).toFixed(2));
   } catch (err) {
     console.error('Failed to get db stats for quota:', err.message);

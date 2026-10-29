@@ -5,12 +5,10 @@ import { Database, Cloud, FileText } from 'lucide-react';
 
 export default function AdminQuotaCards({ quota, loading = false }) {
   // Free-tier denominators (display-only limits specified in design)
-  const BUSINESS_MAX = 2000;
   const MONGO_MAX_MB = 512;
   const CLOUDINARY_MAX_CREDITS = 25;
 
   const businessCount = quota?.businessCount != null ? quota.businessCount : null;
-  const businessPercent = businessCount != null ? Math.min(100, Math.max(0, (businessCount / BUSINESS_MAX) * 100)) : null;
 
   const mongoMB = quota?.mongoDataMB != null ? quota.mongoDataMB : null;
   const mongoPercent = mongoMB != null ? Math.min(100, Math.max(0, (mongoMB / MONGO_MAX_MB) * 100)) : null;
@@ -46,17 +44,19 @@ export default function AdminQuotaCards({ quota, loading = false }) {
             </p>
           </div>
           <span className="text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full shrink-0">
-            {businessCount != null ? `${businessCount} / ${BUSINESS_MAX}` : '—'}
+            {businessCount != null ? businessCount : '—'}
           </span>
         </div>
         <div className="w-full bg-gray-100 rounded-full h-2 mb-2 overflow-hidden">
           <div
             className="h-full rounded-full bg-blue-600 transition-all duration-500"
-            style={{ width: `${businessPercent ?? 0}%` }}
+            style={{ width: `${mongoPercent ?? 0}%` }}
           />
         </div>
         <p className="text-[11px] font-medium text-gray-500 text-right">
-          {businessPercent != null ? `${businessPercent.toFixed(1)}% Used` : '—'}
+          {mongoMB != null && mongoPercent != null
+            ? `${mongoPercent.toFixed(1)}% Used · ${mongoMB}MB / ${MONGO_MAX_MB}MB · ${(MONGO_MAX_MB - mongoMB).toFixed(2)} MB left`
+            : '—'}
         </p>
       </div>
 
