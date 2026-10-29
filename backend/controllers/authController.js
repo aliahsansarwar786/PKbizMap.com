@@ -531,6 +531,15 @@ const forgotPassword = [
       }
     }
 
+    // Check per-email OTP throttle (max 5 OTP emails per hour)
+    const throttle = await checkAndIncrementEmailOtpLimit(normalizedEmail);
+    if (!throttle.allowed) {
+      return res.status(429).set('Retry-After', String(throttle.retryAfterSeconds)).json({
+        success: false,
+        message: 'Too many verification code requests for this email. Please try again later.',
+      });
+    }
+
     // Generate fresh OTP (running failed attempts count is preserved)
     const otp = generate6DigitOtp();
     user.resetPasswordOTP = hashOtp(otp);
@@ -809,6 +818,15 @@ const resendResetOtp = [
           message: `Please wait ${retryAfter} seconds before requesting a new code.`,
         });
       }
+    }
+
+    // Check per-email OTP throttle (max 5 OTP emails per hour)
+    const throttle = await checkAndIncrementEmailOtpLimit(normalizedEmail);
+    if (!throttle.allowed) {
+      return res.status(429).set('Retry-After', String(throttle.retryAfterSeconds)).json({
+        success: false,
+        message: 'Too many verification code requests for this email. Please try again later.',
+      });
     }
 
     const otp = generate6DigitOtp();

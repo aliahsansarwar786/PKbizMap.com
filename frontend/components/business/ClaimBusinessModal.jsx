@@ -70,7 +70,6 @@ export default function ClaimBusinessModal({ business, isOpen, onClose }) {
     onClose();
     const params = new URLSearchParams();
     if (claimId) params.set('claimId', claimId);
-    if (business.email) params.set('email', business.email);
     router.push(`/claim/verify?${params.toString()}`);
   };
 
