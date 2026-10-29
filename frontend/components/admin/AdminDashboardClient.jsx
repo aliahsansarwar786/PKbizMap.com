@@ -14,7 +14,7 @@ import {
   DollarSign, CheckCircle, AlertCircle, Phone, ArrowUpRight,
   QrCode, Upload, MessageSquare, Search, Filter, Plus, Mail, Bell,
   ArrowLeft, AlertTriangle, ShieldCheck, Send, Activity, Download,
-  Calendar, RefreshCw
+  Calendar, RefreshCw, LogOut
 } from 'lucide-react';
 import BusinessForm from '@/components/business/BusinessForm';
 import AdminSidebar from './AdminSidebar';
@@ -2166,6 +2166,145 @@ export default function AdminDashboardClient() {
     </div>
   );
 
+  // ─── Real Settings & Controls Section Renderer (Piece Settings) ─────────────
+  const renderSettingsView = () => (
+    <div className="space-y-6 max-w-5xl mx-auto">
+      {/* Top Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setActiveSection('dashboard')}
+            className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer transition-colors shadow-2xs"
+            title="Return to Dashboard"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Settings & Controls</h1>
+            <p className="text-xs sm:text-sm text-gray-500">Website payment configuration, automated notifications, database backups, and administrative tools</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setActiveSection('dashboard')}
+          className="text-xs sm:text-sm font-semibold text-blue-600 hover:text-blue-700 cursor-pointer min-h-[44px] px-3 py-2 flex items-center"
+        >
+          Back to Dashboard
+        </button>
+      </div>
+
+      {/* Master Toggle Banner */}
+      {renderPaymentMasterToggleCard()}
+
+      {/* Website Settings Form */}
+      <form onSubmit={handleSavePaymentSettings} className="space-y-6">
+        {renderCountryFeesCard()}
+        {renderRaastQrGatewayCard()}
+        {renderPaymentMethodsCard()}
+        {renderOwnerNotificationsCard()}
+        <div className="flex items-center justify-end gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={savingPaymentConfig}
+            className="btn-primary flex items-center gap-2 px-6 py-2.5 text-sm font-semibold shadow"
+          >
+            <Save size={16} />
+            {savingPaymentConfig ? 'Saving Settings...' : 'Save Settings'}
+          </button>
+        </div>
+      </form>
+
+      {/* Admin Panel Tools Section */}
+      <div className="space-y-4 pt-4 border-t border-gray-200">
+        <h2 className="text-base sm:text-lg font-bold text-gray-900">Admin Panel Tools</h2>
+
+        {/* (6) Backup Database Card */}
+        {isSuperAdmin && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-gray-900">Database Backup & Export</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                  Download a complete JSON backup archive of all directory data (businesses, users, reviews) with passwords and secrets stripped.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDownloadBackup}
+                disabled={isExportingBackup}
+                className="btn-secondary flex items-center gap-2 text-xs sm:text-sm px-4 py-2.5 cursor-pointer disabled:opacity-50 min-h-[44px]"
+              >
+                <Download size={16} />
+                <span>{isExportingBackup ? 'Preparing backup…' : 'Download Backup'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* (7) Shortcuts to Emails and Activity */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs flex flex-col justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Mail size={18} className="text-indigo-600" />
+                <h3 className="text-sm font-bold text-gray-900">Email Center</h3>
+              </div>
+              <p className="text-xs text-gray-500">
+                Send administrative emails to business owners, monitor sent logs, and review daily email limits.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSelectSection('dashboard', 'emails')}
+              className="btn-secondary text-xs font-semibold py-2 px-3 text-center self-start"
+            >
+              Open Email Center &rarr;
+            </button>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs flex flex-col justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Activity size={18} className="text-cyan-600" />
+                <h3 className="text-sm font-bold text-gray-900">Admin Activity Log</h3>
+              </div>
+              <p className="text-xs text-gray-500">
+                Inspect the audit trail of approvals, rejections, user roles, permission edits, and payment verifications.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleSelectSection('dashboard', 'activity')}
+              className="btn-secondary text-xs font-semibold py-2 px-3 text-center self-start"
+            >
+              Open Activity Log &rarr;
+            </button>
+          </div>
+        </div>
+
+        {/* (8) Sign Out Card */}
+        <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-gray-900">Admin Account Session</h3>
+              <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                Securely sign out of your administrative session on this device.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex items-center gap-2 text-xs sm:text-sm px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 font-semibold rounded-xl min-h-[44px] cursor-pointer transition-colors"
+            >
+              <LogOut size={16} />
+              <span>Sign Out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
   // ─── Real Reports & Analytics Section Renderer (Piece Reports) ─────────────
   const renderReportsView = () => (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -4719,6 +4858,8 @@ export default function AdminDashboardClient() {
             renderPaymentsView()
           ) : activeSection === 'reports' ? (
             renderReportsView()
+          ) : activeSection === 'settings' ? (
+            renderSettingsView()
           ) : (
             <AdminPlaceholderView
               section={activeSection}
