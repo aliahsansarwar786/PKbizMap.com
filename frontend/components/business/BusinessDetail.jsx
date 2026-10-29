@@ -5,6 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { businessAPI, reviewAPI } from '@/lib/api';
+import { normalizeHttpUrl } from '@/lib/safeUrl';
 import BusinessCard, { StarRating } from './BusinessCard';
 import ClaimBusinessModal from './ClaimBusinessModal';
 import toast from 'react-hot-toast';
@@ -34,17 +35,6 @@ function WhatsAppIcon({ size = 15, className = '' }) {
   );
 }
 
-// Helper to check whether a URL has an http: or https: scheme
-function isSafeUrl(url) {
-  if (!url || typeof url !== 'string') return false;
-  const trimmed = url.trim();
-  try {
-    const parsed = new URL(trimmed.startsWith('http://') || trimmed.startsWith('https://') ? trimmed : `https://${trimmed}`);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
 
 // Helper to format full address without duplicate city
 function formatAddress(address) {
@@ -324,6 +314,10 @@ export default function BusinessDetail({ id }) {
 
   const isOwner = user?._id && business.owner?._id && user._id === business.owner._id;
   const isClaimed = Boolean(business.isClaimed || business.claimed);
+  const safeWebsite = normalizeHttpUrl(business.website);
+  const safeFacebook = normalizeHttpUrl(business.socialLinks?.facebook);
+  const safeYoutube = normalizeHttpUrl(business.socialLinks?.youtube);
+  const safeGoogleBusiness = normalizeHttpUrl(business.socialLinks?.googleBusiness);
 
   return (
     <div className="section-sm">
@@ -761,9 +755,9 @@ export default function BusinessDetail({ id }) {
 
               {/* Website "Visit" row (if exists) */}
               {business.website && (
-                isSafeUrl(business.website) ? (
+                safeWebsite ? (
                   <a
-                    href={business.website.startsWith('http') ? business.website : `https://${business.website}`}
+                    href={safeWebsite}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center justify-between p-3 rounded-xl border border-gray-200 bg-white hover:bg-blue-50/60 transition-colors"
@@ -815,9 +809,9 @@ export default function BusinessDetail({ id }) {
               {(business.socialLinks?.facebook || business.socialLinks?.youtube || business.socialLinks?.googleBusiness) && (
                 <div className="pt-2 border-t border-gray-100 flex flex-wrap gap-2">
                   {business.socialLinks.facebook && (
-                    isSafeUrl(business.socialLinks.facebook) ? (
+                    safeFacebook ? (
                       <a
-                        href={business.socialLinks.facebook}
+                        href={safeFacebook}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
@@ -831,9 +825,9 @@ export default function BusinessDetail({ id }) {
                     )
                   )}
                   {business.socialLinks.youtube && (
-                    isSafeUrl(business.socialLinks.youtube) ? (
+                    safeYoutube ? (
                       <a
-                        href={business.socialLinks.youtube}
+                        href={safeYoutube}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 transition-colors"
@@ -847,9 +841,9 @@ export default function BusinessDetail({ id }) {
                     )
                   )}
                   {business.socialLinks.googleBusiness && (
-                    isSafeUrl(business.socialLinks.googleBusiness) ? (
+                    safeGoogleBusiness ? (
                       <a
-                        href={business.socialLinks.googleBusiness}
+                        href={safeGoogleBusiness}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors"
