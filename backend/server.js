@@ -203,18 +203,6 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-app.get('/api/debug-ip', (req, res) => {
-  res.set('Cache-Control', 'no-store');
-  res.status(200).json({
-    success: true,
-    reqIp: req.ip,
-    clientIp: getClientIp(req),
-    socketRemoteAddress: req.socket?.remoteAddress || null,
-    xForwardedFor: req.headers['x-forwarded-for'] || null,
-    xRealIp: req.headers['x-real-ip'] || null,
-  });
-});
-
 // ─── Root and Favicon routes ──────────────────────────────────────────────────
 app.get('/', (req, res) => {
   res.status(200).send('BizPrimeHub Backend API is running.');
