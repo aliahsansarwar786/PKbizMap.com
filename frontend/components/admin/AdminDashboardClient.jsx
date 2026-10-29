@@ -17,6 +17,8 @@ import {
   Calendar, RefreshCw, LogOut, Menu
 } from 'lucide-react';
 import BusinessForm from '@/components/business/BusinessForm';
+import { CATEGORIES } from '@/data/categories';
+import { COUNTRIES, getCities } from '@/data/locations';
 import AdminSidebar from './AdminSidebar';
 import AdminQuotaCards from './AdminQuotaCards';
 import AdminBottomNav from './AdminBottomNav';
@@ -268,8 +270,30 @@ export default function AdminDashboardClient() {
   const [paymentStatusFilter, setPaymentStatusFilter] = useState('');
   const [paymentSearch, setPaymentSearch] = useState('');
 
+  // All Businesses Tab Filters
+  const [allBizSearch, setAllBizSearch] = useState('');
+  const [allBizCategory, setAllBizCategory] = useState('');
+  const [allBizCountry, setAllBizCountry] = useState('');
+  const [allBizCity, setAllBizCity] = useState('');
+
+  // Pending Tab Client-Side Filters
+  const [pendingSearch, setPendingSearch] = useState('');
+  const [pendingCategory, setPendingCategory] = useState('');
+  const [pendingCountry, setPendingCountry] = useState('');
+  const [pendingCity, setPendingCity] = useState('');
+
   // Users Tab Search State
   const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('');
+
+  // Claims Tab Client-Side Search
+  const [claimsSearch, setClaimsSearch] = useState('');
+
+  // Email Log Tab Client-Side Search
+  const [emailLogSearch, setEmailLogSearch] = useState('');
+
+  // Activity Tab Client-Side Search
+  const [activitySearch, setActivitySearch] = useState('');
 
   // Admin Edit Business State
   const [editingBusiness, setEditingBusiness] = useState(null);
@@ -504,7 +528,13 @@ export default function AdminDashboardClient() {
         setPagination(res.data.pagination);
       } else if (tab === 'all-businesses') {
         if (!isSuperAdmin && !perms.canApproveListings && !perms.canDeleteListings) return;
-        const res = await adminAPI.getAllBusinesses({ page, limit: 10 });
+        const res = await adminAPI.getAllBusinesses({
+          page,
+          limit: 10,
+          search: allBizSearch.trim() || undefined,
+          category: allBizCategory || undefined,
+          country: allBizCountry || undefined,
+        });
         setBusinesses(res.data.businesses);
         setPagination(res.data.pagination);
       } else if (tab === 'users') {
@@ -512,7 +542,8 @@ export default function AdminDashboardClient() {
         const res = await adminAPI.getUsers({
           page,
           limit: 10,
-          search: userSearch,
+          search: userSearch.trim() || undefined,
+          role: userRoleFilter || undefined,
         });
         setUsers(res.data.users);
         setPagination(res.data.pagination);
@@ -595,6 +626,10 @@ export default function AdminDashboardClient() {
     perms.canDeleteListings,
     perms.canModerateReviews,
     userSearch,
+    userRoleFilter,
+    allBizSearch,
+    allBizCategory,
+    allBizCountry,
     reviewSearch,
     paymentStatusFilter,
     paymentSearch,
@@ -2164,6 +2199,74 @@ export default function AdminDashboardClient() {
     </div>
   );
 
+  // Client-side filtering for Businesses (Pending tab client filters & All-Businesses city filter)
+  const displayedBusinesses = useMemo(() => {
+    if (tab === 'pending') {
+      return businesses.filter((biz) => {
+        if (pendingCategory && biz.category !== pendingCategory) return false;
+        if (pendingCountry && biz.address?.country?.toLowerCase() !== pendingCountry.toLowerCase()) return false;
+        if (pendingCity && biz.address?.city?.toLowerCase() !== pendingCity.toLowerCase()) return false;
+        if (pendingSearch.trim()) {
+          const q = pendingSearch.trim().toLowerCase();
+          const titleMatch = biz.title?.toLowerCase().includes(q);
+          const descMatch = biz.description?.toLowerCase().includes(q);
+          const catMatch = biz.category?.toLowerCase().includes(q);
+          const cityMatch = biz.address?.city?.toLowerCase().includes(q);
+          const countryMatch = biz.address?.country?.toLowerCase().includes(q);
+          const emailMatch = biz.email?.toLowerCase().includes(q) || biz.owner?.email?.toLowerCase().includes(q);
+          if (!titleMatch && !descMatch && !catMatch && !cityMatch && !countryMatch && !emailMatch) {
+            return false;
+          }
+        }
+        return true;
+      });
+    }
+    if (tab === 'all-businesses') {
+      if (!allBizCity) return businesses;
+      return businesses.filter((biz) => biz.address?.city?.toLowerCase() === allBizCity.toLowerCase());
+    }
+    return businesses;
+  }, [tab, businesses, pendingSearch, pendingCategory, pendingCountry, pendingCity, allBizCity]);
+
+  // Client-side filtering for Claim Requests
+  const filteredClaims = useMemo(() => {
+    if (!claimsSearch.trim()) return claimRequests;
+    const q = claimsSearch.trim().toLowerCase();
+    return claimRequests.filter((c) => {
+      const bizTitle = (c.business?.title || '').toLowerCase();
+      const name = (c.name || '').toLowerCase();
+      const email = (c.email || '').toLowerCase();
+      const phone = (c.phone || '').toLowerCase();
+      return bizTitle.includes(q) || name.includes(q) || email.includes(q) || phone.includes(q);
+    });
+  }, [claimRequests, claimsSearch]);
+
+  // Client-side filtering for Email Logs
+  const filteredEmailLogs = useMemo(() => {
+    if (!emailLogSearch.trim()) return emailLogs;
+    const q = emailLogSearch.trim().toLowerCase();
+    return emailLogs.filter((log) => {
+      const to = (log.to || '').toLowerCase();
+      const subject = (log.subject || '').toLowerCase();
+      const type = (log.type || '').toLowerCase();
+      const status = (log.status || '').toLowerCase();
+      return to.includes(q) || subject.includes(q) || type.includes(q) || status.includes(q);
+    });
+  }, [emailLogs, emailLogSearch]);
+
+  // Client-side filtering for Activity Logs
+  const filteredActivityLogs = useMemo(() => {
+    if (!activitySearch.trim()) return activityLogs;
+    const q = activitySearch.trim().toLowerCase();
+    return activityLogs.filter((log) => {
+      const action = (log.action || '').toLowerCase();
+      const actor = (log.actorName || log.actor?.name || '').toLowerCase();
+      const details = (log.details || '').toLowerCase();
+      const target = (log.targetLabel || '').toLowerCase();
+      return action.includes(q) || actor.includes(q) || details.includes(q) || target.includes(q);
+    });
+  }, [activityLogs, activitySearch]);
+
   // ─── Real Settings & Controls Section Renderer (Piece Settings) ─────────────
   const renderSettingsView = () => (
     <div className="space-y-6 max-w-5xl mx-auto">
@@ -2864,17 +2967,224 @@ export default function AdminDashboardClient() {
                 {[...Array(5)].map((_, i) => <div key={i} className="skeleton h-16 rounded-lg" />)}
               </div>
             ) : (tab === 'pending' || tab === 'all-businesses') ? (
-              <>
-                {businesses.length === 0 ? (
+              <div className="space-y-4">
+                {/* Pending Tab Filters (Client-side) */}
+                {tab === 'pending' && (
+                  <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pb-2">
+                    <div className="flex items-center gap-2 flex-1 max-w-md">
+                      <div className="relative flex-1 min-w-0">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          value={pendingSearch}
+                          onChange={(e) => setPendingSearch(e.target.value)}
+                          placeholder="Filter pending by title, email, city..."
+                          className="form-input pl-9 text-sm"
+                        />
+                      </div>
+                      {(pendingSearch || pendingCategory || pendingCountry || pendingCity) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPendingSearch('');
+                            setPendingCategory('');
+                            setPendingCountry('');
+                            setPendingCity('');
+                          }}
+                          className="text-xs text-gray-500 hover:text-gray-700 px-1 whitespace-nowrap"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        value={pendingCategory}
+                        onChange={(e) => setPendingCategory(e.target.value)}
+                        className="form-input text-xs py-1.5 px-2.5 font-medium"
+                      >
+                        <option value="">All Categories</option>
+                        {CATEGORIES.map((c) => (
+                          <option key={c.name} value={c.name}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={pendingCountry}
+                        onChange={(e) => {
+                          setPendingCountry(e.target.value);
+                          setPendingCity('');
+                        }}
+                        className="form-input text-xs py-1.5 px-2.5 font-medium"
+                      >
+                        <option value="">All Countries</option>
+                        {COUNTRIES.map((country) => (
+                          <option key={country} value={country}>
+                            {country}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={pendingCity}
+                        onChange={(e) => setPendingCity(e.target.value)}
+                        className="form-input text-xs py-1.5 px-2.5 font-medium"
+                      >
+                        <option value="">All Cities</option>
+                        {getCities(pendingCountry).map((city) => (
+                          <option key={city} value={city}>
+                            {city}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {/* All Businesses Tab Filters (Server-side search/category/country + Client-side city) */}
+                {tab === 'all-businesses' && (
+                  <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pb-2">
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        setPage(1);
+                        loadTabData();
+                      }}
+                      className="flex items-center gap-2 flex-1 max-w-md"
+                    >
+                      <div className="relative flex-1 min-w-0">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          value={allBizSearch}
+                          onChange={(e) => {
+                            setAllBizSearch(e.target.value);
+                            setPage(1);
+                          }}
+                          placeholder="Search businesses by title, email, phone..."
+                          className="form-input pl-9 text-sm"
+                        />
+                      </div>
+                      <button type="submit" className="btn-secondary text-xs px-3 py-2 font-semibold min-h-[38px] shrink-0">
+                        Search
+                      </button>
+                      {(allBizSearch || allBizCategory || allBizCountry || allBizCity) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAllBizSearch('');
+                            setAllBizCategory('');
+                            setAllBizCountry('');
+                            setAllBizCity('');
+                            setPage(1);
+                          }}
+                          className="text-xs text-gray-500 hover:text-gray-700 px-1 whitespace-nowrap"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </form>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        value={allBizCategory}
+                        onChange={(e) => {
+                          setAllBizCategory(e.target.value);
+                          setPage(1);
+                        }}
+                        className="form-input text-xs py-1.5 px-2.5 font-medium"
+                      >
+                        <option value="">All Categories</option>
+                        {CATEGORIES.map((c) => (
+                          <option key={c.name} value={c.name}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={allBizCountry}
+                        onChange={(e) => {
+                          setAllBizCountry(e.target.value);
+                          setAllBizCity('');
+                          setPage(1);
+                        }}
+                        className="form-input text-xs py-1.5 px-2.5 font-medium"
+                      >
+                        <option value="">All Countries</option>
+                        {COUNTRIES.map((country) => (
+                          <option key={country} value={country}>
+                            {country}
+                          </option>
+                        ))}
+                      </select>
+
+                      <select
+                        value={allBizCity}
+                        onChange={(e) => {
+                          setAllBizCity(e.target.value);
+                        }}
+                        className="form-input text-xs py-1.5 px-2.5 font-medium"
+                      >
+                        <option value="">All Cities</option>
+                        {getCities(allBizCountry).map((city) => (
+                          <option key={city} value={city}>
+                            {city}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {displayedBusinesses.length === 0 ? (
                   <div className="text-center py-12">
                     <CheckCircle2 size={40} style={{ color: '#d1d5db', margin: '0 auto 1rem' }} />
-                    <p style={{ color: '#6b7280' }}>
-                      {tab === 'pending' ? 'No pending businesses. You\'re all caught up!' : 'No businesses found.'}
-                    </p>
+                    {tab === 'pending' && (pendingSearch || pendingCategory || pendingCountry || pendingCity) ? (
+                      <>
+                        <p style={{ color: '#6b7280' }}>No businesses match the current filters.</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPendingSearch('');
+                            setPendingCategory('');
+                            setPendingCountry('');
+                            setPendingCity('');
+                          }}
+                          className="mt-3 inline-flex items-center text-xs font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                        >
+                          Clear filters
+                        </button>
+                      </>
+                    ) : tab === 'all-businesses' && (allBizSearch || allBizCategory || allBizCountry || allBizCity) ? (
+                      <>
+                        <p style={{ color: '#6b7280' }}>No businesses match the current filters.</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAllBizSearch('');
+                            setAllBizCategory('');
+                            setAllBizCountry('');
+                            setAllBizCity('');
+                            setPage(1);
+                          }}
+                          className="mt-3 inline-flex items-center text-xs font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                        >
+                          Clear filters
+                        </button>
+                      </>
+                    ) : (
+                      <p style={{ color: '#6b7280' }}>
+                        {tab === 'pending' ? 'No pending businesses. You\'re all caught up!' : 'No businesses found.'}
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {businesses.map((biz) => (
+                    {displayedBusinesses.map((biz) => (
                       <div
                         key={biz._id}
                         className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl"
@@ -3166,7 +3476,7 @@ export default function AdminDashboardClient() {
                     ))}
                   </div>
                 )}
-              </>
+              </div>
             ) : tab === 'payments' ? (
               <div className="space-y-4">
                 {/* Payments Toolbar */}
@@ -3192,14 +3502,15 @@ export default function AdminDashboardClient() {
                     <button type="submit" className="btn-secondary text-xs px-3 py-2 font-semibold min-h-[38px] shrink-0">
                       Search
                     </button>
-                    {paymentSearch && (
+                    {(paymentSearch || paymentStatusFilter) && (
                       <button
                         type="button"
                         onClick={() => {
                           setPaymentSearch('');
+                          setPaymentStatusFilter('');
                           setPage(1);
                         }}
-                        className="text-xs text-gray-500 hover:text-gray-700 px-1"
+                        className="text-xs text-gray-500 hover:text-gray-700 px-1 whitespace-nowrap"
                       >
                         Clear
                       </button>
@@ -3228,7 +3539,22 @@ export default function AdminDashboardClient() {
                 {payments.length === 0 ? (
                   <div className="text-center py-12">
                     <CreditCard size={40} style={{ color: '#d1d5db', margin: '0 auto 1rem' }} />
-                    <p style={{ color: '#6b7280' }}>No payment records found.</p>
+                    <p style={{ color: '#6b7280' }}>
+                      {paymentSearch || paymentStatusFilter ? 'No payment records match the current filters.' : 'No payment records found.'}
+                    </p>
+                    {(paymentSearch || paymentStatusFilter) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPaymentSearch('');
+                          setPaymentStatusFilter('');
+                          setPage(1);
+                        }}
+                        className="mt-3 inline-flex items-center text-xs font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                      >
+                        Clear filters
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -3371,7 +3697,21 @@ export default function AdminDashboardClient() {
                 {reviews.length === 0 ? (
                   <div className="text-center py-12">
                     <MessageSquare size={40} style={{ color: '#d1d5db', margin: '0 auto 1rem' }} />
-                    <p style={{ color: '#6b7280' }}>No reviews found.</p>
+                    <p style={{ color: '#6b7280' }}>
+                      {reviewSearch ? 'No reviews match the current search.' : 'No reviews found.'}
+                    </p>
+                    {reviewSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReviewSearch('');
+                          setPage(1);
+                        }}
+                        className="mt-3 inline-flex items-center text-xs font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                      >
+                        Clear search
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -3418,47 +3758,83 @@ export default function AdminDashboardClient() {
               </div>
             ) : tab === 'users' ? (
               <div className="space-y-4">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    setPage(1);
-                    loadTabData();
-                  }}
-                  className="flex items-center gap-2 max-w-md pb-2"
-                >
-                  <div className="relative flex-1 min-w-0">
-                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                    <input
-                      type="text"
-                      value={userSearch}
-                      onChange={(e) => {
-                        setUserSearch(e.target.value);
-                        setPage(1);
-                      }}
-                      placeholder="Search users by name or email..."
-                      className="form-input pl-9 text-sm"
-                    />
-                  </div>
-                  <button type="submit" className="btn-secondary text-xs px-3 py-2 font-semibold min-h-[38px] shrink-0">
-                    Search
-                  </button>
-                  {userSearch && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setUserSearch('');
-                        setPage(1);
-                      }}
-                      className="text-xs text-gray-500 hover:text-gray-700 px-1"
-                    >
-                      Clear
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-2">
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      setPage(1);
+                      loadTabData();
+                    }}
+                    className="flex items-center gap-2 flex-1 max-w-md"
+                  >
+                    <div className="relative flex-1 min-w-0">
+                      <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        value={userSearch}
+                        onChange={(e) => {
+                          setUserSearch(e.target.value);
+                          setPage(1);
+                        }}
+                        placeholder="Search users by name or email..."
+                        className="form-input pl-9 text-sm"
+                      />
+                    </div>
+                    <button type="submit" className="btn-secondary text-xs px-3 py-2 font-semibold min-h-[38px] shrink-0">
+                      Search
                     </button>
-                  )}
-                </form>
+                    {(userSearch || userRoleFilter) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserSearch('');
+                          setUserRoleFilter('');
+                          setPage(1);
+                        }}
+                        className="text-xs text-gray-500 hover:text-gray-700 px-1 whitespace-nowrap"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </form>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-500 whitespace-nowrap">Role:</span>
+                    <select
+                      value={userRoleFilter}
+                      onChange={(e) => {
+                        setUserRoleFilter(e.target.value);
+                        setPage(1);
+                      }}
+                      className="form-input text-xs py-1.5 px-2.5 font-medium"
+                    >
+                      <option value="">All Roles</option>
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                      <option value="subadmin">Sub Admin</option>
+                    </select>
+                  </div>
+                </div>
 
                 {users.length === 0 ? (
                   <div className="text-center py-12">
-                    <p style={{ color: '#6b7280' }}>No users found.</p>
+                    <Users size={40} style={{ color: '#d1d5db', margin: '0 auto 1rem' }} />
+                    <p style={{ color: '#6b7280' }}>
+                      {userSearch || userRoleFilter ? 'No users match the current filters.' : 'No users found.'}
+                    </p>
+                    {(userSearch || userRoleFilter) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserSearch('');
+                          setUserRoleFilter('');
+                          setPage(1);
+                        }}
+                        className="mt-3 inline-flex items-center text-xs font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                      >
+                        Clear filters
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -3823,16 +4199,41 @@ export default function AdminDashboardClient() {
 
                 {/* (c) Sent-email log table */}
                 <div className="card overflow-hidden">
-                  <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                  <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <h3 className="text-base font-bold text-gray-900">Sent Email Log</h3>
                       <p className="text-xs text-gray-500">Record of outgoing emails dispatched through the platform.</p>
                     </div>
                     {pagination?.totalResults != null && (
-                      <span className="badge badge-gray text-xs">
+                      <span className="badge badge-gray text-xs shrink-0">
                         {pagination.totalResults} total
                       </span>
                     )}
+                  </div>
+
+                  {/* Email Logs Search */}
+                  <div className="p-4 pb-2 border-b border-gray-50">
+                    <div className="flex items-center gap-2 max-w-md">
+                      <div className="relative flex-1 min-w-0">
+                        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <input
+                          type="text"
+                          value={emailLogSearch}
+                          onChange={(e) => setEmailLogSearch(e.target.value)}
+                          placeholder="Search emails by recipient, subject, type..."
+                          className="form-input pl-9 text-sm"
+                        />
+                      </div>
+                      {emailLogSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setEmailLogSearch('')}
+                          className="text-xs text-gray-500 hover:text-gray-700 px-1 whitespace-nowrap"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {emailLogs.length === 0 ? (
@@ -3840,11 +4241,23 @@ export default function AdminDashboardClient() {
                       <Mail size={40} className="text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500 text-sm">No email logs recorded yet.</p>
                     </div>
+                  ) : filteredEmailLogs.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Mail size={40} className="text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500 text-sm">No email logs match the current search.</p>
+                      <button
+                        type="button"
+                        onClick={() => setEmailLogSearch('')}
+                        className="mt-3 inline-flex items-center text-xs font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                      >
+                        Clear search
+                      </button>
+                    </div>
                   ) : (
                     <>
                       {/* Mobile Card Layout (< 768px) */}
                       <div className="md:hidden p-3 space-y-3 w-full min-w-0">
-                        {emailLogs.map((log) => (
+                        {filteredEmailLogs.map((log) => (
                           <div
                             key={log._id}
                             className="bg-white rounded-xl border border-gray-100 p-3.5 shadow-2xs space-y-2.5 w-full min-w-0"
@@ -3907,7 +4320,7 @@ export default function AdminDashboardClient() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 bg-white">
-                          {emailLogs.map((log) => (
+                          {filteredEmailLogs.map((log) => (
                             <tr key={log._id} className="hover:bg-slate-50/50 transition-colors">
                               <td className="py-3 px-4 font-medium text-gray-900 break-all">{log.to}</td>
                               <td className="py-3 px-4 text-gray-700 max-w-xs truncate" title={log.subject}>
@@ -3955,8 +4368,8 @@ export default function AdminDashboardClient() {
               </div>
             ) : tab === 'activity' ? (
               <div className="space-y-6">
-                {/* Action-filter dropdown header */}
-                <div className="card p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                {/* Action-filter dropdown & free-text search header */}
+                <div className="card p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3">
                   <div>
                     <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
                       <Activity size={18} className="text-cyan-600" />
@@ -3966,23 +4379,56 @@ export default function AdminDashboardClient() {
                       Immutable audit trail of administrative actions and system updates.
                     </p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Filter size={15} className="text-gray-400 shrink-0" />
-                    <select
-                      value={activityActionFilter}
-                      onChange={(e) => {
-                        setActivityActionFilter(e.target.value);
-                        setPage(1);
-                      }}
-                      className="text-xs sm:text-sm px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
-                      aria-label="Filter activity by action"
-                    >
-                      {ACTIVITY_ACTIONS.map((act) => (
-                        <option key={act.value} value={act.value}>
-                          {act.label}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="relative min-w-[200px]">
+                      <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                      <input
+                        type="text"
+                        value={activitySearch}
+                        onChange={(e) => setActivitySearch(e.target.value)}
+                        placeholder="Search logs by actor, details, target..."
+                        className="form-input pl-8.5 pr-7 text-xs sm:text-sm py-2"
+                      />
+                      {activitySearch && (
+                        <button
+                          type="button"
+                          onClick={() => setActivitySearch('')}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 hover:text-gray-600 cursor-pointer"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Filter size={15} className="text-gray-400 shrink-0" />
+                      <select
+                        value={activityActionFilter}
+                        onChange={(e) => {
+                          setActivityActionFilter(e.target.value);
+                          setPage(1);
+                        }}
+                        className="text-xs sm:text-sm px-3 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 cursor-pointer"
+                        aria-label="Filter activity by action"
+                      >
+                        {ACTIVITY_ACTIONS.map((act) => (
+                          <option key={act.value} value={act.value}>
+                            {act.label}
+                          </option>
+                        ))}
+                      </select>
+                      {activityActionFilter && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActivityActionFilter('');
+                            setPage(1);
+                          }}
+                          className="text-xs text-gray-500 hover:text-gray-700 px-1 whitespace-nowrap"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -4005,11 +4451,23 @@ export default function AdminDashboardClient() {
                       <Activity size={40} className="text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-500 text-sm">No activity recorded yet.</p>
                     </div>
+                  ) : filteredActivityLogs.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Activity size={40} className="text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500 text-sm">No activity matches the current search.</p>
+                      <button
+                        type="button"
+                        onClick={() => setActivitySearch('')}
+                        className="mt-3 inline-flex items-center text-xs font-semibold text-cyan-600 hover:text-cyan-700 cursor-pointer"
+                      >
+                        Clear search
+                      </button>
+                    </div>
                   ) : (
                     <>
                       {/* Mobile Card Layout (< 768px) */}
                       <div className="md:hidden p-3 space-y-3 w-full min-w-0">
-                        {activityLogs.map((log) => {
+                        {filteredActivityLogs.map((log) => {
                           const actionLabel = ACTIVITY_ACTIONS.find((a) => a.value === log.action)?.label || log.action;
                           const isDanger =
                             log.action.startsWith('delete_') ||
@@ -4072,15 +4530,15 @@ export default function AdminDashboardClient() {
                       <table className="w-full text-left border-collapse text-xs sm:text-sm">
                         <thead>
                           <tr className="bg-slate-50 border-b border-gray-200 text-gray-600 font-semibold text-[11px] uppercase tracking-wider">
-                            <th className="py-3 px-4">Date</th>
-                            <th className="py-3 px-4">Admin</th>
                             <th className="py-3 px-4">Action</th>
+                            <th className="py-3 px-4">Admin</th>
                             <th className="py-3 px-4">Target</th>
                             <th className="py-3 px-4">Details</th>
+                            <th className="py-3 px-4">Date</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 bg-white">
-                          {activityLogs.map((log) => {
+                          {filteredActivityLogs.map((log) => {
                             const actionLabel = ACTIVITY_ACTIONS.find((a) => a.value === log.action)?.label || log.action;
                             const isDanger =
                               log.action.startsWith('delete_') ||
@@ -4771,7 +5229,7 @@ export default function AdminDashboardClient() {
               </div>
             ) : tab === 'claims' ? (
               <div className="space-y-4">
-                <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-2 border-b border-gray-100">
                   <div>
                     <h3 className="text-base font-bold text-gray-900">
                       Claim Requests
@@ -4792,10 +5250,45 @@ export default function AdminDashboardClient() {
                   </div>
                 </div>
 
+                {/* Claim Requests Search */}
+                <div className="flex items-center gap-2 max-w-md pb-2">
+                  <div className="relative flex-1 min-w-0">
+                    <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={claimsSearch}
+                      onChange={(e) => setClaimsSearch(e.target.value)}
+                      placeholder="Search claims by business, claimant, email..."
+                      className="form-input pl-9 text-sm"
+                    />
+                  </div>
+                  {claimsSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setClaimsSearch('')}
+                      className="text-xs text-gray-500 hover:text-gray-700 px-1 whitespace-nowrap"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+
                 {claimRequests.length === 0 ? (
                   <div className="text-center py-12">
                     <ShieldCheck size={40} className="text-gray-300 mx-auto mb-3" />
                     <p className="text-gray-500 text-sm">No claim requests recorded yet.</p>
+                  </div>
+                ) : filteredClaims.length === 0 ? (
+                  <div className="text-center py-12">
+                    <ShieldCheck size={40} className="text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500 text-sm">No claim requests match the current search.</p>
+                    <button
+                      type="button"
+                      onClick={() => setClaimsSearch('')}
+                      className="mt-3 inline-flex items-center text-xs font-semibold text-emerald-600 hover:text-emerald-700 cursor-pointer"
+                    >
+                      Clear search
+                    </button>
                   </div>
                 ) : (
                   <div className="overflow-x-auto rounded-xl border border-gray-200">
@@ -4811,7 +5304,7 @@ export default function AdminDashboardClient() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100 bg-white">
-                        {claimRequests.map((claim) => (
+                        {filteredClaims.map((claim) => (
                           <tr key={claim._id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="py-3 px-4 font-semibold text-gray-900">
                               {claim.business ? (
