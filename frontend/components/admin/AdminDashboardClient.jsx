@@ -2817,8 +2817,7 @@ export default function AdminDashboardClient() {
                   {/* Horizontal Tabs Bar */}
                   <div className="bg-white border border-gray-200/80 rounded-2xl p-1.5 shadow-2xs">
                     <nav
-                      className="flex items-center space-x-1 sm:space-x-1.5 overflow-x-auto no-scrollbar"
-                      style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+                      className="flex flex-wrap items-center gap-1 sm:gap-1.5 w-full min-w-0"
                       aria-label="Dashboard Tabs"
                     >
                       {tabs.map(({ id, label, badge, badgeClass }) => {
