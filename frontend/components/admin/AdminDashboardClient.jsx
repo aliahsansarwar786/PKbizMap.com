@@ -4530,11 +4530,11 @@ export default function AdminDashboardClient() {
                       <table className="w-full text-left border-collapse text-xs sm:text-sm">
                         <thead>
                           <tr className="bg-slate-50 border-b border-gray-200 text-gray-600 font-semibold text-[11px] uppercase tracking-wider">
-                            <th className="py-3 px-4">Action</th>
+                            <th className="py-3 px-4">Date</th>
                             <th className="py-3 px-4">Admin</th>
+                            <th className="py-3 px-4">Action</th>
                             <th className="py-3 px-4">Target</th>
                             <th className="py-3 px-4">Details</th>
-                            <th className="py-3 px-4">Date</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 bg-white">
