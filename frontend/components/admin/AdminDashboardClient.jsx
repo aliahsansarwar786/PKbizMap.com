@@ -53,7 +53,7 @@ const normalizePaymentConfig = (s) => {
   const legacyPakistanFee = s.fees?.Pakistan?.amount ?? s.feeAmount ?? 50;
   return {
     ...s,
-    ownerNotificationEmail: s.ownerNotificationEmail ?? 'ahsanalisarwar555@gmail.com',
+    ownerNotificationEmail: s.ownerNotificationEmail ?? '',
     ownerNotificationsEnabled: s.ownerNotificationsEnabled !== false,
     feeAmount: legacyPakistanFee,
     fees: {
@@ -174,7 +174,7 @@ const ACTIVITY_ACTIONS = [
 ];
 
 export default function AdminDashboardClient() {
-  const { user, isAuthenticated, isAdmin, hasAdminAccess, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, isAdmin, hasAdminAccess, loading: authLoading, logout } = useAuth();
   const router = useRouter();
 
   const isSuperAdmin = user?.role === 'admin';
@@ -188,7 +188,6 @@ export default function AdminDashboardClient() {
   }, [user?.permissions]);
 
   const [tab, setTab] = useState('pending');
-  const [mobileActive, setMobileActive] = useState(false);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [sidebarDrawerOpen, setSidebarDrawerOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
@@ -218,7 +217,7 @@ export default function AdminDashboardClient() {
 
   const [paymentConfig, setPaymentConfig] = useState({
     isEnabled: false,
-    ownerNotificationEmail: 'ahsanalisarwar555@gmail.com',
+    ownerNotificationEmail: '',
     ownerNotificationsEnabled: true,
     feeAmount: 50,
     fees: {
@@ -450,15 +449,6 @@ export default function AdminDashboardClient() {
     }
   }, [tabs, tab]);
 
-  const handleMobileSelectTab = (selectedId) => {
-    setTab(selectedId);
-    setPage(1);
-    setMobileActive(true);
-  };
-
-  const handleMobileBack = () => {
-    setMobileActive(false);
-  };
 
   const currentTabObj = tabs.find((t) => t.id === tab) || tabs[0];
 

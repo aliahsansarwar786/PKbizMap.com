@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   LayoutDashboard,
   Clock,
@@ -29,6 +29,18 @@ export default function AdminSidebar({
   dashStats,
   tabs = [],
 }) {
+  // Close drawer on Escape key
+  useEffect(() => {
+    if (!isMobileDrawer || !isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && onClose) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isMobileDrawer, isOpen, onClose]);
+
   const mainNavItems = [
     {
       id: 'dashboard',

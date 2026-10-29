@@ -271,7 +271,7 @@ export default function AdminBottomNav({
                   type="button"
                   onClick={() => {
                     setIsMoreOpen(false);
-                    if (typeof window !== 'undefined') window.open('/', '_blank');
+                    if (typeof window !== 'undefined') window.open('/', '_blank', 'noopener,noreferrer');
                   }}
                   className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-gray-700 hover:bg-gray-100 min-h-[44px] cursor-pointer"
                 >
