@@ -385,6 +385,18 @@ export default function AdminDashboardClient() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [spamTarget, isSpamSubmitting]);
+  // Close Delete Payment Method confirmation dialog on Escape key
+  useEffect(() => {
+    if (!deleteMethodTarget) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape' && !isDeletingMethod) {
+        setDeleteMethodTarget(null);
+        setDeleteMethodAcknowledged(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [deleteMethodTarget, isDeletingMethod]);
 
   // Dynamic tabs based on user role & permissions
   const tabs = useMemo(() => {
@@ -1361,10 +1373,7 @@ export default function AdminDashboardClient() {
 
   const handleSelectSection = (section, targetTab) => {
     const validSections = ['dashboard', 'payments', 'reports', 'settings'];
-    let safeSection = validSections.includes(section) ? section : 'dashboard';
-    if (section === 'payments' || targetTab === 'payments') {
-      safeSection = 'payments';
-    }
+    const safeSection = validSections.includes(section) ? section : 'dashboard';
     setActiveSection(safeSection);
     if (targetTab) {
       setTab(targetTab);

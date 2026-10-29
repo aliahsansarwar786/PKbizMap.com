@@ -62,7 +62,7 @@ export default function AdminBottomNav({
 
   const isDashboardActive = activeSection === 'dashboard' && !['all-businesses', 'payments'].includes(activeTab);
   const isBusinessesActive = activeSection === 'dashboard' && activeTab === 'all-businesses';
-  const isPaymentsActive = activeSection === 'dashboard' && activeTab === 'payments';
+  const isPaymentsActive = activeSection === 'payments' || (activeSection === 'dashboard' && activeTab === 'payments');
   const isMoreActive = isMoreOpen || (!isDashboardActive && !isBusinessesActive && !isPaymentsActive);
 
   return (
@@ -99,7 +99,7 @@ export default function AdminBottomNav({
         {/* 3. Payments */}
         <button
           type="button"
-          onClick={() => handleNavClick('dashboard', 'payments')}
+          onClick={() => handleNavClick('payments')}
           className={`flex flex-col items-center justify-center flex-1 h-full min-h-[44px] cursor-pointer transition-colors ${
             isPaymentsActive ? 'text-blue-600 font-semibold' : 'text-gray-500 hover:text-gray-900'
           }`}
