@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, useCallback } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,14 +25,12 @@ function ClaimVerifyContent() {
   const router = useRouter();
   const { user, isAuthenticated, logout }: any = useAuth();
 
-  const tokenParam = searchParams.get('token') || '';
   const claimIdParam = searchParams.get('claimId') || '';
-  const emailParam = searchParams.get('email') || '';
 
-  const [token, setToken] = useState<string>(tokenParam);
+  const [token] = useState<string>('');
   const [claimId, setClaimId] = useState<string>(claimIdParam);
   const [code, setCode] = useState<string>('');
-  const [email, setEmail] = useState<string>(emailParam);
+  const [email, setEmail] = useState<string>('');
 
   const [loading, setLoading] = useState<boolean>(false);
   const [claimData, setClaimData] = useState<any>(null);
@@ -41,32 +39,7 @@ function ClaimVerifyContent() {
 
   useEffect(() => {
     if (claimIdParam) setClaimId(claimIdParam);
-    if (emailParam) setEmail(emailParam);
-  }, [claimIdParam, emailParam]);
-
-  // Automatically attempt verification if token exists in URL
-  const verifyWithToken = useCallback(async (tokenToVerify: string) => {
-    if (!tokenToVerify) return;
-    setLoading(true);
-    setError('');
-    try {
-      const res = await claimAPI.verify({ token: tokenToVerify });
-      setClaimData(res.data);
-      toast.success('Claim token verified!');
-    } catch (err: any) {
-      setError(err?.message || 'Verification token is invalid or expired.');
-      toast.error(err?.message || 'Verification token is invalid or expired.');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (tokenParam) {
-      setToken(tokenParam);
-      verifyWithToken(tokenParam);
-    }
-  }, [tokenParam, verifyWithToken]);
+  }, [claimIdParam]);
 
   // Handle manual 6-digit code verification
   const handleVerifyCode = async (e: React.FormEvent) => {
@@ -332,7 +305,7 @@ function ClaimVerifyContent() {
                         <LogIn size={16} /> Log In with Email
                       </Link>
                       <Link
-                        href={`/register?email=${encodeURIComponent(claimData.chosenEmail)}&redirect=${encodeURIComponent('/claim/verify')}`}
+                        href={`/register?redirect=${encodeURIComponent('/claim/verify')}`}
                         className="btn-secondary justify-center py-2.5"
                       >
                         <UserPlus size={16} /> Create Account

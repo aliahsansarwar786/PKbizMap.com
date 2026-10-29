@@ -19,6 +19,9 @@ export function normalizeHttpUrl(raw) {
     }
     try {
       const parsed = new URL(trimmed);
+      if (parsed.username || parsed.password) {
+        return null;
+      }
       if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
         return parsed.href;
       }
@@ -33,6 +36,9 @@ export function normalizeHttpUrl(raw) {
 
   try {
     const parsed = new URL(`https://${withoutLeadingSlashes}`);
+    if (parsed.username || parsed.password) {
+      return null;
+    }
     if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
       return parsed.href;
     }
@@ -43,3 +49,4 @@ export function normalizeHttpUrl(raw) {
 }
 
 export default normalizeHttpUrl;
+
