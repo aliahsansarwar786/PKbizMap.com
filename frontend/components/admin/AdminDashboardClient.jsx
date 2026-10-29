@@ -14,11 +14,10 @@ import {
   DollarSign, CheckCircle, AlertCircle, Phone, ArrowUpRight,
   QrCode, Upload, MessageSquare, Search, Filter, Plus, Mail, Bell,
   ArrowLeft, AlertTriangle, ShieldCheck, Send, Activity, Download,
-  Calendar, RefreshCw, LogOut
+  Calendar, RefreshCw, LogOut, Menu
 } from 'lucide-react';
 import BusinessForm from '@/components/business/BusinessForm';
 import AdminSidebar from './AdminSidebar';
-import AdminHeader from './AdminHeader';
 import AdminQuotaCards from './AdminQuotaCards';
 import AdminBottomNav from './AdminBottomNav';
 import AdminPlaceholderView from './AdminPlaceholderView';
@@ -2728,7 +2727,7 @@ export default function AdminDashboardClient() {
   }
 
   return (
-    <div className="fixed inset-0 z-40 bg-[#f8fafc] flex flex-col lg:flex-row overflow-hidden text-gray-900">
+    <div className="flex flex-col lg:flex-row bg-[#f8fafc] min-h-screen">
       {/* Desktop Fixed Sidebar */}
       <AdminSidebar
         activeSection={activeSection}
@@ -2750,38 +2749,29 @@ export default function AdminDashboardClient() {
         tabs={tabs}
       />
 
-      {/* Main Viewport Container */}
-      <div className="flex-1 flex flex-col h-full min-w-0 overflow-hidden">
-        {/* Top Header */}
-        <AdminHeader
-          onOpenDrawer={() => setSidebarDrawerOpen(true)}
-          dashStats={dashStats}
-          onSelectPendingTab={() => {
-            setActiveSection('dashboard');
-            setTab('pending');
-            setPage(1);
-          }}
-          user={user}
-          onLogout={handleLogout}
-          onDownloadBackup={handleDownloadBackup}
-          isExportingBackup={isExportingBackup}
-          onSearchUserSelect={handleSearchUserSelect}
-          isSuperAdmin={isSuperAdmin}
-        />
-
-        {/* Scrollable Main Area */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-5 lg:p-7 pb-24 lg:pb-8 space-y-5 max-w-full">
-          {activeSection === 'dashboard' ? (
+      {/* Main Content Area in normal document flow */}
+      <main className="flex-1 p-3.5 sm:p-5 lg:p-7 pb-24 lg:pb-8 space-y-5 w-full min-w-0">
+        {activeSection === 'dashboard' ? (
             <>
               {/* Greeting & Date Header */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                <div>
-                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
-                    Welcome back, {user?.name || 'Admin'}! 👋
-                  </h1>
-                  <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
-                    Manage your business directory, users, payments and more — all in one place.
-                  </p>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setSidebarDrawerOpen(true)}
+                    aria-label="Open navigation drawer"
+                    className="lg:hidden p-2 rounded-xl text-gray-600 hover:text-gray-900 hover:bg-white min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer transition-colors shrink-0 border border-gray-200/80 bg-white shadow-2xs"
+                  >
+                    <Menu size={22} />
+                  </button>
+                  <div>
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 tracking-tight">
+                      Welcome back, {user?.name || 'Admin'}! 👋
+                    </h1>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                      Manage your business directory, users, payments and more — all in one place.
+                    </p>
+                  </div>
                 </div>
                 <div className="hidden sm:flex items-center gap-2 px-3.5 py-1.5 bg-white border border-gray-200/80 rounded-xl text-xs font-semibold text-gray-600 shadow-2xs self-start sm:self-auto">
                   <Calendar size={14} className="text-gray-400" />
@@ -3741,7 +3731,7 @@ export default function AdminDashboardClient() {
                                 autoFocus
                               />
                             </div>
-                            <div className="overflow-y-auto flex-1 divide-y divide-gray-50">
+                            <div className="overflow-auto flex-1 divide-y divide-gray-50">
                               {userPickerLoading ? (
                                 <p className="text-xs text-gray-400 text-center py-4">Searching users...</p>
                               ) : userPickerResults.length === 0 ? (
@@ -4886,12 +4876,11 @@ export default function AdminDashboardClient() {
           isExportingBackup={isExportingBackup}
           isSuperAdmin={isSuperAdmin}
         />
-      </div>
 
       {/* Modal Dialog: View & Delete Payment Screenshot */}
       {selectedReceiptBiz && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs"
+          className="fixed inset-x-0 inset-y-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs"
           onClick={() => setSelectedReceiptBiz(null)}
           role="dialog"
           aria-modal="true"
@@ -4924,7 +4913,7 @@ export default function AdminDashboardClient() {
             </div>
 
             {/* Modal Image Body */}
-            <div className="p-4 overflow-y-auto flex-1 flex flex-col items-center justify-center bg-gray-50">
+            <div className="p-4 overflow-auto flex-1 flex flex-col items-center justify-center bg-gray-50">
               {selectedReceiptBiz.paymentReceipt?.url ? (
                 <div className="relative max-w-full rounded-xl overflow-hidden shadow-sm border border-gray-200">
                   <img
@@ -5055,7 +5044,7 @@ export default function AdminDashboardClient() {
       {/* Admin Edit Business Modal */}
       {editingBusiness && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
+          className="fixed inset-x-0 inset-y-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-auto"
           onClick={() => setEditingBusiness(null)}
           role="dialog"
           aria-modal="true"
@@ -5083,7 +5072,7 @@ export default function AdminDashboardClient() {
                 <X size={18} />
               </button>
             </div>
-            <div className="p-6 overflow-y-auto flex-1">
+            <div className="p-6 overflow-auto flex-1">
               <BusinessForm
                 existingBusiness={editingBusiness}
                 isAdminEdit={true}
@@ -5101,7 +5090,7 @@ export default function AdminDashboardClient() {
       {/* Confirmation Modal: Make Full Admin */}
       {makeAdminTarget && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
+          className="fixed inset-x-0 inset-y-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-auto"
           onClick={() => {
             if (!isPromotingAdmin) setMakeAdminTarget(null);
           }}
@@ -5195,7 +5184,7 @@ export default function AdminDashboardClient() {
       {/* Confirmation Modal: Mark User as Spam */}
       {spamTarget && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
+          className="fixed inset-x-0 inset-y-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-auto"
           onClick={() => {
             if (!isSpamSubmitting) {
               setSpamTarget(null);
@@ -5317,7 +5306,7 @@ export default function AdminDashboardClient() {
       {/* Confirmation Modal: Delete User Permanently */}
       {deleteUserTarget && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
+          className="fixed inset-x-0 inset-y-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-auto"
           onClick={() => {
             if (!isDeletingUser) {
               setDeleteUserTarget(null);
@@ -5543,7 +5532,7 @@ export default function AdminDashboardClient() {
       {/* Add / Edit Payment Method Modal */}
       {methodModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-y-auto"
+          className="fixed inset-x-0 inset-y-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs overflow-auto"
           onClick={() => {
             setMethodModalOpen(false);
             setEditingMethod(null);
