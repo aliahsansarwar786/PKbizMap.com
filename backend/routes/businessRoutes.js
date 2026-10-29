@@ -17,6 +17,8 @@ const { requestClaim } = require('../controllers/claimController');
 const { protect, optionalAuth, requireVerifiedEmail } = require('../middlewares/auth');
 const { handleBusinessImageUpload } = require('../middlewares/upload');
 
+const createRateLimitStore = require('../utils/upstashStore');
+
 // Rate limiter for reviews: max 5 reviews per hour per IP
 const reviewRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
@@ -28,6 +30,7 @@ const reviewRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  store: createRateLimitStore('business-review'),
 });
 
 // Rate limiter for claims: max 5 claims per hour per IP
@@ -41,6 +44,7 @@ const claimRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  store: createRateLimitStore('business-claim'),
 });
 
 // ─── Public routes ────────────────────────────────────────────────────────────

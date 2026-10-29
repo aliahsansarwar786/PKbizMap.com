@@ -108,6 +108,7 @@ if (process.env.NODE_ENV === 'development') {
 
 // ─── Rate Limiters ────────────────────────────────────────────────────────────
 const { getClientIp } = require('./utils/otpManager');
+const createRateLimitStore = require('./utils/upstashStore');
 
 // General API rate limit
 const generalLimiter = rateLimit({
@@ -120,6 +121,7 @@ const generalLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  store: createRateLimitStore('general'),
 });
 
 // Strict limiter for auth endpoints
@@ -133,6 +135,7 @@ const authLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  store: createRateLimitStore('auth'),
 });
 
 // Strict limiter for password reset
@@ -146,6 +149,7 @@ const passwordResetLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  store: createRateLimitStore('password-reset'),
 });
 
 // Apply general limiter globally

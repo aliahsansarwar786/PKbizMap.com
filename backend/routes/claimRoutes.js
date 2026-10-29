@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');
 const { getClientIp } = require('../utils/otpManager');
+const createRateLimitStore = require('../utils/upstashStore');
 const { verifyClaim, completeClaim } = require('../controllers/claimController');
 const { protect } = require('../middlewares/auth');
 
@@ -16,6 +17,7 @@ const verifyRateLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  store: createRateLimitStore('claim-verify'),
 });
 
 // Verify 6-digit code or 1-click token

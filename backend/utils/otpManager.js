@@ -9,19 +9,11 @@ const RESEND_COOLDOWN_MS = 60 * 1000; // 60 seconds
 const MAX_OTP_EMAILS_PER_HOUR = 5;
 
 /**
- * Extracts client IP safely from request headers (handles Vercel proxies).
- * Prefers Vercel's x-real-ip header or the last comma-separated X-Forwarded-For entry
- * (appended by Vercel's edge network) to prevent header-spoofing bypasses.
+ * Extracts client IP safely via Express trust-proxy resolution.
+ * Express trust-proxy resolution (req.ip) is the single source of truth;
+ * forwarding headers must never be read directly to prevent client spoofing.
  */
 const getClientIp = (req) => {
-  if (req.headers && req.headers['x-real-ip']) {
-    return String(req.headers['x-real-ip']).trim();
-  }
-  const forwarded = req.headers && req.headers['x-forwarded-for'];
-  if (forwarded) {
-    const parts = forwarded.split(',');
-    return parts[parts.length - 1].trim();
-  }
   return req.ip || req.socket?.remoteAddress || 'unknown';
 };
 
