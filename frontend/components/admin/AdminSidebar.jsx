@@ -3,9 +3,15 @@
 import React from 'react';
 import {
   LayoutDashboard,
+  Clock,
   Building2,
-  Users,
   CreditCard,
+  Star,
+  ShieldCheck,
+  Users,
+  Mail,
+  Activity,
+  QrCode,
   BarChart3,
   Settings,
   ExternalLink,
@@ -21,6 +27,7 @@ export default function AdminSidebar({
   isOpen = false,
   onClose,
   dashStats,
+  tabs = [],
 }) {
   const mainNavItems = [
     {
@@ -31,11 +38,45 @@ export default function AdminSidebar({
       targetTab: null, // stays on active tab or defaults
     },
     {
-      id: 'businesses',
-      label: 'Businesses',
+      id: 'pending',
+      label: 'Pending',
+      icon: Clock,
+      section: 'dashboard',
+      targetTab: 'pending',
+    },
+    {
+      id: 'all-businesses',
+      label: 'All Businesses',
       icon: Building2,
       section: 'dashboard',
       targetTab: 'all-businesses',
+    },
+    {
+      id: 'payments',
+      label: 'Payments',
+      icon: CreditCard,
+      section: 'payments',
+    },
+    {
+      id: 'payment-history',
+      label: 'Payment History',
+      icon: CreditCard,
+      section: 'dashboard',
+      targetTab: 'payments',
+    },
+    {
+      id: 'reviews',
+      label: 'Reviews',
+      icon: Star,
+      section: 'dashboard',
+      targetTab: 'reviews',
+    },
+    {
+      id: 'claims',
+      label: 'Claim Requests',
+      icon: ShieldCheck,
+      section: 'dashboard',
+      targetTab: 'claims',
     },
     {
       id: 'users',
@@ -45,11 +86,25 @@ export default function AdminSidebar({
       targetTab: 'users',
     },
     {
-      id: 'payments',
-      label: 'Payments',
-      icon: CreditCard,
+      id: 'emails',
+      label: 'Emails',
+      icon: Mail,
       section: 'dashboard',
-      targetTab: 'payments',
+      targetTab: 'emails',
+    },
+    {
+      id: 'activity',
+      label: 'Activity',
+      icon: Activity,
+      section: 'dashboard',
+      targetTab: 'activity',
+    },
+    {
+      id: 'payment-settings',
+      label: 'Raast QR Settings',
+      icon: QrCode,
+      section: 'dashboard',
+      targetTab: 'payment-settings',
     },
     {
       id: 'reports',
@@ -95,19 +150,32 @@ export default function AdminSidebar({
       return activeSection === item.section;
     }
     // Dashboard section items
+    if (item.targetTab) {
+      return activeSection === 'dashboard' && activeTab === item.targetTab;
+    }
     if (item.id === 'dashboard') {
-      return activeSection === 'dashboard' && !['all-businesses', 'users', 'payments'].includes(activeTab);
-    }
-    if (item.id === 'businesses') {
-      return activeSection === 'dashboard' && activeTab === 'all-businesses';
-    }
-    if (item.id === 'users') {
-      return activeSection === 'dashboard' && activeTab === 'users';
-    }
-    if (item.id === 'payments') {
-      return activeSection === 'dashboard' && activeTab === 'payments';
+      return activeSection === 'dashboard' && !activeTab;
     }
     return false;
+  };
+
+  const getBadgeForItem = (item) => {
+    if (tabs && tabs.length > 0 && item.targetTab) {
+      const matchedTab = tabs.find((t) => t.id === item.targetTab);
+      if (matchedTab && matchedTab.badge != null) {
+        return {
+          text: matchedTab.badge,
+          badgeClass: matchedTab.badgeClass,
+        };
+      }
+    }
+    if (item.targetTab === 'pending' && dashStats?.pendingBusinesses != null && dashStats.pendingBusinesses > 0) {
+      return { text: dashStats.pendingBusinesses };
+    }
+    if (item.targetTab === 'reviews' && dashStats?.totalReviews != null && dashStats.totalReviews > 0) {
+      return { text: dashStats.totalReviews };
+    }
+    return null;
   };
 
   const content = (
@@ -140,6 +208,7 @@ export default function AdminSidebar({
         {mainNavItems.map((item) => {
           const Icon = item.icon;
           const active = isItemActive(item);
+          const badgeInfo = getBadgeForItem(item);
           return (
             <button
               key={item.id}
@@ -153,6 +222,21 @@ export default function AdminSidebar({
             >
               <Icon size={18} className={`shrink-0 ${active ? 'text-blue-600 stroke-[2.2]' : 'text-gray-400'}`} />
               <span className="truncate">{item.label}</span>
+              {badgeInfo && badgeInfo.text != null && (
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full ml-auto shrink-0 ${
+                    active
+                      ? 'bg-blue-200/70 text-blue-800'
+                      : badgeInfo.badgeClass === 'badge-green'
+                      ? 'bg-emerald-100 text-emerald-800'
+                      : badgeInfo.badgeClass === 'badge-yellow'
+                      ? 'bg-amber-100 text-amber-800'
+                      : 'bg-gray-100 text-gray-700'
+                  }`}
+                >
+                  {badgeInfo.text}
+                </span>
+              )}
             </button>
           );
         })}

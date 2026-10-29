@@ -392,7 +392,7 @@ export default function AdminDashboardClient() {
       list.push({ id: 'all-businesses', label: 'All Businesses' });
     }
     if (isSuperAdmin) {
-      list.push({ id: 'payments', label: 'Payments' });
+      list.push({ id: 'payments', label: 'Payment History' });
     }
     if (isSuperAdmin || perms.canModerateReviews) {
       list.push({ id: 'reviews', label: 'Reviews', badge: dashStats?.totalReviews });
@@ -2153,6 +2153,7 @@ export default function AdminDashboardClient() {
         activeTab={tab}
         onSelectSection={handleSelectSection}
         dashStats={dashStats}
+        tabs={tabs}
       />
 
       {/* Mobile / Tablet Drawer Sidebar */}
@@ -2164,6 +2165,7 @@ export default function AdminDashboardClient() {
         activeTab={tab}
         onSelectSection={handleSelectSection}
         dashStats={dashStats}
+        tabs={tabs}
       />
 
       {/* Main Viewport Container */}
