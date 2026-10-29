@@ -14,7 +14,7 @@ import {
   DollarSign, CheckCircle, AlertCircle, Phone, ArrowUpRight,
   QrCode, Upload, MessageSquare, Search, Filter, Plus, Mail, Bell,
   ArrowLeft, AlertTriangle, ShieldCheck, Send, Activity, Download,
-  Calendar
+  Calendar, RefreshCw
 } from 'lucide-react';
 import BusinessForm from '@/components/business/BusinessForm';
 import AdminSidebar from './AdminSidebar';
@@ -206,6 +206,12 @@ export default function AdminDashboardClient() {
   const [statsLoading, setStatsLoading] = useState(true);
 
   // Raast QR Payment Gateway Settings & Payment Methods
+  // Reports State
+  const [reportsData, setReportsData] = useState(null);
+  const [reportsLoading, setReportsLoading] = useState(false);
+  const [reportsError, setReportsError] = useState(null);
+  const [reportsFetched, setReportsFetched] = useState(false);
+
   // Delete Payment Method Confirmation Modal State
   const [deleteMethodTarget, setDeleteMethodTarget] = useState(null);
   const [deleteMethodAcknowledged, setDeleteMethodAcknowledged] = useState(false);
@@ -1320,6 +1326,31 @@ export default function AdminDashboardClient() {
     }
   };
 
+  // Load real reports data
+  const loadReports = useCallback(async () => {
+    if (!isSuperAdmin) return;
+    setReportsLoading(true);
+    setReportsError(null);
+    try {
+      const res = await adminAPI.getReports();
+      const data = res?.data?.data || res?.data || {};
+      setReportsData(data);
+      setReportsFetched(true);
+    } catch (err) {
+      setReportsError(err.message || 'Failed to load reports.');
+      toast.error(err.message || 'Failed to load reports.');
+    } finally {
+      setReportsLoading(false);
+    }
+  }, [isSuperAdmin]);
+
+  // Fetch reports on first open
+  useEffect(() => {
+    if (activeSection === 'reports' && !reportsFetched && isSuperAdmin) {
+      loadReports();
+    }
+  }, [activeSection, reportsFetched, isSuperAdmin, loadReports]);
+
   // Load payments data when navigating to payments section if empty
   useEffect(() => {
     if (activeSection === 'payments' && isSuperAdmin && payments.length === 0) {
@@ -2132,6 +2163,418 @@ export default function AdminDashboardClient() {
 
       {/* Receipt Verification Queue */}
       {renderReceiptVerificationQueue()}
+    </div>
+  );
+
+  // ─── Real Reports & Analytics Section Renderer (Piece Reports) ─────────────
+  const renderReportsView = () => (
+    <div className="space-y-6 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setActiveSection('dashboard')}
+            className="p-2 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 text-gray-700 min-h-[44px] min-w-[44px] flex items-center justify-center cursor-pointer transition-colors shadow-2xs"
+            title="Return to Dashboard"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">Reports & Analytics</h1>
+            <p className="text-xs sm:text-sm text-gray-500">Live platform totals, category performance, city coverage, and trends</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={loadReports}
+            disabled={reportsLoading}
+            className="btn-secondary flex items-center gap-1.5 text-xs sm:text-sm px-3.5 py-2 font-semibold cursor-pointer disabled:opacity-50 min-h-[40px]"
+          >
+            <RefreshCw size={14} className={reportsLoading ? 'animate-spin' : ''} />
+            <span>{reportsLoading ? 'Refreshing…' : 'Refetch Data'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveSection('dashboard')}
+            className="text-xs sm:text-sm font-semibold text-blue-600 hover:text-blue-700 cursor-pointer min-h-[40px] px-3 py-2 flex items-center"
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+
+      {reportsError ? (
+        <div className="bg-red-50 border border-red-200 rounded-2xl p-6 text-center">
+          <AlertTriangle size={32} className="text-red-500 mx-auto mb-2" />
+          <p className="text-sm font-bold text-red-900">{reportsError}</p>
+          <button
+            type="button"
+            onClick={loadReports}
+            className="btn-primary mt-4 text-xs px-4 py-2"
+          >
+            Try Again
+          </button>
+        </div>
+      ) : reportsLoading && !reportsData ? (
+        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center shadow-xs">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mb-3" />
+          <p className="text-sm text-gray-500">Loading platform reports & analytics...</p>
+        </div>
+      ) : reportsData ? (
+        <>
+          {/* 7 StatCards Row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
+            <StatCard
+              label="Total Users"
+              value={reportsData.totals?.users?.toLocaleString() ?? 0}
+              icon={Users}
+              color="#2563eb"
+              bg="#eff6ff"
+            />
+            <StatCard
+              label="Businesses"
+              value={reportsData.totals?.businesses?.toLocaleString() ?? 0}
+              icon={Building2}
+              color="#0891b2"
+              bg="#ecfeff"
+            />
+            <StatCard
+              label="Pending"
+              value={reportsData.totals?.pending?.toLocaleString() ?? 0}
+              icon={Clock}
+              color="#d97706"
+              bg="#fffbeb"
+            />
+            <StatCard
+              label="Approved"
+              value={reportsData.totals?.approved?.toLocaleString() ?? 0}
+              icon={CheckCircle2}
+              color="#059669"
+              bg="#ecfdf5"
+            />
+            <StatCard
+              label="Spam Hidden"
+              value={reportsData.totals?.hiddenBySpam?.toLocaleString() ?? 0}
+              icon={AlertTriangle}
+              color="#dc2626"
+              bg="#fef2f2"
+            />
+            <StatCard
+              label="Total Reviews"
+              value={reportsData.totals?.reviews?.toLocaleString() ?? 0}
+              icon={Star}
+              color="#ec4899"
+              bg="#fdf2f8"
+            />
+            <StatCard
+              label="Avg Rating"
+              value={reportsData.reviews?.avgRating != null ? `${reportsData.reviews.avgRating} / 5` : '0 / 5'}
+              icon={Star}
+              color="#8b5cf6"
+              bg="#f5f3ff"
+            />
+          </div>
+
+          {/* Breakdown Grid: CSS Progress Bars (NO Chart Library) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {/* Category Distribution (CSS Bars) */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sm sm:text-base text-gray-900">By Category</h3>
+                <span className="text-xs font-semibold text-gray-400">
+                  {reportsData.byCategory?.length || 0} total
+                </span>
+              </div>
+              {(!reportsData.byCategory || reportsData.byCategory.length === 0) ? (
+                <p className="text-xs text-gray-400 py-6 text-center">No data yet</p>
+              ) : (
+                <div className="space-y-3 max-h-96 overflow-auto pr-1">
+                  {(() => {
+                    const maxCount = Math.max(...reportsData.byCategory.map((c) => c.count), 1);
+                    return reportsData.byCategory.map((cat) => {
+                      const pct = Math.round((cat.count / maxCount) * 100);
+                      return (
+                        <div key={cat.name} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-medium text-gray-700 truncate pr-2">{cat.name}</span>
+                            <span className="font-bold text-gray-900 shrink-0">{cat.count}</span>
+                          </div>
+                          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
+            </div>
+
+            {/* Countries Bar Chart */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sm sm:text-base text-gray-900">By Country</h3>
+                <span className="text-xs font-semibold text-gray-400">Coverage</span>
+              </div>
+              {(!reportsData.byCountry || reportsData.byCountry.length === 0) ? (
+                <p className="text-xs text-gray-400 py-6 text-center">No data yet</p>
+              ) : (
+                <div className="space-y-4">
+                  {(() => {
+                    const maxCount = Math.max(...reportsData.byCountry.map((c) => c.count), 1);
+                    return reportsData.byCountry.map((cnt) => {
+                      const pct = Math.round((cnt.count / maxCount) * 100);
+                      return (
+                        <div key={cnt.name} className="space-y-1.5 p-3 rounded-xl bg-gray-50 border border-gray-100">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-bold text-gray-800">{cnt.name}</span>
+                            <span className="font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                              {cnt.count} businesses
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                            <div
+                              className="bg-emerald-500 h-2.5 rounded-full transition-all duration-300"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
+            </div>
+
+            {/* Top 10 Cities Bar Chart */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sm sm:text-base text-gray-900">Top 10 Cities</h3>
+                <span className="text-xs font-semibold text-gray-400">Leaderboard</span>
+              </div>
+              {(!reportsData.topCities || reportsData.topCities.length === 0) ? (
+                <p className="text-xs text-gray-400 py-6 text-center">No data yet</p>
+              ) : (
+                <div className="space-y-2.5 max-h-96 overflow-auto pr-1">
+                  {(() => {
+                    const maxCount = Math.max(...reportsData.topCities.map((c) => c.count), 1);
+                    return reportsData.topCities.map((city, idx) => {
+                      const pct = Math.round((city.count / maxCount) * 100);
+                      return (
+                        <div key={city.name} className="space-y-1">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-medium text-gray-700 truncate pr-2">
+                              <strong className="text-gray-400 mr-1.5">#{idx + 1}</strong>
+                              {city.name}
+                            </span>
+                            <span className="font-bold text-gray-900 shrink-0">{city.count}</span>
+                          </div>
+                          <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-indigo-500 h-2 rounded-full transition-all duration-300"
+                              style={{ width: `${pct}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Month-wise Tables Grid (Last 12 Months) */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* Businesses by Month */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sm sm:text-base text-gray-900">Businesses by Month (Last 12 Months)</h3>
+                <span className="text-xs font-semibold text-gray-400">Timeline</span>
+              </div>
+              {(!reportsData.businessesByMonth || reportsData.businessesByMonth.length === 0) ? (
+                <p className="text-xs text-gray-400 py-6 text-center">No data yet</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-gray-400 uppercase tracking-wider font-semibold">
+                        <th className="pb-2.5">Month</th>
+                        <th className="pb-2.5 text-right">New Listings</th>
+                        <th className="pb-2.5 pl-4">Distribution</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {(() => {
+                        const maxB = Math.max(...reportsData.businessesByMonth.map((m) => m.count), 1);
+                        return reportsData.businessesByMonth.map((m) => (
+                          <tr key={m.month} className="hover:bg-gray-50/70">
+                            <td className="py-2.5 font-semibold text-gray-800">{m.month}</td>
+                            <td className="py-2.5 text-right font-bold text-gray-900">{m.count}</td>
+                            <td className="py-2.5 pl-4 w-1/2">
+                              <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className="bg-blue-500 h-1.5 rounded-full"
+                                  style={{ width: `${Math.round((m.count / maxB) * 100)}%` }}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Users by Month */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-sm sm:text-base text-gray-900">Users Registered by Month (Last 12 Months)</h3>
+                <span className="text-xs font-semibold text-gray-400">Growth</span>
+              </div>
+              {(!reportsData.usersByMonth || reportsData.usersByMonth.length === 0) ? (
+                <p className="text-xs text-gray-400 py-6 text-center">No data yet</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-gray-400 uppercase tracking-wider font-semibold">
+                        <th className="pb-2.5">Month</th>
+                        <th className="pb-2.5 text-right">New Users</th>
+                        <th className="pb-2.5 pl-4">Distribution</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-50">
+                      {(() => {
+                        const maxU = Math.max(...reportsData.usersByMonth.map((m) => m.count), 1);
+                        return reportsData.usersByMonth.map((m) => (
+                          <tr key={m.month} className="hover:bg-gray-50/70">
+                            <td className="py-2.5 font-semibold text-gray-800">{m.month}</td>
+                            <td className="py-2.5 text-right font-bold text-gray-900">{m.count}</td>
+                            <td className="py-2.5 pl-4 w-1/2">
+                              <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                <div
+                                  className="bg-emerald-500 h-1.5 rounded-full"
+                                  style={{ width: `${Math.round((m.count / maxU) * 100)}%` }}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Summary Blocks: Payments + Pending Aging + Reviews */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            {/* Payments Summary Card */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                  <CreditCard size={18} />
+                </div>
+                <h3 className="font-bold text-sm text-gray-900">Payments & Receipts</h3>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between py-1 border-b border-gray-50">
+                  <span className="text-gray-500">Receipts Uploaded:</span>
+                  <strong className="text-gray-900">{reportsData.payments?.totalReceipts ?? 0}</strong>
+                </div>
+                <div className="flex justify-between py-1 border-b border-gray-50">
+                  <span className="text-gray-500">Verified Receipts:</span>
+                  <strong className="text-emerald-600">{reportsData.payments?.byStatus?.verified ?? 0}</strong>
+                </div>
+                <div className="flex justify-between py-1 border-b border-gray-50">
+                  <span className="text-gray-500">Pending Receipts:</span>
+                  <strong className="text-amber-600">{reportsData.payments?.byStatus?.pending ?? 0}</strong>
+                </div>
+                <div className="flex justify-between py-1 border-b border-gray-50">
+                  <span className="text-gray-500">Rejected Receipts:</span>
+                  <strong className="text-rose-600">{reportsData.payments?.byStatus?.rejected ?? 0}</strong>
+                </div>
+                <div className="flex justify-between pt-1">
+                  <span className="font-semibold text-gray-700">Verified Sum Collected:</span>
+                  <strong className="font-bold text-emerald-700">
+                    Rs. {(reportsData.payments?.verifiedAmount ?? 0).toLocaleString()}
+                  </strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Pending Listings Aging Card */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold">
+                  <Clock size={18} />
+                </div>
+                <h3 className="font-bold text-sm text-gray-900">Pending Listings Aging</h3>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between py-1 border-b border-gray-50">
+                  <span className="text-gray-500">Waiting &gt; 7 Days:</span>
+                  <strong className="text-rose-600 font-bold">
+                    {reportsData.pendingAging?.waitingOver7Days ?? 0}
+                  </strong>
+                </div>
+                <div className="py-1 border-b border-gray-50">
+                  <span className="text-gray-500 block mb-0.5">Oldest Submission Date:</span>
+                  <strong className="text-gray-900">
+                    {reportsData.pendingAging?.oldestPendingDate
+                      ? new Date(reportsData.pendingAging.oldestPendingDate).toLocaleDateString()
+                      : 'No pending submissions'}
+                  </strong>
+                </div>
+                <div className="py-1">
+                  <span className="text-gray-500 block mb-0.5">Oldest Listing Title:</span>
+                  <p className="font-semibold text-gray-800 truncate">
+                    {reportsData.pendingAging?.oldestPendingTitle || '—'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Reviews Summary Card */}
+            <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-pink-50 text-pink-600 flex items-center justify-center font-bold">
+                  <Star size={18} />
+                </div>
+                <h3 className="font-bold text-sm text-gray-900">Reviews & Ratings</h3>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex justify-between py-1 border-b border-gray-50">
+                  <span className="text-gray-500">Total Reviews:</span>
+                  <strong className="text-gray-900">{reportsData.reviews?.total ?? 0}</strong>
+                </div>
+                <div className="flex justify-between py-1 border-b border-gray-50">
+                  <span className="text-gray-500">Overall Avg Rating:</span>
+                  <strong className="text-amber-600 font-bold">
+                    {reportsData.reviews?.avgRating != null ? `${reportsData.reviews.avgRating} / 5.0` : '0 / 5.0'}
+                  </strong>
+                </div>
+                <div className="pt-2 text-gray-400 text-[11px] leading-relaxed">
+                  Calculated across all customer reviews and ratings submitted for directory businesses.
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center shadow-xs">
+          <p className="text-sm text-gray-400">No data yet</p>
+        </div>
+      )}
     </div>
   );
 
@@ -4274,6 +4717,8 @@ export default function AdminDashboardClient() {
             </>
           ) : activeSection === 'payments' ? (
             renderPaymentsView()
+          ) : activeSection === 'reports' ? (
+            renderReportsView()
           ) : (
             <AdminPlaceholderView
               section={activeSection}

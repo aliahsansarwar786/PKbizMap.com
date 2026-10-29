@@ -1743,6 +1743,283 @@ const getQuota = asyncHandler(async (req, res) => {
   });
 });
 
+// ─── GET /api/admin/reports ──────────────────────────────────────────────────
+// Main Admin ONLY: Real platform analytics & aggregated reports
+const getReports = asyncHandler(async (req, res) => {
+  const ClaimRequest = require('../models/ClaimRequest');
+
+  // 1. Totals
+  let totals = {
+    users: 0,
+    businesses: 0,
+    pending: 0,
+    approved: 0,
+    hiddenBySpam: 0,
+    reviews: 0,
+    claims: {},
+  };
+  try {
+    const [
+      userCount,
+      bizCount,
+      pendingCount,
+      approvedCount,
+      spamCount,
+      reviewCount,
+      claimStats,
+    ] = await Promise.all([
+      User.countDocuments().catch(() => 0),
+      Business.countDocuments().catch(() => 0),
+      Business.countDocuments({ isApproved: false }).catch(() => 0),
+      Business.countDocuments({ isApproved: true }).catch(() => 0),
+      Business.countDocuments({ hiddenBySpam: true }).catch(() => 0),
+      Review.countDocuments().catch(() => 0),
+      ClaimRequest.aggregate([
+        { $group: { _id: '$status', count: { $sum: 1 } } },
+      ]).catch(() => []),
+    ]);
+
+    const claimsMap = {};
+    if (Array.isArray(claimStats)) {
+      claimStats.forEach((c) => {
+        if (c._id) claimsMap[c._id] = c.count;
+      });
+    }
+
+    totals = {
+      users: userCount || 0,
+      businesses: bizCount || 0,
+      pending: pendingCount || 0,
+      approved: approvedCount || 0,
+      hiddenBySpam: spamCount || 0,
+      reviews: reviewCount || 0,
+      claims: claimsMap,
+    };
+  } catch (err) {
+    console.error('Failed to aggregate totals for reports:', err.message);
+  }
+
+  // 2. Businesses by Category (all categories present in data, sorted desc)
+  let byCategory = [];
+  try {
+    const rawCategories = await Business.aggregate([
+      { $match: { category: { $exists: true, $ne: '' } } },
+      { $group: { _id: '$category', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+    byCategory = rawCategories.map((c) => ({
+      category: c._id || 'Uncategorized',
+      name: c._id || 'Uncategorized',
+      count: c.count,
+    }));
+  } catch (err) {
+    console.error('Failed to aggregate categories for reports:', err.message);
+  }
+
+  // 3. Businesses by Country (Pakistan/UAE/USA)
+  let byCountry = [];
+  try {
+    const rawCountries = await Business.aggregate([
+      { $match: { 'address.country': { $exists: true, $ne: '' } } },
+      { $group: { _id: '$address.country', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]);
+    byCountry = rawCountries.map((c) => ({
+      country: c._id || 'Unknown',
+      name: c._id || 'Unknown',
+      count: c.count,
+    }));
+  } catch (err) {
+    console.error('Failed to aggregate countries for reports:', err.message);
+  }
+
+  // 4. Top 10 Cities
+  let topCities = [];
+  try {
+    const rawCities = await Business.aggregate([
+      { $match: { 'address.city': { $exists: true, $ne: '' } } },
+      { $group: { _id: '$address.city', count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 },
+    ]);
+    topCities = rawCities.map((c) => ({
+      city: c._id,
+      name: c._id,
+      count: c.count,
+    }));
+  } catch (err) {
+    console.error('Failed to aggregate top cities for reports:', err.message);
+  }
+
+  // Date threshold for last 12 months
+  const twelveMonthsAgo = new Date();
+  twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 11);
+  twelveMonthsAgo.setDate(1);
+  twelveMonthsAgo.setHours(0, 0, 0, 0);
+
+  // 5. Businesses by Month (last 12 months, sorted desc)
+  let businessesByMonth = [];
+  try {
+    const rawBizByMonth = await Business.aggregate([
+      { $match: { createdAt: { $gte: twelveMonthsAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: -1 } },
+    ]);
+    businessesByMonth = rawBizByMonth.map((m) => ({
+      month: m._id,
+      count: m.count,
+    }));
+  } catch (err) {
+    console.error('Failed to aggregate businesses by month for reports:', err.message);
+  }
+
+  // 6. Users by Month (last 12 months, sorted desc)
+  let usersByMonth = [];
+  try {
+    const rawUsersByMonth = await User.aggregate([
+      { $match: { createdAt: { $gte: twelveMonthsAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m', date: '$createdAt' } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: -1 } },
+    ]);
+    usersByMonth = rawUsersByMonth.map((m) => ({
+      month: m._id,
+      count: m.count,
+    }));
+  } catch (err) {
+    console.error('Failed to aggregate users by month for reports:', err.message);
+  }
+
+  // 7. Receipts by paymentStatus + sum of paymentAmount for verified only
+  let payments = {
+    totalReceipts: 0,
+    byStatus: { pending: 0, verified: 0, rejected: 0, none: 0 },
+    verifiedAmount: 0,
+  };
+  try {
+    const paymentAgg = await Business.aggregate([
+      { $match: { paymentStatus: { $in: ['pending', 'verified', 'rejected', 'none'] } } },
+      {
+        $group: {
+          _id: '$paymentStatus',
+          count: { $sum: 1 },
+          verifiedAmount: {
+            $sum: {
+              $cond: [
+                { $eq: ['$paymentStatus', 'verified'] },
+                { $ifNull: ['$paymentAmount', 0] },
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]);
+
+    let verifiedSum = 0;
+    const byStatus = { pending: 0, verified: 0, rejected: 0, none: 0 };
+    paymentAgg.forEach((item) => {
+      if (item._id && Object.prototype.hasOwnProperty.call(byStatus, item._id)) {
+        byStatus[item._id] = item.count;
+      }
+      if (item._id === 'verified') {
+        verifiedSum += item.verifiedAmount || 0;
+      }
+    });
+
+    const receiptsCount = await Business.countDocuments({
+      'paymentReceipt.url': { $exists: true, $ne: '' },
+    }).catch(() => 0);
+
+    payments = {
+      totalReceipts: receiptsCount,
+      byStatus,
+      verifiedAmount: verifiedSum,
+    };
+  } catch (err) {
+    console.error('Failed to aggregate payments for reports:', err.message);
+  }
+
+  // 8. Pending Aging (oldest pending date + count waiting > 7 days)
+  let pendingAging = {
+    oldestPendingDate: null,
+    oldestPendingTitle: null,
+    waitingOver7Days: 0,
+  };
+  try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const [oldestPending, countOver7Days] = await Promise.all([
+      Business.findOne({ isApproved: false })
+        .sort({ createdAt: 1 })
+        .select('createdAt title')
+        .lean()
+        .catch(() => null),
+      Business.countDocuments({
+        isApproved: false,
+        createdAt: { $lte: sevenDaysAgo },
+      }).catch(() => 0),
+    ]);
+
+    pendingAging = {
+      oldestPendingDate: oldestPending?.createdAt || null,
+      oldestPendingTitle: oldestPending?.title || null,
+      waitingOver7Days: countOver7Days || 0,
+    };
+  } catch (err) {
+    console.error('Failed to aggregate pending aging for reports:', err.message);
+  }
+
+  // 9. Reviews Total + overall average rating
+  let reviews = {
+    total: 0,
+    avgRating: 0,
+  };
+  try {
+    const reviewAgg = await Review.aggregate([
+      {
+        $group: {
+          _id: null,
+          total: { $sum: 1 },
+          avgRating: { $avg: '$rating' },
+        },
+      },
+    ]);
+
+    if (reviewAgg && reviewAgg.length > 0) {
+      reviews = {
+        total: reviewAgg[0].total || 0,
+        avgRating: reviewAgg[0].avgRating ? parseFloat(reviewAgg[0].avgRating.toFixed(2)) : 0,
+      };
+    }
+  } catch (err) {
+    console.error('Failed to aggregate reviews for reports:', err.message);
+  }
+
+  res.status(200).json({
+    success: true,
+    data: {
+      totals,
+      byCategory,
+      byCountry,
+      topCities,
+      businessesByMonth,
+      usersByMonth,
+      payments,
+      pendingAging,
+      reviews,
+    },
+  });
+});
+
 module.exports = {
   getDashboard,
   getUsers,
@@ -1772,6 +2049,7 @@ module.exports = {
   getActivityLog,
   exportBackup,
   getQuota,
+  getReports,
 };
 
 
