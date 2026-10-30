@@ -55,15 +55,6 @@ const register = [
     const { name, email, password } = req.body;
     const normalizedEmail = email.toLowerCase().trim();
 
-    // Check per-email OTP throttle (max 5 OTP emails per hour)
-    const throttle = await checkAndIncrementEmailOtpLimit(normalizedEmail);
-    if (!throttle.allowed) {
-      return res.status(429).set('Retry-After', String(throttle.retryAfterSeconds)).json({
-        success: false,
-        message: 'Too many verification code requests for this email. Please try again later.',
-      });
-    }
-
     const genericSuccess = {
       success: true,
       message: 'Registration successful. Please verify your email with the 6-digit code sent to you.',
@@ -81,6 +72,15 @@ const register = [
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(201).json(genericSuccess);
+    }
+
+    // Check per-email OTP throttle (max 5 OTP emails per hour)
+    const throttle = await checkAndIncrementEmailOtpLimit(normalizedEmail);
+    if (!throttle.allowed) {
+      return res.status(429).set('Retry-After', String(throttle.retryAfterSeconds)).json({
+        success: false,
+        message: 'Too many verification code requests for this email. Please try again later.',
+      });
     }
 
     // Generate fresh 6-digit numeric OTP and SHA-256 hash
@@ -318,15 +318,6 @@ const resendOtp = [
       message: 'If an account exists for this email, a verification code has been sent.',
     };
 
-    // Check per-email OTP throttle (max 5 OTP emails per hour)
-    const throttle = await checkAndIncrementEmailOtpLimit(normalizedEmail);
-    if (!throttle.allowed) {
-      return res.status(429).set('Retry-After', String(throttle.retryAfterSeconds)).json({
-        success: false,
-        message: 'Too many verification code requests for this email. Please try again later.',
-      });
-    }
-
     const user = await User.findOne({ email: normalizedEmail }).select(
       '+emailVerificationLastResend +emailVerificationOTPBlockedUntil +emailVerificationOTPAttempts'
     );
@@ -369,6 +360,15 @@ const resendOtp = [
           message: `Please wait ${retryAfter} seconds before requesting a new code.`,
         });
       }
+    }
+
+    // Check per-email OTP throttle (max 5 OTP emails per hour)
+    const throttle = await checkAndIncrementEmailOtpLimit(normalizedEmail);
+    if (!throttle.allowed) {
+      return res.status(429).set('Retry-After', String(throttle.retryAfterSeconds)).json({
+        success: false,
+        message: 'Too many verification code requests for this email. Please try again later.',
+      });
     }
 
     // Generate fresh OTP (running failed attempts count is preserved)
