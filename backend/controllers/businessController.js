@@ -592,6 +592,7 @@ const updateBusiness = [
           updates.paymentAmount = newFee;
           if (!wasVerifiedAndCovered) {
             updates.paymentStatus = 'pending';
+            updates.isApproved = false;
           }
         }
       }

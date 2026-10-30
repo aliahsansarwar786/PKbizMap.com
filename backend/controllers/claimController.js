@@ -459,6 +459,15 @@ const completeClaim = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'The business associated with this claim no longer exists.' });
   }
 
+  if ((claim.chosenEmail || '').trim().toLowerCase() !== (business.email || '').trim().toLowerCase()) {
+    claim.status = 'expired';
+    await claim.save();
+    return res.status(400).json({
+      success: false,
+      message: 'The business email has changed. Please submit a new claim request.',
+    });
+  }
+
   if (business.isClaimed || business.claimed) {
     return res.status(400).json({
       success: false,

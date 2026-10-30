@@ -63,7 +63,9 @@ const getPaymentSettings = asyncHandler(async (req, res) => {
         accountTitle: settings?.accountTitle || 'BizPrimeHub',
         bankName: settings?.bankName || 'Raast Instant Payment',
         instructions: settings?.instructions,
-        paymentMethods: settings?.paymentMethods || [],
+        paymentMethods: isAdmin
+          ? (settings?.paymentMethods || [])
+          : (settings?.paymentMethods || []).filter((m) => m.isEnabled !== false),
         ...(isAdmin ? {
           ownerNotificationEmail: settings?.ownerNotificationEmail || process.env.OWNER_NOTIFICATION_EMAIL || '',
           ownerNotificationsEnabled: settings?.ownerNotificationsEnabled !== false,
@@ -273,9 +275,27 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
         parsedQc = parsedQc.split(',').map((s) => s.trim()).filter(Boolean);
       }
     }
-    if (Array.isArray(parsedQc)) {
-      settings.qrCountries = parsedQc;
+    if (!Array.isArray(parsedQc) || parsedQc.length === 0) {
+      if (req.file) {
+        await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'qrCountries must resolve to a non-empty array containing only "Pakistan", "UAE", or "USA".',
+      });
     }
+    const cleanedQc = parsedQc.map((s) => String(s).trim());
+    const allowedCountries = ['Pakistan', 'UAE', 'USA'];
+    if (cleanedQc.some((c) => !allowedCountries.includes(c)) || cleanedQc.length === 0) {
+      if (req.file) {
+        await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'qrCountries must contain only "Pakistan", "UAE", or "USA".',
+      });
+    }
+    settings.qrCountries = cleanedQc;
   }
 
   if (typeof raastId === 'string') {
@@ -300,7 +320,20 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
   }
 
   if (ownerNotificationEmail !== undefined) {
-    settings.ownerNotificationEmail = String(ownerNotificationEmail).trim().toLowerCase();
+    const trimmedEmail = String(ownerNotificationEmail).trim().toLowerCase();
+    if (trimmedEmail !== '') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+      if (!emailRegex.test(trimmedEmail)) {
+        if (req.file) {
+          await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+        }
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid ownerNotificationEmail format.',
+        });
+      }
+    }
+    settings.ownerNotificationEmail = trimmedEmail;
   }
 
   // Handle QR Code deletion if requested
@@ -451,6 +484,18 @@ const createPaymentMethod = asyncHandler(async (req, res) => {
   }
   if (!Array.isArray(parsedCountries) || parsedCountries.length === 0) {
     parsedCountries = ['Pakistan'];
+  } else {
+    parsedCountries = parsedCountries.map((s) => String(s).trim());
+    const allowed = ['Pakistan', 'UAE', 'USA'];
+    if (parsedCountries.some((c) => !allowed.includes(c))) {
+      if (req.file) {
+        await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid country in countries. Allowed countries are Pakistan, UAE, USA.',
+      });
+    }
   }
 
   let settings = await PaymentSetting.getSettings();
@@ -577,9 +622,27 @@ const updatePaymentMethod = asyncHandler(async (req, res) => {
         parsedCountries = parsedCountries.split(',').map((s) => s.trim()).filter(Boolean);
       }
     }
-    if (Array.isArray(parsedCountries) && parsedCountries.length > 0) {
-      method.countries = parsedCountries;
+    if (!Array.isArray(parsedCountries) || parsedCountries.length === 0) {
+      if (req.file) {
+        await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'countries must be a non-empty array containing only "Pakistan", "UAE", or "USA".',
+      });
     }
+    const cleanedCountries = parsedCountries.map((s) => String(s).trim());
+    const allowed = ['Pakistan', 'UAE', 'USA'];
+    if (cleanedCountries.some((c) => !allowed.includes(c))) {
+      if (req.file) {
+        await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid country in countries. Allowed countries are Pakistan, UAE, USA.',
+      });
+    }
+    method.countries = cleanedCountries;
   }
 
   // Handle replacing card image
