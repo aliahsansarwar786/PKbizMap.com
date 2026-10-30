@@ -7,7 +7,7 @@ const sendEmail = require('../utils/sendEmail');
 const { getClaimVerificationEmailHtml, getNewClaimNotificationHtml } = require('../utils/emailTemplates');
 const PaymentSetting = require('../models/PaymentSetting');
 const getFrontendUrl = require('../utils/getFrontendUrl');
-const { getClientIp, timingSafeCompare } = require('../utils/otpManager');
+const { getClientIp } = require('../utils/otpManager');
 
 // Helper to mask email (e.g. co*****s@domain.com)
 const maskEmail = (email) => {
@@ -282,7 +282,9 @@ const verifyClaim = asyncHandler(async (req, res) => {
       .createHash('sha256')
       .update(`${candidateClaim.codeSalt}:${code.trim()}`)
       .digest('hex');
-    isCodeMatch = timingSafeCompare(computedHash, candidateClaim.codeHash);
+    const hashBuf = Buffer.from(computedHash, 'utf8');
+    const storedBuf = Buffer.from(candidateClaim.codeHash, 'utf8');
+    isCodeMatch = hashBuf.length === storedBuf.length && crypto.timingSafeEqual(hashBuf, storedBuf);
   }
 
   const isNotExpired = candidateClaim.expiresAtCode && candidateClaim.expiresAtCode > new Date();
