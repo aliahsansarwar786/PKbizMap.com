@@ -24,6 +24,7 @@ const {
   recordFailedAttempt,
   clearIpAttempts,
   checkAndIncrementEmailOtpLimit,
+  refundEmailOtpLimit,
   OTP_EXPIRY_MS,
   RESEND_COOLDOWN_MS,
 } = require('../utils/otpManager');
@@ -102,15 +103,29 @@ const register = [
 
     // Send OTP verification email: awaited before response so Vercel does not freeze
     try {
-      await sendEmail({
+      const sent = await sendEmail({
         to: user.email,
         subject: 'Your BizPrimeHub verification code',
         html: getEmailVerificationOtpHtml({ name: user.name, otp }),
       }).catch((err) => {
         console.error('⚠️ [Auth:Register] Error sending verification OTP email:', err.message);
+        return false;
       });
+
+      if (!sent) {
+        await refundEmailOtpLimit(user.email);
+        return res.status(502).json({
+          success: false,
+          message: 'We could not send the verification code. Please try again in a minute.',
+        });
+      }
     } catch (e) {
       console.error('⚠️ [Auth:Register] Unexpected error sending verification OTP:', e.message);
+      await refundEmailOtpLimit(user.email);
+      return res.status(502).json({
+        success: false,
+        message: 'We could not send the verification code. Please try again in a minute.',
+      });
     }
 
     return res.status(201).json(genericSuccess);
@@ -379,15 +394,29 @@ const resendOtp = [
     await user.save({ validateBeforeSave: false });
 
     try {
-      await sendEmail({
+      const sent = await sendEmail({
         to: user.email,
         subject: 'Your BizPrimeHub verification code',
         html: getEmailVerificationOtpHtml({ name: user.name, otp }),
       }).catch((err) => {
         console.error('⚠️ [Auth:ResendOtp] Error sending OTP:', err.message);
+        return false;
       });
+
+      if (!sent) {
+        await refundEmailOtpLimit(user.email);
+        return res.status(502).json({
+          success: false,
+          message: 'We could not send the verification code. Please try again in a minute.',
+        });
+      }
     } catch (e) {
       console.error('⚠️ [Auth:ResendOtp] Unexpected error sending OTP:', e.message);
+      await refundEmailOtpLimit(user.email);
+      return res.status(502).json({
+        success: false,
+        message: 'We could not send the verification code. Please try again in a minute.',
+      });
     }
 
     res.status(200).json(genericResponse);
@@ -497,15 +526,29 @@ const updateEmail = [
 
     // Send OTP to new address
     try {
-      await sendEmail({
+      const sent = await sendEmail({
         to: user.email,
         subject: 'Your BizPrimeHub verification code',
         html: getEmailVerificationOtpHtml({ name: user.name, otp }),
       }).catch((err) => {
         console.error('⚠️ [Auth:UpdateEmail] Error sending OTP to new email:', err.message);
+        return false;
       });
+
+      if (!sent) {
+        await refundEmailOtpLimit(user.email);
+        return res.status(502).json({
+          success: false,
+          message: 'We could not send the verification code. Please try again in a minute.',
+        });
+      }
     } catch (e) {
       console.error('⚠️ [Auth:UpdateEmail] Unexpected error sending OTP:', e.message);
+      await refundEmailOtpLimit(user.email);
+      return res.status(502).json({
+        success: false,
+        message: 'We could not send the verification code. Please try again in a minute.',
+      });
     }
 
     generateTokenAndSend(
@@ -608,15 +651,29 @@ const forgotPassword = [
     await user.save({ validateBeforeSave: false });
 
     try {
-      await sendEmail({
+      const sent = await sendEmail({
         to: user.email,
         subject: 'Your BizPrimeHub password reset code',
         html: getPasswordResetOtpHtml({ name: user.name, otp }),
       }).catch((err) => {
         console.error('⚠️ [Auth:ForgotPassword] Error sending reset OTP:', err.message);
+        return false;
       });
+
+      if (!sent) {
+        await refundEmailOtpLimit(user.email);
+        return res.status(502).json({
+          success: false,
+          message: 'We could not send the verification code. Please try again in a minute.',
+        });
+      }
     } catch (e) {
       console.error('⚠️ [Auth:ForgotPassword] Unexpected error sending reset OTP:', e.message);
+      await refundEmailOtpLimit(user.email);
+      return res.status(502).json({
+        success: false,
+        message: 'We could not send the verification code. Please try again in a minute.',
+      });
     }
 
     res.status(200).json(genericResponse);
@@ -893,15 +950,29 @@ const resendResetOtp = [
     await user.save({ validateBeforeSave: false });
 
     try {
-      await sendEmail({
+      const sent = await sendEmail({
         to: user.email,
         subject: 'Your BizPrimeHub password reset code',
         html: getPasswordResetOtpHtml({ name: user.name, otp }),
       }).catch((err) => {
         console.error('⚠️ [Auth:ResendResetOtp] Error sending OTP:', err.message);
+        return false;
       });
+
+      if (!sent) {
+        await refundEmailOtpLimit(user.email);
+        return res.status(502).json({
+          success: false,
+          message: 'We could not send the verification code. Please try again in a minute.',
+        });
+      }
     } catch (e) {
       console.error('⚠️ [Auth:ResendResetOtp] Unexpected error sending OTP:', e.message);
+      await refundEmailOtpLimit(user.email);
+      return res.status(502).json({
+        success: false,
+        message: 'We could not send the verification code. Please try again in a minute.',
+      });
     }
 
     res.status(200).json(genericResponse);

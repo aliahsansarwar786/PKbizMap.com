@@ -15,9 +15,11 @@ const csrfProtection = (req, res, next) => {
     return next();
   }
 
-  // CSRF protection applies to cookie-authenticated requests (no session = nothing to forge)
+  // CSRF protection applies to cookie-authenticated requests, plus login and register to prevent login CSRF
   const hasSessionCookie = Boolean(req.cookies?.token);
-  if (!hasSessionCookie) {
+  const isEnforcedAuthRoute = req.path === '/api/auth/login' || req.path === '/api/auth/register';
+
+  if (!hasSessionCookie && !isEnforcedAuthRoute) {
     return next();
   }
 

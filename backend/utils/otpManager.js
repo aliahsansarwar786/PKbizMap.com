@@ -115,34 +115,66 @@ const clearIpAttempts = async (ip, action) => {
 };
 
 /**
- * Checks and increments the hourly OTP email rate limit for a specific email address.
+ * Checks and increments the hourly OTP email rate limit for a specific email address atomically.
  * Max 5 OTP emails per email address per hour.
  */
 const checkAndIncrementEmailOtpLimit = async (email) => {
-  if (!email || typeof email !== 'string') return { allowed: true };
+  if (!email || typeof email !== 'string') return { allowed: true, retryAfterSeconds: 0 };
   const normalized = email.toLowerCase().trim();
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const now = new Date();
+  const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
   try {
-    const record = await OtpEmailThrottle.findOne({
-      email: normalized,
-      createdAt: { $gt: oneHourAgo },
-    });
+    const withinWindow = {
+      $gt: [{ $ifNull: ['$createdAt', new Date(0)] }, oneHourAgo],
+    };
 
-    if (record) {
-      if (record.count >= MAX_OTP_EMAILS_PER_HOUR) {
-        return { allowed: false };
-      }
-      record.count += 1;
-      await record.save();
-      return { allowed: true };
+    const record = await OtpEmailThrottle.findOneAndUpdate(
+      { email: normalized },
+      [
+        {
+          $set: {
+            count: {
+              $cond: [withinWindow, { $add: [{ $ifNull: ['$count', 0] }, 1] }, 1],
+            },
+            createdAt: {
+              $cond: [withinWindow, '$createdAt', now],
+            },
+            updatedAt: now,
+          },
+        },
+      ],
+      { upsert: true, new: true }
+    );
+
+    const isAllowed = record && record.count <= MAX_OTP_EMAILS_PER_HOUR;
+    if (!isAllowed) {
+      const createdAtMs = record?.createdAt ? new Date(record.createdAt).getTime() : now.getTime();
+      const retryAfterSeconds = Math.max(0, Math.ceil((createdAtMs + 3600 * 1000 - Date.now()) / 1000));
+      return { allowed: false, retryAfterSeconds };
     }
 
-    await OtpEmailThrottle.create({ email: normalized, count: 1 });
-    return { allowed: true };
+    return { allowed: true, retryAfterSeconds: 0 };
   } catch (err) {
     console.error('Failed to check/increment email OTP limit:', err.message);
-    return { allowed: true };
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+};
+
+/**
+ * Refunds 1 consumed OTP email limit count on email send failure (never below 0).
+ * Best-effort, wrapped in try/catch.
+ */
+const refundEmailOtpLimit = async (email) => {
+  if (!email || typeof email !== 'string') return;
+  const normalized = email.toLowerCase().trim();
+  try {
+    await OtpEmailThrottle.updateOne(
+      { email: normalized, count: { $gt: 0 } },
+      { $inc: { count: -1 } }
+    );
+  } catch (err) {
+    console.error('Failed to refund email OTP limit:', err.message);
   }
 };
 
@@ -160,4 +192,5 @@ module.exports = {
   recordFailedAttempt,
   clearIpAttempts,
   checkAndIncrementEmailOtpLimit,
+  refundEmailOtpLimit,
 };
