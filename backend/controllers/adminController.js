@@ -798,6 +798,14 @@ const unspamUser = [
       });
     }
 
+    const paymentSetting = await PaymentSetting.getSettings();
+    if (!paymentSetting) {
+      return res.status(503).json({
+        success: false,
+        message: 'Payment settings are currently unavailable. Un-spam is temporarily blocked.',
+      });
+    }
+
     // Effects in this order:
     // (a) set isSpam=false, clear spamReason and spamAt
     user.isSpam = false;
@@ -807,7 +815,6 @@ const unspamUser = [
 
     // (b) restore owner's businesses with hiddenBySpam=true
     const hiddenBusinesses = await Business.find({ owner: user._id, hiddenBySpam: true });
-    const paymentSetting = await PaymentSetting.getSettings();
     const paymentsOn = Boolean(paymentSetting && paymentSetting.isEnabled);
 
     let restoredCount = 0;
@@ -829,7 +836,6 @@ const unspamUser = [
         if (fee > 0 && !(b.paymentStatus === 'verified' && Number(b.paymentAmount) >= fee)) {
           b.isApproved = false;
           b.hiddenBySpam = false;
-          b.paymentAmount = fee;
           b.paymentStatus = 'pending';
           await b.save();
           heldForPaymentCount++;

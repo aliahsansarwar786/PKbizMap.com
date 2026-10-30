@@ -936,6 +936,12 @@ const login = [
       });
     }
 
+    if (user.lockUntil && user.lockUntil.getTime() <= Date.now()) {
+      user.loginAttempts = 0;
+      user.lockUntil = undefined;
+      await user.save({ validateBeforeSave: false });
+    }
+
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       // Increment failed login attempts
