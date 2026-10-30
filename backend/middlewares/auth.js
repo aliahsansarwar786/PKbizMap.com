@@ -17,9 +17,16 @@ const protect = asyncHandler(async (req, res, next) => {
     });
   }
 
+  if (!process.env.JWT_SECRET) {
+    return res.status(500).json({
+      success: false,
+      message: 'Server configuration error.',
+    });
+  }
+
   let decoded;
   try {
-    decoded = jwt.verify(token, process.env.JWT_SECRET);
+    decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
   } catch (err) {
     // Handle specific JWT errors
     if (err.name === 'TokenExpiredError') {
@@ -89,8 +96,13 @@ const optionalAuth = asyncHandler(async (req, res, next) => {
     return next();
   }
 
+  if (!process.env.JWT_SECRET) {
+    req.user = null;
+    return next();
+  }
+
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
     const user = await User.findById(decoded.id).select('-password -resetPasswordToken -resetPasswordExpire');
 
     if (user) {
@@ -113,4 +125,3 @@ const optionalAuth = asyncHandler(async (req, res, next) => {
 });
 
 module.exports = { protect, optionalAuth, requireVerifiedEmail };
-

@@ -15,29 +15,9 @@ const csrfProtection = (req, res, next) => {
     return next();
   }
 
-  // CSRF protection applies to cookie-authenticated requests
+  // CSRF protection applies to cookie-authenticated requests (no session = nothing to forge)
   const hasSessionCookie = Boolean(req.cookies?.token);
   if (!hasSessionCookie) {
-    return next();
-  }
-
-  // When a session cookie is present, require CSRF on login and register.
-  // Only password-reset and email-verification public endpoints remain exempt.
-  const publicAuthEndpoints = [
-    '/api/auth/verify-email',
-    '/api/auth/resend-otp',
-    '/api/auth/forgot-password',
-    '/api/auth/verify-reset-otp',
-    '/api/auth/reset-password',
-    '/api/auth/resend-reset-otp',
-  ];
-
-  const currentPath = req.originalUrl?.split('?')[0] || req.path;
-  const isPublicAuth = publicAuthEndpoints.some(
-    (ep) => currentPath === ep || currentPath.startsWith(ep)
-  );
-
-  if (isPublicAuth) {
     return next();
   }
 
@@ -45,7 +25,46 @@ const csrfProtection = (req, res, next) => {
   const cookieToken = req.cookies?.['XSRF-TOKEN'] || req.cookies?.csrfToken;
   const headerToken = req.headers?.['x-csrf-token'] || req.headers?.['x-xsrf-token'];
 
-  if (!cookieToken || !headerToken || cookieToken !== headerToken) {
+  if (!cookieToken || !headerToken || typeof cookieToken !== 'string' || typeof headerToken !== 'string') {
+    return res.status(403).json({
+      success: false,
+      message: 'Forbidden: Invalid or missing CSRF token.',
+    });
+  }
+
+  // Token format: <randomHex>.<hmacHex> (must be exactly 2 parts)
+  const parts = cookieToken.split('.');
+  if (parts.length !== 2) {
+    return res.status(403).json({
+      success: false,
+      message: 'Forbidden: Invalid or missing CSRF token.',
+    });
+  }
+
+  const [randomHex, hmacHex] = parts;
+
+  // Recompute HMAC with session fingerprint
+  const fingerprint = req.cookies?.token || 'anonymous';
+  const expectedHmac = crypto
+    .createHmac('sha256', process.env.JWT_SECRET || '')
+    .update(`${randomHex}:${fingerprint}`)
+    .digest('hex');
+
+  // Timing-safe verification of HMAC and full double-submit token
+  const cookieBuf = Buffer.from(cookieToken);
+  const headerBuf = Buffer.from(headerToken);
+  const hmacBuf = Buffer.from(hmacHex);
+  const expectedHmacBuf = Buffer.from(expectedHmac);
+
+  const isHmacValid =
+    hmacBuf.length === expectedHmacBuf.length &&
+    crypto.timingSafeEqual(hmacBuf, expectedHmacBuf);
+
+  const isDoubleSubmitValid =
+    headerBuf.length === cookieBuf.length &&
+    crypto.timingSafeEqual(headerBuf, cookieBuf);
+
+  if (!isHmacValid || !isDoubleSubmitValid) {
     return res.status(403).json({
       success: false,
       message: 'Forbidden: Invalid or missing CSRF token.',
@@ -56,10 +75,21 @@ const csrfProtection = (req, res, next) => {
 };
 
 /**
- * Generates and sets a double-submit CSRF cookie & header
+ * Generates and sets a double-submit CSRF cookie & header bound to session fingerprint
  */
-const setCsrfToken = (res) => {
-  const token = crypto.randomBytes(32).toString('hex');
+const setCsrfToken = (res, fingerprint = 'anonymous') => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET must be configured.');
+  }
+
+  const effectiveFingerprint = fingerprint || 'anonymous';
+  const randomHex = crypto.randomBytes(32).toString('hex');
+  const hmacHex = crypto
+    .createHmac('sha256', process.env.JWT_SECRET)
+    .update(`${randomHex}:${effectiveFingerprint}`)
+    .digest('hex');
+  const token = `${randomHex}.${hmacHex}`;
+
   const cookieOptions = {
     httpOnly: false, // Double-submit pattern: client needs to read or receive it
     secure: process.env.NODE_ENV === 'production',

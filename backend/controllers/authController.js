@@ -418,23 +418,80 @@ const updateEmail = [
       });
     }
 
-    // Check uniqueness
-    const existing = await User.findOne({ email: normalizedNewEmail });
-    if (existing) {
-      return res.status(409).json({
+    // Check IP block
+    const ip = getClientIp(req);
+    const { isBlocked, retryAfterSeconds: ipRetryAfter } = await checkIpBlock(ip, 'email-verification');
+    if (isBlocked) {
+      return res.status(429).set('Retry-After', String(ipRetryAfter)).json({
         success: false,
-        message: 'An account with this email already exists.',
+        isBlocked: true,
+        retryAfter: ipRetryAfter,
+        message: 'Too many failed attempts. Your IP has been temporarily blocked for 30 minutes.',
       });
     }
 
-    // Generate fresh OTP for the new email
+    // Check spam blocklist
+    const isSpamBlocked = await SpamBlockedEmail.findOne({ email: normalizedNewEmail });
+    if (isSpamBlocked) {
+      return res.status(400).json({
+        success: false,
+        message: 'This email address cannot be used.',
+      });
+    }
+
+    // Check uniqueness (generic error to prevent existence oracle)
+    const existing = await User.findOne({ email: normalizedNewEmail });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: 'This email address cannot be used.',
+      });
+    }
+
+    const user = await User.findById(req.user._id).select(
+      '+emailVerificationLastResend +emailVerificationOTPBlockedUntil +emailVerificationOTPAttempts'
+    );
+
+    // Check account lockout
+    if (user.emailVerificationOTPBlockedUntil && user.emailVerificationOTPBlockedUntil.getTime() > Date.now()) {
+      const retryAfterSeconds = Math.ceil(
+        (user.emailVerificationOTPBlockedUntil.getTime() - Date.now()) / 1000
+      );
+      return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+        success: false,
+        isBlocked: true,
+        retryAfter: retryAfterSeconds,
+        message: 'Account verification is temporarily locked for 30 minutes due to too many failed attempts.',
+      });
+    }
+
+    // 60-second cooldown check
+    if (user.emailVerificationLastResend) {
+      const elapsed = Date.now() - new Date(user.emailVerificationLastResend).getTime();
+      if (elapsed < RESEND_COOLDOWN_MS) {
+        const retryAfter = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
+        return res.status(429).set('Retry-After', String(retryAfter)).json({
+          success: false,
+          retryAfter,
+          message: `Please wait ${retryAfter} seconds before requesting a new code.`,
+        });
+      }
+    }
+
+    // Check per-email OTP throttle (max 5 OTP emails per hour)
+    const throttle = await checkAndIncrementEmailOtpLimit(normalizedNewEmail);
+    if (!throttle.allowed) {
+      return res.status(429).set('Retry-After', String(throttle.retryAfterSeconds)).json({
+        success: false,
+        message: 'Too many verification code requests for this email. Please try again later.',
+      });
+    }
+
+    // Generate fresh OTP for the new email (preserve running attempts and lock state)
     const otp = generate6DigitOtp();
-    const user = await User.findById(req.user._id);
     user.email = normalizedNewEmail;
     user.emailVerificationOTP = hashOtp(otp);
     user.emailVerificationOTPExpires = new Date(Date.now() + OTP_EXPIRY_MS);
-    user.emailVerificationOTPAttempts = 0;
-    user.emailVerificationOTPBlockedUntil = undefined;
     user.emailVerificationLastResend = new Date();
     await user.save({ validateBeforeSave: false });
 
@@ -940,7 +997,7 @@ const logout = asyncHandler(async (req, res) => {
 const getMe = asyncHandler(async (req, res) => {
   let csrfToken = req.cookies?.['XSRF-TOKEN'] || req.cookies?.csrfToken;
   if (!csrfToken) {
-    csrfToken = setCsrfToken(res);
+    csrfToken = setCsrfToken(res, req.cookies?.token || 'anonymous');
   } else {
     res.set('X-CSRF-Token', csrfToken);
   }
@@ -955,12 +1012,8 @@ const getMe = asyncHandler(async (req, res) => {
 
 // ─── GET /api/auth/csrf-token ─────────────────────────────────────────────────
 const getCsrfToken = asyncHandler(async (req, res) => {
-  let csrfToken = req.cookies?.['XSRF-TOKEN'] || req.cookies?.csrfToken;
-  if (!csrfToken) {
-    csrfToken = setCsrfToken(res);
-  } else {
-    res.set('X-CSRF-Token', csrfToken);
-  }
+  const fingerprint = req.cookies?.token || 'anonymous';
+  const csrfToken = setCsrfToken(res, fingerprint);
 
   res.status(200).json({
     success: true,

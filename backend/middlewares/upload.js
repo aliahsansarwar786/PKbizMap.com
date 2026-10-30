@@ -1,6 +1,7 @@
 const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('../config/cloudinary');
+const mongoSanitize = require('express-mongo-sanitize');
 const { sanitizeBody } = require('./sanitize');
 
 // ─── Cloudinary Storage: Avatars ──────────────────────────────────────────────
@@ -85,7 +86,7 @@ const handleAvatarUpload = (req, res, next) => {
     if (err) {
       return res.status(400).json({ success: false, message: err.message });
     }
-    sanitizeBody(req, res, next);
+    mongoSanitize()(req, res, () => sanitizeBody(req, res, next));
   });
 };
 
@@ -103,7 +104,7 @@ const handleBusinessImageUpload = (req, res, next) => {
     if (err) {
       return res.status(400).json({ success: false, message: err.message });
     }
-    sanitizeBody(req, res, next);
+    mongoSanitize()(req, res, () => sanitizeBody(req, res, next));
   });
 };
 
@@ -137,7 +138,7 @@ const handleQrCodeUpload = (req, res, next) => {
     if (err) {
       return res.status(400).json({ success: false, message: err.message });
     }
-    sanitizeBody(req, res, next);
+    mongoSanitize()(req, res, () => sanitizeBody(req, res, next));
   });
 };
 
@@ -171,7 +172,7 @@ const handlePaymentCardImageUpload = (req, res, next) => {
     if (err) {
       return res.status(400).json({ success: false, message: err.message });
     }
-    sanitizeBody(req, res, next);
+    mongoSanitize()(req, res, () => sanitizeBody(req, res, next));
   });
 };
 
