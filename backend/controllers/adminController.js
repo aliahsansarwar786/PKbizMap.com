@@ -58,20 +58,24 @@ const getDashboard = asyncHandler(async (req, res) => {
   let dbSizeMB = 0;
   try {
     const dbStats = await mongoose.connection.db.stats();
-    dbSizeMB = (dbStats.storageSize / (1024 * 1024)).toFixed(2);
+    dbSizeMB = Number((dbStats.storageSize / (1024 * 1024)).toFixed(2));
   } catch (err) {}
 
   const dbLimitMB = 512; // Mongo M0 Free Tier
-  const MAX_BUSINESSES = 2000;
 
   // Cloudinary Stats
   let cloudinaryUsage = { usedCredits: 0, maxCredits: 25, percentage: 0 };
   try {
     const usage = await cloudinary.api.usage();
     if (usage && usage.credits) {
-      cloudinaryUsage.usedCredits = Math.max(0, usage.credits.usage);
-      cloudinaryUsage.maxCredits = usage.credits.limit;
-      cloudinaryUsage.percentage = Math.max(0, usage.credits.used_percent);
+      cloudinaryUsage.usedCredits = Math.max(0, usage.credits.usage || 0);
+      cloudinaryUsage.maxCredits = usage.credits.limit || 25;
+      const rawPercent = usage.credits.used_percent;
+      const validPercent =
+        typeof rawPercent === 'number' && Number.isFinite(rawPercent)
+          ? Math.min(100, Math.max(0, rawPercent))
+          : 0;
+      cloudinaryUsage.percentage = validPercent;
     }
   } catch (err) {
     console.error("Cloudinary usage fetch error:", err);
@@ -90,8 +94,8 @@ const getDashboard = asyncHandler(async (req, res) => {
         limits: {
           businesses: {
             used: totalBusinesses,
-            max: MAX_BUSINESSES,
-            percentage: ((totalBusinesses / MAX_BUSINESSES) * 100).toFixed(1),
+            max: null,
+            percentage: null,
           },
           database: {
             usedMB: dbSizeMB,

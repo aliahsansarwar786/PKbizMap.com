@@ -780,7 +780,7 @@ const resetPassword = [
 
     // Set new password (pre-save hook hashes with bcrypt)
     user.password = newPassword;
-    user.passwordChangedAt = new Date(Date.now() - 1000);
+    user.passwordChangedAt = new Date(Date.now() - 2000);
     user.resetPasswordTokenHash = undefined;
     user.resetPasswordTokenExpires = undefined;
     user.resetPasswordOTP = undefined;
@@ -1047,7 +1047,7 @@ const changePassword = [
     }
 
     user.password = newPassword;
-    user.passwordChangedAt = new Date(Date.now() - 1000);
+    user.passwordChangedAt = new Date(Date.now() - 2000);
     await user.save();
 
     generateTokenAndSend(user, 200, res, 'Password changed successfully.');

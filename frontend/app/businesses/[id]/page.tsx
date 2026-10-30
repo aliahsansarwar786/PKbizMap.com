@@ -14,7 +14,7 @@ async function getBusiness(id: string) {
   const fallbackApi = 'https://pkbizmap-backend.vercel.app/api';
 
   try {
-    const res = await fetch(`${primaryApi}/businesses/${id}`, {
+    const res = await fetch(`${primaryApi}/businesses/${encodeURIComponent(id)}`, {
       next: { revalidate: 3600 },
     });
     if (res.ok) {
@@ -22,7 +22,7 @@ async function getBusiness(id: string) {
       return json.data?.business || null;
     }
     if (primaryApi !== fallbackApi) {
-      const fbRes = await fetch(`${fallbackApi}/businesses/${id}`, {
+      const fbRes = await fetch(`${fallbackApi}/businesses/${encodeURIComponent(id)}`, {
         next: { revalidate: 3600 },
       });
       if (fbRes.ok) {

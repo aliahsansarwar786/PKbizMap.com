@@ -1,3 +1,4 @@
+// @ts-check
 import Link from 'next/link';
 import { Mail, Phone, MapPin, Heart, ArrowRight } from 'lucide-react';
 import { CATEGORIES } from '@/data/categories';

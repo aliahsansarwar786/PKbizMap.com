@@ -1,3 +1,4 @@
+// @ts-check
 /**
  * Normalizes and validates a stored user URL to ensure it safely uses http: or https:
  * Prevents javascript:, data:, vbscript:, and raw protocol-relative schemes.
