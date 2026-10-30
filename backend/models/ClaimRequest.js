@@ -32,15 +32,22 @@ const claimRequestSchema = new mongoose.Schema(
       trim: true,
       maxlength: [30, 'Phone cannot exceed 30 characters'],
     },
+    codeSalt: {
+      type: String,
+      default: null,
+      select: false,
+    },
     codeHash: {
       type: String,
       required: false,
       default: null,
+      select: false,
     },
     tokenHash: {
       type: String,
       required: true,
       index: true,
+      select: false,
     },
     expiresAtCode: {
       type: Date,

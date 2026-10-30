@@ -39,6 +39,17 @@ function ClaimVerifyContent() {
 
   useEffect(() => {
     if (claimIdParam) setClaimId(claimIdParam);
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = sessionStorage.getItem('bizprimehub_claim_data');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed && (!claimIdParam || parsed.claimId === claimIdParam)) {
+            setClaimData(parsed);
+          }
+        }
+      } catch {}
+    }
   }, [claimIdParam]);
 
   // Handle manual 6-digit code verification
@@ -63,6 +74,11 @@ function ClaimVerifyContent() {
         email: email.trim() || undefined,
       });
       setClaimData(res.data);
+      if (typeof window !== 'undefined' && res.data) {
+        try {
+          sessionStorage.setItem('bizprimehub_claim_data', JSON.stringify(res.data));
+        } catch {}
+      }
       toast.success('Claim code verified successfully!');
     } catch (err: any) {
       setError(err?.message || 'Invalid or expired verification code.');
@@ -80,10 +96,13 @@ function ClaimVerifyContent() {
     try {
       const res = await claimAPI.complete({
         claimId: claimData.claimId,
-        token: token || undefined,
-        code: code || undefined,
       });
       setCompletedBusiness(res.data?.business || claimData.business);
+      if (typeof window !== 'undefined') {
+        try {
+          sessionStorage.removeItem('bizprimehub_claim_data');
+        } catch {}
+      }
       toast.success('Ownership transferred successfully!');
     } catch (err: any) {
       setError(err?.message || 'Failed to complete ownership claim.');
@@ -299,13 +318,21 @@ function ClaimVerifyContent() {
 
                     <div className="grid sm:grid-cols-2 gap-3">
                       <Link
-                        href={`/login?redirect=${encodeURIComponent('/claim/verify')}`}
+                        href={`/login?redirect=${encodeURIComponent(
+                          (claimData?.claimId || claimId)
+                            ? `/claim/verify?claimId=${encodeURIComponent(claimData?.claimId || claimId)}`
+                            : '/claim/verify'
+                        )}`}
                         className="btn-primary justify-center py-2.5"
                       >
                         <LogIn size={16} /> Log In with Email
                       </Link>
                       <Link
-                        href={`/register?redirect=${encodeURIComponent('/claim/verify')}`}
+                        href={`/register?redirect=${encodeURIComponent(
+                          (claimData?.claimId || claimId)
+                            ? `/claim/verify?claimId=${encodeURIComponent(claimData?.claimId || claimId)}`
+                            : '/claim/verify'
+                        )}`}
                         className="btn-secondary justify-center py-2.5"
                       >
                         <UserPlus size={16} /> Create Account
@@ -328,7 +355,10 @@ function ClaimVerifyContent() {
                         if (typeof logout === 'function') {
                           await logout();
                         }
-                        router.push(`/login?redirect=${encodeURIComponent('/claim/verify')}`);
+                        const redirectPath = (claimData?.claimId || claimId)
+                            ? `/claim/verify?claimId=${encodeURIComponent(claimData?.claimId || claimId)}`
+                            : '/claim/verify';
+                        router.push(`/login?redirect=${encodeURIComponent(redirectPath)}`);
                       }}
                       className="btn-secondary w-full justify-center text-xs py-2.5 text-rose-600 border-rose-200 hover:bg-rose-50 cursor-pointer"
                     >

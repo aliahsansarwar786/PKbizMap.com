@@ -419,6 +419,11 @@ const adminDeleteBusiness = [
 
     // Delete all reviews
     await Review.deleteMany({ business: business._id });
+
+    // Delete all claim requests for this business
+    const ClaimRequest = require('../models/ClaimRequest');
+    await ClaimRequest.deleteMany({ business: business._id });
+
     await Business.findByIdAndDelete(req.params.id);
 
     logActivity({
@@ -619,6 +624,13 @@ const deleteUser = [
 
     // Delete user's reviews
     await Review.deleteMany({ user: req.params.id });
+
+    // Delete claims where claimedBy is this user, and claims for the user's businesses
+    const ClaimRequest = require('../models/ClaimRequest');
+    await ClaimRequest.deleteMany({ claimedBy: req.params.id });
+    if (userBusinesses && userBusinesses.length > 0) {
+      await ClaimRequest.deleteMany({ business: { $in: userBusinesses.map((b) => b._id) } });
+    }
 
     // If the deleted user was spam-flagged, record their email in the blocklist collection
     if (user.isSpam && user.email) {
@@ -1441,6 +1453,7 @@ const getClaimRequests = asyncHandler(async (req, res) => {
 
   const [claims, total] = await Promise.all([
     ClaimRequest.find()
+      .select('-codeHash -tokenHash -codeSalt')
       .populate('business', 'title slug phone whatsapp email address.city address.country isClaimed')
       .sort('-createdAt')
       .skip(skip)
@@ -1448,6 +1461,12 @@ const getClaimRequests = asyncHandler(async (req, res) => {
       .lean(),
     ClaimRequest.countDocuments(),
   ]);
+
+  claims.forEach((c) => {
+    delete c.codeHash;
+    delete c.tokenHash;
+    delete c.codeSalt;
+  });
 
   res.status(200).json({
     success: true,
@@ -1486,6 +1505,32 @@ const approveClaimRequest = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Associated business not found.' });
   }
 
+  // Expiry check: if the claim is pending_admin and more than 7 days have passed since verifiedAt (or createdAt if verifiedAt is missing)
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const claimBaseTime = claim.verifiedAt || claim.createdAt;
+  if (claimBaseTime && (Date.now() - new Date(claimBaseTime).getTime() > SEVEN_DAYS_MS)) {
+    claim.status = 'expired';
+    await claim.save();
+    return res.status(400).json({
+      success: false,
+      message: 'This claim request has expired (7-day window exceeded).',
+    });
+  }
+
+  // Re-validate: if claim.emailOption is 'registered', claim.chosenEmail must still equal current business.email
+  if (claim.emailOption === 'registered') {
+    const currentBusinessEmail = (business.email || '').trim().toLowerCase();
+    const claimEmail = (claim.chosenEmail || '').trim().toLowerCase();
+    if (!currentBusinessEmail || claimEmail !== currentBusinessEmail) {
+      claim.status = 'expired';
+      await claim.save();
+      return res.status(400).json({
+        success: false,
+        message: 'Claim email no longer matches the business registered email.',
+      });
+    }
+  }
+
   // FIX 6: Reject approval if business is already claimed
   if (business.isClaimed || business.claimed) {
     const isSelfClaim =
@@ -1503,7 +1548,18 @@ const approveClaimRequest = asyncHandler(async (req, res) => {
   const claimantEmail = (claim.chosenEmail || '').trim().toLowerCase();
   let claimantUser = await User.findOne({ email: claimantEmail });
 
-  if (!claimantUser) {
+  if (claimantUser) {
+    if (claimantUser.isSpam) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot transfer listing: claimant account is flagged as spam.',
+      });
+    }
+    if (!claimantUser.emailVerified) {
+      claimantUser.emailVerified = true;
+      await claimantUser.save();
+    }
+  } else {
     const tempPassword = crypto.randomBytes(16).toString('hex');
     claimantUser = await User.create({
       name: claim.claimantName || 'Business Owner',

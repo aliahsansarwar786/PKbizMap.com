@@ -90,19 +90,46 @@ const requestClaim = asyncHandler(async (req, res) => {
     });
   }
 
-  // Safety: only ONE active pending claim per business at a time.
-  // Invalidate any existing pending requests for this business.
+  // Flooding cooldown:
+  // 1. Check if 3 or more claims were created for this business in the last 60 minutes
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+  const recentClaimsCount = await ClaimRequest.countDocuments({
+    business: business._id,
+    createdAt: { $gte: oneHourAgo },
+  });
+  if (recentClaimsCount >= 3) {
+    return res.status(429).json({
+      success: false,
+      message: 'Too many claim requests for this business. Please try again later.',
+    });
+  }
+
+  // 2. Check if the most recent claim for this business was created less than 60 seconds ago
+  const sixtySecondsAgo = new Date(Date.now() - 60 * 1000);
+  const latestClaim = await ClaimRequest.findOne({ business: business._id }).sort({ createdAt: -1 });
+  if (latestClaim && latestClaim.createdAt >= sixtySecondsAgo) {
+    return res.status(429).json({
+      success: false,
+      message: 'Too many claim requests for this business. Please try again later.',
+    });
+  }
+
+  // Multiple-claim sharing: expire ALL active claims for this business (pending, verified, pending_admin)
   await ClaimRequest.updateMany(
-    { business: business._id, status: 'pending' },
+    {
+      business: business._id,
+      status: { $in: ['pending', 'verified', 'pending_admin'] },
+    },
     { status: 'expired' }
   );
 
-  // Generate 6-digit numeric verification code and random token (schema requires tokenHash)
+  // Generate 6-digit numeric verification code, random token, and random 16-byte hex salt per claim
   const code = crypto.randomInt(100000, 1000000).toString();
   const token = crypto.randomBytes(32).toString('hex');
+  const codeSalt = crypto.randomBytes(16).toString('hex');
 
-  const codeHash = crypto.createHash('sha256').update(code).digest('hex');
-  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const codeHash = crypto.createHash('sha256').update(`${codeSalt}:${code}`).digest('hex');
+  const tokenHash = crypto.createHash('sha256').update(`${codeSalt}:${token}`).digest('hex');
 
   const expiresAtCode = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
   const expiresAtToken = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
@@ -113,6 +140,7 @@ const requestClaim = asyncHandler(async (req, res) => {
     emailOption: 'registered',
     chosenEmail: targetEmail,
     phone: phone.trim(),
+    codeSalt,
     codeHash,
     tokenHash,
     expiresAtCode,
@@ -218,15 +246,15 @@ const verifyClaim = asyncHandler(async (req, res) => {
   // Identify specific claim request by claimId or email (never look up by codeHash alone)
   let candidateClaim = null;
   if (claimId && mongoose.Types.ObjectId.isValid(claimId)) {
-    candidateClaim = await ClaimRequest.findById(claimId).populate(
-      'business',
-      'title slug category address isClaimed claimed email'
-    );
+    candidateClaim = await ClaimRequest.findById(claimId)
+      .select('+codeHash +codeSalt')
+      .populate('business', 'title slug category address isClaimed claimed email');
   } else if (email && email.trim()) {
     candidateClaim = await ClaimRequest.findOne({
       chosenEmail: email.trim().toLowerCase(),
       status: { $in: ['pending', 'verified', 'pending_admin'] },
     })
+      .select('+codeHash +codeSalt')
       .sort({ createdAt: -1 })
       .populate('business', 'title slug category address isClaimed claimed email');
   }
@@ -246,8 +274,17 @@ const verifyClaim = asyncHandler(async (req, res) => {
     });
   }
 
-  // Compare code hash with timing-safe comparison (reuse timingSafeCompare from otpManager)
-  const isCodeMatch = candidateClaim.codeHash && timingSafeCompare(code.trim(), candidateClaim.codeHash);
+  // Compare salted code hash with timing-safe comparison
+  // If candidateClaim has no codeSalt (old format), treat code as invalid (do not fall back to unsalted)
+  let isCodeMatch = false;
+  if (candidateClaim.codeSalt && candidateClaim.codeHash) {
+    const computedHash = crypto
+      .createHash('sha256')
+      .update(`${candidateClaim.codeSalt}:${code.trim()}`)
+      .digest('hex');
+    isCodeMatch = timingSafeCompare(computedHash, candidateClaim.codeHash);
+  }
+
   const isNotExpired = candidateClaim.expiresAtCode && candidateClaim.expiresAtCode > new Date();
   const isStatusValid = ['pending', 'verified', 'pending_admin'].includes(candidateClaim.status);
 
@@ -269,8 +306,9 @@ const verifyClaim = asyncHandler(async (req, res) => {
     });
   }
 
-  // Clear stored codeHash and expiresAtCode so code cannot be reused
+  // Clear stored codeHash, codeSalt, and expiresAtCode so code cannot be reused
   claim.codeHash = null;
+  claim.codeSalt = null;
   claim.expiresAtCode = null;
 
   // Sanitized business object: NEVER return the business phone in verify response
@@ -339,87 +377,84 @@ const verifyClaim = asyncHandler(async (req, res) => {
 // ─── POST /api/claims/complete ───────────────────────────────────────────────
 // Protected: Complete claim with authenticated account matching chosenEmail
 const completeClaim = asyncHandler(async (req, res) => {
-  const { claimId, code } = req.body;
+  const { claimId } = req.body;
 
-  let claim = null;
-  if (claimId && mongoose.Types.ObjectId.isValid(claimId)) {
-    claim = await ClaimRequest.findById(claimId).populate('business');
-    if (!claim) {
-      return res.status(404).json({
-        success: false,
-        message: 'Claim request not found.',
-      });
-    }
-
-    // claimId path: proceed ONLY when status is 'verified'.
-    // Explicitly reject 'rejected' and 'expired' (400, clear message).
-    if (claim.status === 'rejected') {
-      return res.status(400).json({
-        success: false,
-        message: 'This claim request has been rejected.',
-      });
-    }
-
-    if (claim.status === 'expired') {
-      return res.status(400).json({
-        success: false,
-        message: 'This claim request has expired.',
-      });
-    }
-
-    if (claim.status === 'completed' || claim.status === 'approved') {
-      return res.status(400).json({
-        success: false,
-        message: 'This claim request has already been completed.',
-      });
-    }
-
-    if (claim.status === 'pending_admin' || claim.emailOption === 'direct') {
-      return res.status(403).json({
-        success: false,
-        message: 'Direct email claims require review and approval by the site owner. Ownership is transferred only after approval.',
-      });
-    }
-
-    if (claim.status !== 'verified') {
-      return res.status(400).json({
-        success: false,
-        message: 'Claim request has not been verified.',
-      });
-    }
-  } else if (code && code.trim()) {
-    // code path: require status in ['pending', 'verified'] AND expiresAtCode greater than now;
-    // otherwise 400 "Invalid or expired verification code."
-    const codeHash = crypto.createHash('sha256').update(code.trim()).digest('hex');
-    claim = await ClaimRequest.findOne({
-      codeHash,
-      status: { $in: ['pending', 'verified'] },
-      expiresAtCode: { $gt: new Date() },
-    }).populate('business');
-
-    if (!claim) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid or expired verification code.',
-      });
-    }
-
-    if (claim.status === 'pending_admin' || claim.emailOption === 'direct') {
-      return res.status(403).json({
-        success: false,
-        message: 'Direct email claims require review and approval by the site owner. Ownership is transferred only after approval.',
-      });
-    }
-  } else {
+  if (!claimId || !mongoose.Types.ObjectId.isValid(claimId)) {
     return res.status(400).json({
       success: false,
-      message: 'Claim ID or verification code is required.',
+      message: 'A valid Claim ID is required.',
+    });
+  }
+
+  const claim = await ClaimRequest.findById(claimId).populate('business');
+  if (!claim) {
+    return res.status(404).json({
+      success: false,
+      message: 'Claim request not found.',
+    });
+  }
+
+  // Null-business guard: after populate, if claim.business is null or missing, return 404 with a generic message.
+  // Do NOT dereference claim.business._id before this guard - this is the crash when the business was deleted.
+  if (!claim.business) {
+    return res.status(404).json({
+      success: false,
+      message: 'The business associated with this claim no longer exists.',
+    });
+  }
+
+  // claimId path: proceed ONLY when status is 'verified'.
+  // Explicitly reject 'rejected' and 'expired' (400, clear message).
+  if (claim.status === 'rejected') {
+    return res.status(400).json({
+      success: false,
+      message: 'This claim request has been rejected.',
+    });
+  }
+
+  if (claim.status === 'expired') {
+    return res.status(400).json({
+      success: false,
+      message: 'This claim request has expired.',
+    });
+  }
+
+  if (claim.status === 'completed' || claim.status === 'approved') {
+    return res.status(400).json({
+      success: false,
+      message: 'This claim request has already been completed.',
+    });
+  }
+
+  if (claim.status === 'pending_admin' || claim.emailOption === 'direct') {
+    return res.status(403).json({
+      success: false,
+      message: 'Direct email claims require review and approval by the site owner. Ownership is transferred only after approval.',
+    });
+  }
+
+  if (claim.status !== 'verified') {
+    return res.status(400).json({
+      success: false,
+      message: 'Claim request has not been verified.',
+    });
+  }
+
+  // Verified claims complete within 7 days of verifiedAt (or createdAt if verifiedAt is missing)
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+  const verifiedTime = claim.verifiedAt || claim.createdAt;
+  if (verifiedTime && (Date.now() - new Date(verifiedTime).getTime() > SEVEN_DAYS_MS)) {
+    claim.status = 'expired';
+    await claim.save();
+    return res.status(400).json({
+      success: false,
+      message: 'This claim request has expired (7-day completion window exceeded).',
     });
   }
 
   const business = await Business.findById(claim.business._id || claim.business);
   if (!business) {
-    return res.status(404).json({ success: false, message: 'Business not found.' });
+    return res.status(404).json({ success: false, message: 'The business associated with this claim no longer exists.' });
   }
 
   if (business.isClaimed || business.claimed) {
@@ -429,14 +464,32 @@ const completeClaim = asyncHandler(async (req, res) => {
     });
   }
 
+  // Spam guard: if req.user.isSpam is true, return 403 and do NOT transfer, even if the email matches.
+  if (req.user?.isSpam) {
+    return res.status(403).json({
+      success: false,
+      message: 'Account is flagged as spam. Ownership transfer blocked.',
+    });
+  }
+
+  // Email-verified guard: if req.user.emailVerified is not true, return 403 and do NOT transfer
+  if (!req.user?.emailVerified) {
+    return res.status(403).json({
+      success: false,
+      message: 'Account email must be verified before completing a business claim.',
+    });
+  }
+
   // Check that the currently authenticated user's email matches the verified claim email
+  // Generic email-mismatch message: if the logged-in user's email does not match claim.chosenEmail,
+  // return 403 with a generic message that does not include either email address.
   const userEmail = (req.user?.email || '').trim().toLowerCase();
   const claimEmail = (claim.chosenEmail || '').trim().toLowerCase();
 
   if (userEmail !== claimEmail) {
     return res.status(403).json({
       success: false,
-      message: `Please log in or register with the verified email address (${claim.chosenEmail}) to complete claiming this business. Currently logged in as ${req.user.email}.`,
+      message: 'Account email does not match the verified claim email address.',
     });
   }
 

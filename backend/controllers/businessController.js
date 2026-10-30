@@ -689,6 +689,10 @@ const deleteBusiness = [
     // Delete all reviews for this business
     await Review.deleteMany({ business: business._id });
 
+    // Delete all claim requests for this business
+    const ClaimRequest = require('../models/ClaimRequest');
+    await ClaimRequest.deleteMany({ business: business._id });
+
     await Business.findByIdAndDelete(req.params.id);
 
     res.status(200).json({
