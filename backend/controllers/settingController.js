@@ -39,6 +39,12 @@ const validatePaymentMethodData = ({ name, kind, accountTitle, accountValue }) =
 // Public: Returns payment settings for users creating a business listing
 const getPaymentSettings = asyncHandler(async (req, res) => {
   const settings = await PaymentSetting.getSettings();
+  if (!settings) {
+    return res.status(503).json({
+      success: false,
+      message: 'Payment settings are currently unavailable.',
+    });
+  }
 
   const isAdmin = req.user && req.user.role === 'admin';
 
@@ -85,52 +91,173 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
     ownerNotificationEmail,
   } = req.body;
 
-  const settings = await PaymentSetting.getSettings();
-
+  // Validate isEnabled
+  let targetIsEnabled = undefined;
   if (isEnabled !== undefined) {
-    settings.isEnabled = isEnabled === true || isEnabled === 'true';
+    if (isEnabled === true || isEnabled === 'true' || isEnabled === 1 || isEnabled === '1') {
+      targetIsEnabled = true;
+    } else if (isEnabled === false || isEnabled === 'false' || isEnabled === 0 || isEnabled === '0') {
+      targetIsEnabled = false;
+    } else {
+      if (req.file) {
+        await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid isEnabled value. Must be a boolean (true/false, 1/0).',
+      });
+    }
   }
 
-  // Handle multi-country fees
+  // Validate multi-country fees (if provided)
+  let validatedFees = null;
   if (fees !== undefined && fees !== null) {
     let parsedFees = fees;
     if (typeof parsedFees === 'string') {
       try {
         parsedFees = JSON.parse(parsedFees);
-      } catch {}
-    }
-    if (typeof parsedFees === 'object' && parsedFees !== null) {
-      if (!settings.fees) settings.fees = {};
-      const countryConfig = {
-        Pakistan: { currency: 'PKR', symbol: 'Rs.' },
-        UAE: { currency: 'AED', symbol: 'AED ' },
-        USA: { currency: 'USD', symbol: '$' },
-      };
-      ['Pakistan', 'UAE', 'USA'].forEach((c) => {
-        if (parsedFees[c] && parsedFees[c].amount !== undefined) {
-          const parsedAmt = Math.max(0, Number(parsedFees[c].amount) || 0);
-          settings.fees[c] = {
-            amount: parsedAmt,
-            currency: countryConfig[c].currency,
-            symbol: countryConfig[c].symbol,
-          };
+      } catch {
+        if (req.file) {
+          await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
         }
-      });
-      if (settings.fees.Pakistan) {
-        settings.feeAmount = settings.fees.Pakistan.amount;
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid fees JSON format.',
+        });
       }
     }
-  } else if (feeAmount !== undefined && feeAmount !== null) {
-    const parsedFee = Number(feeAmount);
-    if (!isNaN(parsedFee) && parsedFee >= 0) {
-      settings.feeAmount = parsedFee;
-      if (!settings.fees) settings.fees = {};
-      settings.fees.Pakistan = {
-        amount: parsedFee,
-        currency: 'PKR',
-        symbol: 'Rs.',
-      };
+    if (typeof parsedFees !== 'object' || parsedFees === null || Array.isArray(parsedFees)) {
+      if (req.file) {
+        await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'Fees must be an object with country keys.',
+      });
     }
+
+    const allowedCountries = ['Pakistan', 'UAE', 'USA'];
+    const keys = Object.keys(parsedFees);
+    for (const key of keys) {
+      if (!allowedCountries.includes(key)) {
+        if (req.file) {
+          await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+        }
+        return res.status(400).json({
+          success: false,
+          message: `Invalid country in fees: "${key}". Allowed countries are Pakistan, UAE, USA.`,
+        });
+      }
+    }
+
+    validatedFees = {};
+    for (const c of allowedCountries) {
+      if (parsedFees[c] !== undefined) {
+        if (typeof parsedFees[c] !== 'object' || parsedFees[c] === null || Array.isArray(parsedFees[c])) {
+          if (req.file) {
+            await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+          }
+          return res.status(400).json({
+            success: false,
+            message: `Fee configuration for ${c} must be an object with an amount.`,
+          });
+        }
+        const rawAmt = parsedFees[c].amount;
+        if (rawAmt === undefined || rawAmt === null || rawAmt === '' || (typeof rawAmt === 'string' && rawAmt.trim() === '')) {
+          if (req.file) {
+            await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+          }
+          return res.status(400).json({
+            success: false,
+            message: `Invalid fee amount for ${c}. Must be a finite number between 0 and 1,000,000.`,
+          });
+        }
+        const num = Number(rawAmt);
+        if (!Number.isFinite(num) || num < 0 || num > 1000000) {
+          if (req.file) {
+            await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+          }
+          return res.status(400).json({
+            success: false,
+            message: `Invalid fee amount for ${c}. Must be a finite number between 0 and 1,000,000.`,
+          });
+        }
+        validatedFees[c] = num;
+      }
+    }
+  }
+
+  // Validate legacy feeAmount (if provided)
+  let validatedLegacyFee = null;
+  if (feeAmount !== undefined && feeAmount !== null) {
+    if (feeAmount === '' || (typeof feeAmount === 'string' && feeAmount.trim() === '')) {
+      if (req.file) {
+        await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid feeAmount. Must be a finite number between 0 and 1,000,000.',
+      });
+    }
+    const num = Number(feeAmount);
+    if (!Number.isFinite(num) || num < 0 || num > 1000000) {
+      if (req.file) {
+        await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+      }
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid feeAmount. Must be a finite number between 0 and 1,000,000.',
+      });
+    }
+    validatedLegacyFee = num;
+  }
+
+  let settings = await PaymentSetting.getSettings();
+  if (!settings) {
+    settings = await PaymentSetting.initOrRepairSettings();
+  }
+  if (!settings) {
+    if (req.file) {
+      await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+    }
+    return res.status(503).json({
+      success: false,
+      message: 'Payment settings are currently unavailable.',
+    });
+  }
+
+  if (targetIsEnabled !== undefined) {
+    settings.isEnabled = targetIsEnabled;
+  }
+
+  // Handle multi-country fees
+  if (validatedFees !== null) {
+    if (!settings.fees) settings.fees = {};
+    const countryConfig = {
+      Pakistan: { currency: 'PKR', symbol: 'Rs.' },
+      UAE: { currency: 'AED', symbol: 'AED ' },
+      USA: { currency: 'USD', symbol: '$' },
+    };
+    ['Pakistan', 'UAE', 'USA'].forEach((c) => {
+      if (validatedFees[c] !== undefined) {
+        settings.fees[c] = {
+          amount: validatedFees[c],
+          currency: countryConfig[c].currency,
+          symbol: countryConfig[c].symbol,
+        };
+      }
+    });
+    if (settings.fees.Pakistan && settings.fees.Pakistan.amount !== undefined) {
+      settings.feeAmount = settings.fees.Pakistan.amount;
+    }
+  } else if (validatedLegacyFee !== null) {
+    settings.feeAmount = validatedLegacyFee;
+    if (!settings.fees) settings.fees = {};
+    settings.fees.Pakistan = {
+      amount: validatedLegacyFee,
+      currency: 'PKR',
+      symbol: 'Rs.',
+    };
   }
 
   if (qrEnabled !== undefined) {
@@ -237,7 +364,16 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
 // ─── DELETE /api/admin/settings/payment/qr ─────────────────────────────────────
 // Protected (Admin): Delete the current Raast QR code image
 const deletePaymentQrCode = asyncHandler(async (req, res) => {
-  const settings = await PaymentSetting.getSettings();
+  let settings = await PaymentSetting.getSettings();
+  if (!settings) {
+    settings = await PaymentSetting.initOrRepairSettings();
+  }
+  if (!settings) {
+    return res.status(503).json({
+      success: false,
+      message: 'Payment settings are currently unavailable.',
+    });
+  }
 
   if (settings.qrCode?.publicId) {
     await cloudinary.uploader.destroy(settings.qrCode.publicId).catch((err) => {
@@ -317,7 +453,19 @@ const createPaymentMethod = asyncHandler(async (req, res) => {
     parsedCountries = ['Pakistan'];
   }
 
-  const settings = await PaymentSetting.getSettings();
+  let settings = await PaymentSetting.getSettings();
+  if (!settings) {
+    settings = await PaymentSetting.initOrRepairSettings();
+  }
+  if (!settings) {
+    if (req.file) {
+      await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+    }
+    return res.status(503).json({
+      success: false,
+      message: 'Payment settings are currently unavailable.',
+    });
+  }
 
   const newMethod = {
     name: name.trim(),
@@ -364,7 +512,19 @@ const updatePaymentMethod = asyncHandler(async (req, res) => {
   const { methodId } = req.params;
   const { name, kind, accountTitle, accountValue, details, isEnabled, countries } = req.body;
 
-  const settings = await PaymentSetting.getSettings();
+  let settings = await PaymentSetting.getSettings();
+  if (!settings) {
+    settings = await PaymentSetting.initOrRepairSettings();
+  }
+  if (!settings) {
+    if (req.file) {
+      await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+    }
+    return res.status(503).json({
+      success: false,
+      message: 'Payment settings are currently unavailable.',
+    });
+  }
   const method = settings.paymentMethods.id(methodId);
 
   if (!method) {
@@ -462,7 +622,19 @@ const updatePaymentMethod = asyncHandler(async (req, res) => {
 const deletePaymentMethod = asyncHandler(async (req, res) => {
   const { methodId } = req.params;
 
-  const settings = await PaymentSetting.getSettings();
+  let settings = await PaymentSetting.getSettings();
+  if (!settings) {
+    settings = await PaymentSetting.initOrRepairSettings();
+  }
+  if (!settings) {
+    if (req.file) {
+      await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+    }
+    return res.status(503).json({
+      success: false,
+      message: 'Payment settings are currently unavailable.',
+    });
+  }
   const method = settings.paymentMethods.id(methodId);
 
   if (!method) {
@@ -504,7 +676,19 @@ const deletePaymentMethod = asyncHandler(async (req, res) => {
 const togglePaymentMethod = asyncHandler(async (req, res) => {
   const { methodId } = req.params;
 
-  const settings = await PaymentSetting.getSettings();
+  let settings = await PaymentSetting.getSettings();
+  if (!settings) {
+    settings = await PaymentSetting.initOrRepairSettings();
+  }
+  if (!settings) {
+    if (req.file) {
+      await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+    }
+    return res.status(503).json({
+      success: false,
+      message: 'Payment settings are currently unavailable.',
+    });
+  }
   const method = settings.paymentMethods.id(methodId);
 
   if (!method) {

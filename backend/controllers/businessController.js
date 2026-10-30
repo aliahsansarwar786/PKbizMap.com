@@ -568,6 +568,33 @@ const updateBusiness = [
       };
     }
 
+    const oldCountry = business.address?.country || 'Pakistan';
+    const newCountry = updates.address?.country;
+    const countryChanged = Boolean(newCountry && newCountry.trim().toLowerCase() !== oldCountry.trim().toLowerCase());
+
+    if (countryChanged) {
+      const paymentSetting = await PaymentSetting.getSettings();
+      if (paymentSetting && paymentSetting.isEnabled) {
+        const targetCountry = newCountry.trim();
+        const feeInfo = paymentSetting.getFeeForCountry
+          ? paymentSetting.getFeeForCountry(targetCountry)
+          : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount || 0 });
+        const newFee = Number(feeInfo.amount) || 0;
+
+        const wasVerifiedAndCovered = business.paymentStatus === 'verified' && (Number(business.paymentAmount) || 0) >= newFee;
+
+        if (newFee === 0) {
+          updates.paymentAmount = 0;
+          updates.paymentStatus = 'none';
+        } else {
+          updates.paymentAmount = newFee;
+          if (!wasVerifiedAndCovered) {
+            updates.paymentStatus = 'pending';
+          }
+        }
+      }
+    }
+
     // Handle new image uploads
     const newImageFiles = Array.isArray(req.files) ? req.files : (req.files?.images || []);
     if (newImageFiles && newImageFiles.length > 0) {

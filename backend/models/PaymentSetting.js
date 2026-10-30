@@ -66,6 +66,12 @@ const DEFAULT_FEES = {
 
 const paymentSettingSchema = new mongoose.Schema(
   {
+    singleton: {
+      type: String,
+      default: 'main',
+      unique: true,
+      trim: true,
+    },
     isEnabled: {
       type: Boolean,
       default: false, // Default is OFF so existing listings are not interrupted until Admin turns it on
@@ -181,15 +187,22 @@ paymentSettingSchema.methods.getFeeForCountry = function (countryName) {
 
 // Singleton helper: read-only retrieval of the single configuration document
 paymentSettingSchema.statics.getSettings = async function () {
-  return await this.findOne();
+  return await this.findOne({ singleton: 'main' }).sort({ _id: 1 });
 };
 
 // Startup migration & repair helper: runs strictly on server startup, not on public GET requests
 paymentSettingSchema.statics.initOrRepairSettings = async function () {
-  let settings = await this.findOne();
-  if (!settings) {
-    settings = await this.create({});
-  }
+  // Migrate any existing document missing the singleton key to 'main'
+  await this.updateOne(
+    { $or: [{ singleton: { $exists: false } }, { singleton: null }, { singleton: '' }] },
+    { $set: { singleton: 'main' } }
+  );
+
+  let settings = await this.findOneAndUpdate(
+    { singleton: 'main' },
+    { $setOnInsert: { singleton: 'main' } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
 
   let modified = false;
 

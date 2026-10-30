@@ -300,18 +300,33 @@ const approveBusiness = [
     // FIX 4: approveBusiness must require paymentStatus === 'verified' whenever the
     // applicable listing fee for the listing's country is greater than zero
     const paymentSetting = await PaymentSetting.getSettings();
-    if (paymentSetting && paymentSetting.isEnabled) {
+    if (!paymentSetting) {
+      return res.status(503).json({
+        success: false,
+        message: 'Payment settings are currently unavailable. Approval is temporarily blocked.',
+      });
+    }
+
+    if (paymentSetting.isEnabled) {
       const targetCountry = business.address?.country || 'Pakistan';
       const feeInfo = paymentSetting.getFeeForCountry
         ? paymentSetting.getFeeForCountry(targetCountry)
         : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount || 0 });
 
       const effectiveFee = Number(feeInfo.amount) || 0;
-      if (effectiveFee > 0 && business.paymentStatus !== 'verified') {
-        return res.status(400).json({
-          success: false,
-          message: `Cannot approve listing: payment receipt must be verified first for ${targetCountry} (fee: ${feeInfo.symbol || ''}${effectiveFee}).`,
-        });
+      if (effectiveFee > 0) {
+        if (business.paymentStatus !== 'verified') {
+          return res.status(400).json({
+            success: false,
+            message: `Cannot approve listing: payment receipt must be verified first for ${targetCountry} (fee: ${feeInfo.symbol || ''}${effectiveFee}).`,
+          });
+        }
+        if (Number(business.paymentAmount) < effectiveFee) {
+          return res.status(400).json({
+            success: false,
+            message: `Cannot approve listing: verified payment amount (${business.paymentAmount}) is less than the fee for ${targetCountry} (${feeInfo.symbol || ''}${effectiveFee}).`,
+          });
+        }
       }
     }
 
@@ -774,11 +789,49 @@ const unspamUser = [
     user.spamAt = null;
     await user.save();
 
-    // (b) for the owner's businesses with hiddenBySpam=true: set isApproved=true AND hiddenBySpam=false
-    await Business.updateMany(
-      { owner: user._id, hiddenBySpam: true },
-      { isApproved: true, hiddenBySpam: false }
-    );
+    // (b) restore owner's businesses with hiddenBySpam=true
+    const hiddenBusinesses = await Business.find({ owner: user._id, hiddenBySpam: true });
+    const paymentSetting = await PaymentSetting.getSettings();
+    const paymentsOn = Boolean(paymentSetting && paymentSetting.isEnabled);
+
+    let restoredCount = 0;
+    let heldForPaymentCount = 0;
+
+    for (const b of hiddenBusinesses) {
+      if (!paymentsOn) {
+        b.isApproved = true;
+        b.hiddenBySpam = false;
+        await b.save();
+        restoredCount++;
+      } else {
+        const country = b.address?.country || 'Pakistan';
+        const feeInfo = paymentSetting.getFeeForCountry
+          ? paymentSetting.getFeeForCountry(country)
+          : (paymentSetting.fees?.[country] || { amount: paymentSetting.feeAmount || 0 });
+        const fee = Number(feeInfo.amount) || 0;
+
+        if (fee > 0 && !(b.paymentStatus === 'verified' && Number(b.paymentAmount) >= fee)) {
+          b.isApproved = false;
+          b.hiddenBySpam = false;
+          b.paymentAmount = fee;
+          b.paymentStatus = 'pending';
+          await b.save();
+          heldForPaymentCount++;
+        } else if (fee === 0) {
+          b.isApproved = true;
+          b.hiddenBySpam = false;
+          b.paymentAmount = 0;
+          b.paymentStatus = 'none';
+          await b.save();
+          restoredCount++;
+        } else {
+          b.isApproved = true;
+          b.hiddenBySpam = false;
+          await b.save();
+          restoredCount++;
+        }
+      }
+    }
 
     // (c) send the un-spam email (best-effort)
     try {
@@ -812,7 +865,7 @@ const unspamUser = [
       targetType: 'user',
       targetId: user._id,
       targetLabel: `${user.name} (${user.email})`,
-      details: 'Account unflagged and listings restored',
+      details: `Account unflagged. Listings restored live: ${restoredCount}, held pending payment: ${heldForPaymentCount}`,
     });
 
     res.status(200).json({
@@ -1161,6 +1214,8 @@ const adminUpdateBusiness = [
       }
     }
 
+    const oldCountry = business.address?.country || 'Pakistan';
+
     if (req.body.address && typeof req.body.address === 'object') {
       if (req.body.address.country !== undefined) business.address.country = req.body.address.country;
       if (req.body.address.street !== undefined) business.address.street = req.body.address.street;
@@ -1173,6 +1228,32 @@ const adminUpdateBusiness = [
       if (req.body.area !== undefined) business.address.area = req.body.area;
       if (req.body.city !== undefined) business.address.city = req.body.city;
       if (req.body.zipCode !== undefined) business.address.zipCode = req.body.zipCode;
+    }
+
+    const newCountry = business.address?.country || 'Pakistan';
+    const countryChanged = newCountry.trim().toLowerCase() !== oldCountry.trim().toLowerCase();
+
+    if (countryChanged) {
+      const paymentSetting = await PaymentSetting.getSettings();
+      if (paymentSetting && paymentSetting.isEnabled) {
+        const feeInfo = paymentSetting.getFeeForCountry
+          ? paymentSetting.getFeeForCountry(newCountry.trim())
+          : (paymentSetting.fees?.[newCountry.trim()] || { amount: paymentSetting.feeAmount || 0 });
+        const newFee = Number(feeInfo.amount) || 0;
+
+        const wasVerifiedAndCovered = business.paymentStatus === 'verified' && (Number(business.paymentAmount) || 0) >= newFee;
+
+        if (newFee === 0) {
+          business.paymentAmount = 0;
+          business.paymentStatus = 'none';
+        } else {
+          business.paymentAmount = newFee;
+          if (!wasVerifiedAndCovered) {
+            business.paymentStatus = 'pending';
+            business.isApproved = false;
+          }
+        }
+      }
     }
 
     // FORBIDDEN fields: owner, isApproved, averageRating, reviewCount, paymentReceipt, paymentStatus, paymentAmount, images
