@@ -1,4 +1,7 @@
 require('dotenv').config();
+const validateEnv = require('./utils/validateEnv');
+validateEnv();
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -44,11 +47,9 @@ const allowedOrigins = [
   'https://www.bizprimehub.com',
   'https://bizprimehub.com',
   'https://bizprimehub.vercel.app',
-  'https://pkbizmap.vercel.app',
-  'https://pkbizmap-com.vercel.app',
-  'https://pkbizmap-frontend.vercel.app',
-  'http://localhost:3000',
-  'http://localhost:3001',
+  ...(process.env.NODE_ENV !== 'production'
+    ? ['http://localhost:3000', 'http://localhost:3001']
+    : []),
 ];
 
 const corsOptions = {

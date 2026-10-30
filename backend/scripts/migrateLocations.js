@@ -3,6 +3,16 @@ const mongoose = require('mongoose');
 const { isValidCity } = require('../utils/locations');
 
 async function runMigration() {
+  const isDryRunForced = process.argv.includes('--dry-run');
+  const isConfirmed = process.argv.includes('--confirm') && !isDryRunForced;
+  const isDryRun = !isConfirmed;
+
+  if (isDryRun) {
+    console.log('DRY RUN — no writes. Re-run with --confirm to apply.');
+  } else {
+    console.log('BACKUP FIRST — make sure you have a database backup before confirming.');
+  }
+
   const mongoUri = process.env.MONGO_URI;
   if (!mongoUri) {
     console.error('MONGO_URI is missing from environment.');
@@ -31,23 +41,41 @@ async function runMigration() {
       updates['address.city'] = 'Multan';
       currentCity = 'Multan';
       needsUpdate = true;
-      console.log(`[Typo Fix] Business "${b.title}" (_id: ${b._id}): city "multsn" -> "Multan"`);
+      if (isDryRun) {
+        console.log(`[Dry Run Typo Fix] Business "${b.title}" (_id: ${b._id}): city "multsn" -> "Multan"`);
+      } else {
+        console.log(`[Typo Fix] Business "${b.title}" (_id: ${b._id}): city "multsn" -> "Multan"`);
+      }
     }
 
     // Set address.country = 'Pakistan' if missing, null, empty or undefined
     if (!currentCountry || currentCountry.trim() === '') {
       updates['address.country'] = 'Pakistan';
       needsUpdate = true;
-      console.log(`[Country Set] Business "${b.title}" (_id: ${b._id}): missing country -> "Pakistan"`);
+      if (isDryRun) {
+        console.log(`[Dry Run Country Set] Business "${b.title}" (_id: ${b._id}): missing country -> "Pakistan"`);
+      } else {
+        console.log(`[Country Set] Business "${b.title}" (_id: ${b._id}): missing country -> "Pakistan"`);
+      }
     }
 
     if (needsUpdate) {
-      await collection.updateOne(
-        { _id: b._id },
-        { $set: updates }
-      );
+      if (isConfirmed) {
+        await collection.updateOne(
+          { _id: b._id },
+          { $set: updates }
+        );
+      }
       updatedCount++;
     }
+  }
+
+  if (isDryRun) {
+    console.log(`\n--- Dry Run Summary ---`);
+    console.log(`Total businesses that would be updated: ${updatedCount} out of ${businesses.length}.`);
+    await mongoose.disconnect();
+    console.log('Database disconnected.');
+    return;
   }
 
   console.log(`\nMigration completed successfully.`);

@@ -3,6 +3,16 @@ const mongoose = require('mongoose');
 const { slugify } = require('../utils/slugify');
 
 async function runBackfill() {
+  const isDryRunForced = process.argv.includes('--dry-run');
+  const isConfirmed = process.argv.includes('--confirm') && !isDryRunForced;
+  const isDryRun = !isConfirmed;
+
+  if (isDryRun) {
+    console.log('DRY RUN — no writes. Re-run with --confirm to apply.');
+  } else {
+    console.log('BACKUP FIRST — make sure you have a database backup before confirming.');
+  }
+
   const mongoUri = process.env.MONGO_URI;
   if (!mongoUri) {
     console.error('MONGO_URI is missing from environment.');
@@ -68,15 +78,37 @@ async function runBackfill() {
 
     usedSlugs.add(assignedSlug);
 
-    await collection.updateOne(
-      { _id: b._id },
-      { $set: { slug: assignedSlug } }
-    );
+    if (isConfirmed) {
+      await collection.updateOne(
+        { _id: b._id },
+        { $set: { slug: assignedSlug } }
+      );
+    }
     updatedCount++;
 
     if (updatedCount % 200 === 0) {
       console.log(`Processed ${updatedCount} businesses...`);
     }
+  }
+
+  if (isDryRun) {
+    console.log('\n--- Dry Run Summary ---');
+    console.log(`Total businesses in DB: ${businesses.length}`);
+    console.log(`Already have slug: ${alreadyHadSlugCount}`);
+    console.log(`Planned slugs to generate: ${updatedCount}`);
+    console.log(`Planned collision resolutions: ${collisionLog.length}`);
+    if (collisionLog.length > 0) {
+      console.log('\nPlanned collision details (first 10):');
+      collisionLog.slice(0, 10).forEach((c, idx) => {
+        console.log(`  ${idx + 1}. "${c.title}" (${c.city}) -> Base: "${c.baseSlug}" -> Planned: "${c.assignedSlug}"`);
+      });
+      if (collisionLog.length > 10) {
+        console.log(`  ...and ${collisionLog.length - 10} more collision(s).`);
+      }
+    }
+    await mongoose.disconnect();
+    console.log('Database disconnected.');
+    return;
   }
 
   console.log('\n--- Building Unique Index on slug ---');
@@ -120,7 +152,11 @@ async function runBackfill() {
   console.log('Database disconnected.');
 }
 
-runBackfill().catch((err) => {
-  console.error('Backfill error:', err);
-  process.exit(1);
-});
+if (require.main === module) {
+  runBackfill().catch((err) => {
+    console.error('Backfill error:', err);
+    process.exit(1);
+  });
+}
+
+module.exports = runBackfill;
