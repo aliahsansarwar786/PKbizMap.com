@@ -325,7 +325,7 @@ const approveBusiness = [
             message: `Cannot approve listing: payment receipt must be verified first for ${targetCountry} (fee: ${feeInfo.symbol || ''}${effectiveFee}).`,
           });
         }
-        if (Number(business.paymentAmount) < effectiveFee) {
+        if ((Number(business.paymentAmount) || 0) < effectiveFee) {
           return res.status(400).json({
             success: false,
             message: `Cannot approve listing: verified payment amount (${business.paymentAmount}) is less than the fee for ${targetCountry} (${feeInfo.symbol || ''}${effectiveFee}).`,
@@ -1385,6 +1385,8 @@ const deleteBusinessReceipt = [
 
     business.paymentReceipt = { url: '', publicId: '' };
     business.paymentStatus = 'none';
+    business.paymentAmount = 0;
+    business.isApproved = false;
     await business.save();
 
     logActivity({
@@ -1394,7 +1396,7 @@ const deleteBusinessReceipt = [
       targetType: 'business',
       targetId: business._id,
       targetLabel: business.title,
-      details: 'Deleted payment receipt',
+      details: 'Deleted payment receipt, unapproved listing',
     });
 
     res.status(200).json({
@@ -1425,7 +1427,35 @@ const updateBusinessPaymentStatus = [
       return res.status(404).json({ success: false, message: 'Business not found.' });
     }
 
-    business.paymentStatus = status;
+    if (status === 'verified') {
+      if (typeof business.paymentReceipt?.url !== 'string' || !business.paymentReceipt.url.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot verify payment: no payment receipt uploaded for this listing.',
+        });
+      }
+
+      const paymentSetting = await PaymentSetting.getSettings();
+      if (!paymentSetting) {
+        return res.status(503).json({
+          success: false,
+          message: 'Payment settings are currently unavailable. Verification is temporarily blocked.',
+        });
+      }
+
+      const targetCountry = business.address?.country || 'Pakistan';
+      const feeInfo = paymentSetting.getFeeForCountry
+        ? paymentSetting.getFeeForCountry(targetCountry)
+        : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount || 0 });
+
+      business.paymentAmount = Number(feeInfo.amount) || 0;
+      business.paymentStatus = 'verified';
+    } else if (status === 'rejected') {
+      business.paymentStatus = 'rejected';
+      business.isApproved = false;
+      business.paymentAmount = 0;
+    }
+
     await business.save();
 
     logActivity({
@@ -1435,7 +1465,10 @@ const updateBusinessPaymentStatus = [
       targetType: 'payment',
       targetId: business._id,
       targetLabel: business.title,
-      details: status === 'verified' ? 'Payment receipt verified' : 'Payment receipt rejected',
+      details:
+        status === 'verified'
+          ? 'Payment receipt verified'
+          : 'Payment receipt rejected, unapproved listing',
     });
 
     res.status(200).json({

@@ -284,6 +284,7 @@ const createBusiness = [
     }
 
     // Check payment system settings (Multi-country fee support)
+    let requiresPayment = false;
     const paymentSetting = await PaymentSetting.getSettings();
     if (paymentSetting && paymentSetting.isEnabled) {
       const targetCountry = address?.country || req.body?.country || req.body?.['address[country]'] || 'Pakistan';
@@ -294,6 +295,7 @@ const createBusiness = [
       const effectiveFee = Number(feeInfo.amount) || 0;
 
       if (effectiveFee > 0) {
+        requiresPayment = true;
         if (!receiptFile) {
           // Clean up any uploaded business images to avoid orphaned files in Cloudinary
           if (images.length > 0) {
@@ -403,7 +405,7 @@ const createBusiness = [
       paymentStatus,
       paymentAmount,
       owner: req.user._id, // Server-side only
-      isApproved: req.user.role === 'admin', // Auto-approve if Admin
+      isApproved: req.user.role === 'admin' && !requiresPayment, // Auto-approve if Admin
     });
 
     // Owner Notification: New listing submitted alert
@@ -626,6 +628,15 @@ const updateBusiness = [
         publicId: updatedReceiptFile.filename,
       };
       updates.paymentStatus = 'pending';
+
+      const paymentSetting = await PaymentSetting.getSettings();
+      if (paymentSetting && paymentSetting.isEnabled) {
+        const targetCountry = updates.address?.country || business.address?.country || 'Pakistan';
+        const feeInfo = paymentSetting.getFeeForCountry
+          ? paymentSetting.getFeeForCountry(targetCountry)
+          : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount || 0 });
+        updates.paymentAmount = Number(feeInfo.amount) || 0;
+      }
     }
 
     // Non-admin edits reset approval (content change requires re-approval)
