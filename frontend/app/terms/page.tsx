@@ -308,8 +308,11 @@ export default function TermsPage() {
                     and published once your payment is verified by our team.
                   </li>
                   <li>
-                    Listing fees are non-refundable once your listing has been published, except where
-                    required by applicable law.
+                    Listing fees are non-refundable once payment has been made — including if you later ask
+                    for your listing to be removed — except where required by applicable law. The only exception
+                    is a listing that is rejected during review and never published: in that case, you may
+                    request a refund by contacting us through the Contact page, and we will return the fee to
+                    the account you paid from.
                   </li>
                   <li>
                     We never ask for, see, or store your card numbers, PINs, passwords, or bank login

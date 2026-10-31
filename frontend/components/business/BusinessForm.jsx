@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { businessAPI, settingsAPI, adminAPI } from '@/lib/api';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import Link from 'next/link';
 import {
   Upload,
   X,
@@ -1760,6 +1761,22 @@ export default function BusinessForm({
                   <ShieldCheck size={20} className="text-amber-600 shrink-0" />
                   <p className="text-xs sm:text-sm font-semibold leading-snug">
                     Send the exact fee ({countryFeeDisplay}) using any payment option above and attach the payment receipt screenshot.
+                  </p>
+                </div>
+
+                {/* No-refund notice (paid branch only) */}
+                <div className="bg-amber-50/80 border border-amber-200/90 rounded-xl p-3 text-xs text-amber-900 leading-relaxed">
+                  <p>
+                    Please note: the listing fee is non-refundable once payment has been made, even if you later ask for the listing to be removed. If your listing is rejected and never published, you may request a refund — see{' '}
+                    <Link
+                      href="/terms#section-9"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold underline hover:text-amber-950 transition-colors"
+                    >
+                      Section 9 of the Terms
+                    </Link>
+                    .
                   </p>
                 </div>
 
