@@ -292,11 +292,49 @@ const createBusiness = [
     const paymentSetting = await PaymentSetting.getSettings();
     if (paymentSetting && paymentSetting.isEnabled) {
       const targetCountry = address?.country || req.body?.country || req.body?.['address[country]'] || 'Pakistan';
-      const feeInfo = paymentSetting.getFeeForCountry
-        ? paymentSetting.getFeeForCountry(targetCountry)
-        : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount || 0 });
+      let effectiveFee;
+      let feeInfo;
+      try {
+        feeInfo = paymentSetting.getFeeForCountry
+          ? paymentSetting.getFeeForCountry(targetCountry)
+          : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount });
+        const rawAmount = feeInfo && typeof feeInfo === 'object' ? feeInfo.amount : feeInfo;
+        const parsedFee = (rawAmount === null || rawAmount === undefined || typeof rawAmount === 'object' || (typeof rawAmount === 'string' && rawAmount.trim() === ''))
+          ? NaN
+          : Number(rawAmount);
+        if (!Number.isFinite(parsedFee) || parsedFee < 0) {
+          throw new Error('Corrupt fee configuration');
+        }
+        effectiveFee = parsedFee;
+      } catch (feeErr) {
+        if (images.length > 0) {
+          await Promise.all(
+            images.map((img) => cloudinary.uploader.destroy(img.publicId).catch(() => {}))
+          );
+        }
+        if (receiptFile) {
+          await cloudinary.uploader.destroy(receiptFile.filename).catch(() => {});
+        }
+        return res.status(503).json({
+          success: false,
+          message: 'Payment settings are currently unavailable. Listing creation is temporarily blocked.',
+        });
+      }
 
-      const effectiveFee = Number(feeInfo.amount) || 0;
+      if (!Number.isFinite(effectiveFee) || effectiveFee < 0) {
+        if (images.length > 0) {
+          await Promise.all(
+            images.map((img) => cloudinary.uploader.destroy(img.publicId).catch(() => {}))
+          );
+        }
+        if (receiptFile) {
+          await cloudinary.uploader.destroy(receiptFile.filename).catch(() => {});
+        }
+        return res.status(503).json({
+          success: false,
+          message: 'Payment settings are currently unavailable. Listing creation is temporarily blocked.',
+        });
+      }
 
       if (effectiveFee > 0) {
         requiresPayment = true;
@@ -582,10 +620,43 @@ const updateBusiness = [
       const paymentSetting = await PaymentSetting.getSettings();
       if (paymentSetting && paymentSetting.isEnabled) {
         const targetCountry = newCountry.trim();
-        const feeInfo = paymentSetting.getFeeForCountry
-          ? paymentSetting.getFeeForCountry(targetCountry)
-          : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount || 0 });
-        const newFee = Number(feeInfo.amount) || 0;
+        let newFee;
+        let feeInfo;
+        try {
+          feeInfo = paymentSetting.getFeeForCountry
+            ? paymentSetting.getFeeForCountry(targetCountry)
+            : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount });
+          const rawAmount = feeInfo && typeof feeInfo === 'object' ? feeInfo.amount : feeInfo;
+          const parsedFee = (rawAmount === null || rawAmount === undefined || typeof rawAmount === 'object' || (typeof rawAmount === 'string' && rawAmount.trim() === ''))
+            ? NaN
+            : Number(rawAmount);
+          if (!Number.isFinite(parsedFee) || parsedFee < 0) {
+            throw new Error('Corrupt fee configuration');
+          }
+          newFee = parsedFee;
+        } catch (feeErr) {
+          const newImageFiles = Array.isArray(req.files) ? req.files : (req.files?.images || []);
+          if (newImageFiles && newImageFiles.length > 0) {
+            await Promise.all(
+              newImageFiles.map((file) => cloudinary.uploader.destroy(file.filename).catch(() => {}))
+            );
+          }
+          const updatedReceiptFile = req.files?.paymentReceipt?.[0];
+          if (updatedReceiptFile) {
+            await cloudinary.uploader.destroy(updatedReceiptFile.filename).catch(() => {});
+          }
+          return res.status(503).json({
+            success: false,
+            message: 'Payment settings are currently unavailable. Update is temporarily blocked.',
+          });
+        }
+
+        if (!Number.isFinite(newFee) || newFee < 0) {
+          return res.status(503).json({
+            success: false,
+            message: 'Payment settings are currently unavailable. Update is temporarily blocked.',
+          });
+        }
 
         const wasVerifiedAndCovered = business.paymentStatus === 'verified' && (Number(business.paymentAmount) || 0) >= newFee;
 
@@ -649,10 +720,37 @@ const updateBusiness = [
       const paymentSetting = await PaymentSetting.getSettings();
       if (paymentSetting && paymentSetting.isEnabled) {
         const targetCountry = updates.address?.country || business.address?.country || 'Pakistan';
-        const feeInfo = paymentSetting.getFeeForCountry
-          ? paymentSetting.getFeeForCountry(targetCountry)
-          : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount || 0 });
-        updates.paymentAmount = Number(feeInfo.amount) || 0;
+        let reuploadFee;
+        let feeInfo;
+        try {
+          feeInfo = paymentSetting.getFeeForCountry
+            ? paymentSetting.getFeeForCountry(targetCountry)
+            : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount });
+          const rawAmount = feeInfo && typeof feeInfo === 'object' ? feeInfo.amount : feeInfo;
+          const parsedFee = (rawAmount === null || rawAmount === undefined || typeof rawAmount === 'object' || (typeof rawAmount === 'string' && rawAmount.trim() === ''))
+            ? NaN
+            : Number(rawAmount);
+          if (!Number.isFinite(parsedFee) || parsedFee < 0) {
+            throw new Error('Corrupt fee configuration');
+          }
+          reuploadFee = parsedFee;
+        } catch (feeErr) {
+          await cloudinary.uploader.destroy(updatedReceiptFile.filename).catch(() => {});
+          return res.status(503).json({
+            success: false,
+            message: 'Payment settings are currently unavailable. Receipt update is temporarily blocked.',
+          });
+        }
+
+        if (!Number.isFinite(reuploadFee) || reuploadFee < 0) {
+          await cloudinary.uploader.destroy(updatedReceiptFile.filename).catch(() => {});
+          return res.status(503).json({
+            success: false,
+            message: 'Payment settings are currently unavailable. Receipt update is temporarily blocked.',
+          });
+        }
+
+        updates.paymentAmount = reuploadFee;
       }
     }
 

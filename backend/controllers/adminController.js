@@ -314,11 +314,33 @@ const approveBusiness = [
 
     if (paymentSetting.isEnabled) {
       const targetCountry = business.address?.country || 'Pakistan';
-      const feeInfo = paymentSetting.getFeeForCountry
-        ? paymentSetting.getFeeForCountry(targetCountry)
-        : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount || 0 });
+      let effectiveFee;
+      let feeInfo;
+      try {
+        feeInfo = paymentSetting.getFeeForCountry
+          ? paymentSetting.getFeeForCountry(targetCountry)
+          : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount });
+        const rawAmount = feeInfo && typeof feeInfo === 'object' ? feeInfo.amount : feeInfo;
+        const parsedFee = (rawAmount === null || rawAmount === undefined || typeof rawAmount === 'object' || (typeof rawAmount === 'string' && rawAmount.trim() === ''))
+          ? NaN
+          : Number(rawAmount);
+        if (!Number.isFinite(parsedFee) || parsedFee < 0) {
+          throw new Error('Corrupt fee configuration');
+        }
+        effectiveFee = parsedFee;
+      } catch (feeErr) {
+        return res.status(503).json({
+          success: false,
+          message: 'Payment settings are currently unavailable. Approval is temporarily blocked.',
+        });
+      }
 
-      const effectiveFee = Number(feeInfo.amount) || 0;
+      if (!Number.isFinite(effectiveFee) || effectiveFee < 0) {
+        return res.status(503).json({
+          success: false,
+          message: 'Payment settings are currently unavailable. Approval is temporarily blocked.',
+        });
+      }
       if (effectiveFee > 0) {
         if (business.paymentStatus !== 'verified') {
           return res.status(400).json({
@@ -829,10 +851,37 @@ const unspamUser = [
         restoredCount++;
       } else {
         const country = b.address?.country || 'Pakistan';
-        const feeInfo = paymentSetting.getFeeForCountry
-          ? paymentSetting.getFeeForCountry(country)
-          : (paymentSetting.fees?.[country] || { amount: paymentSetting.feeAmount || 0 });
-        const fee = Number(feeInfo.amount) || 0;
+        let fee;
+        let feeInfo;
+        try {
+          feeInfo = paymentSetting.getFeeForCountry
+            ? paymentSetting.getFeeForCountry(country)
+            : (paymentSetting.fees?.[country] || { amount: paymentSetting.feeAmount });
+          const rawAmount = feeInfo && typeof feeInfo === 'object' ? feeInfo.amount : feeInfo;
+          const parsedFee = (rawAmount === null || rawAmount === undefined || typeof rawAmount === 'object' || (typeof rawAmount === 'string' && rawAmount.trim() === ''))
+            ? NaN
+            : Number(rawAmount);
+          if (!Number.isFinite(parsedFee) || parsedFee < 0) {
+            throw new Error('Corrupt fee configuration');
+          }
+          fee = parsedFee;
+        } catch (feeErr) {
+          b.isApproved = false;
+          b.hiddenBySpam = false;
+          b.paymentStatus = 'pending';
+          await b.save();
+          heldForPaymentCount++;
+          continue;
+        }
+
+        if (!Number.isFinite(fee) || fee < 0) {
+          b.isApproved = false;
+          b.hiddenBySpam = false;
+          b.paymentStatus = 'pending';
+          await b.save();
+          heldForPaymentCount++;
+          continue;
+        }
 
         if (fee > 0 && !(b.paymentStatus === 'verified' && Number(b.paymentAmount) >= fee)) {
           b.isApproved = false;
@@ -1259,10 +1308,33 @@ const adminUpdateBusiness = [
     if (countryChanged) {
       const paymentSetting = await PaymentSetting.getSettings();
       if (paymentSetting && paymentSetting.isEnabled) {
-        const feeInfo = paymentSetting.getFeeForCountry
-          ? paymentSetting.getFeeForCountry(newCountry.trim())
-          : (paymentSetting.fees?.[newCountry.trim()] || { amount: paymentSetting.feeAmount || 0 });
-        const newFee = Number(feeInfo.amount) || 0;
+        let newFee;
+        let feeInfo;
+        try {
+          feeInfo = paymentSetting.getFeeForCountry
+            ? paymentSetting.getFeeForCountry(newCountry.trim())
+            : (paymentSetting.fees?.[newCountry.trim()] || { amount: paymentSetting.feeAmount });
+          const rawAmount = feeInfo && typeof feeInfo === 'object' ? feeInfo.amount : feeInfo;
+          const parsedFee = (rawAmount === null || rawAmount === undefined || typeof rawAmount === 'object' || (typeof rawAmount === 'string' && rawAmount.trim() === ''))
+            ? NaN
+            : Number(rawAmount);
+          if (!Number.isFinite(parsedFee) || parsedFee < 0) {
+            throw new Error('Corrupt fee configuration');
+          }
+          newFee = parsedFee;
+        } catch (feeErr) {
+          return res.status(503).json({
+            success: false,
+            message: 'Payment settings are currently unavailable. Update is temporarily blocked.',
+          });
+        }
+
+        if (!Number.isFinite(newFee) || newFee < 0) {
+          return res.status(503).json({
+            success: false,
+            message: 'Payment settings are currently unavailable. Update is temporarily blocked.',
+          });
+        }
 
         const wasVerifiedAndCovered = business.paymentStatus === 'verified' && (Number(business.paymentAmount) || 0) >= newFee;
 
@@ -1463,11 +1535,35 @@ const updateBusinessPaymentStatus = [
       }
 
       const targetCountry = business.address?.country || 'Pakistan';
-      const feeInfo = paymentSetting.getFeeForCountry
-        ? paymentSetting.getFeeForCountry(targetCountry)
-        : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount || 0 });
+      let verifiedFee;
+      let feeInfo;
+      try {
+        feeInfo = paymentSetting.getFeeForCountry
+          ? paymentSetting.getFeeForCountry(targetCountry)
+          : (paymentSetting.fees?.[targetCountry] || { amount: paymentSetting.feeAmount });
+        const rawAmount = feeInfo && typeof feeInfo === 'object' ? feeInfo.amount : feeInfo;
+        const parsedFee = (rawAmount === null || rawAmount === undefined || typeof rawAmount === 'object' || (typeof rawAmount === 'string' && rawAmount.trim() === ''))
+          ? NaN
+          : Number(rawAmount);
+        if (!Number.isFinite(parsedFee) || parsedFee < 0) {
+          throw new Error('Corrupt fee configuration');
+        }
+        verifiedFee = parsedFee;
+      } catch (feeErr) {
+        return res.status(503).json({
+          success: false,
+          message: 'Payment settings are currently unavailable. Verification is temporarily blocked.',
+        });
+      }
 
-      business.paymentAmount = Number(feeInfo.amount) || 0;
+      if (!Number.isFinite(verifiedFee) || verifiedFee < 0) {
+        return res.status(503).json({
+          success: false,
+          message: 'Payment settings are currently unavailable. Verification is temporarily blocked.',
+        });
+      }
+
+      business.paymentAmount = verifiedFee;
       business.paymentStatus = 'verified';
     } else if (status === 'rejected') {
       business.paymentStatus = 'rejected';

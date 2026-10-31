@@ -175,14 +175,24 @@ paymentSettingSchema.methods.getFeeForCountry = function (countryName) {
   const matchedKey = Object.keys(fees).find(
     (k) => k.toLowerCase() === c.toLowerCase()
   );
-  if (matchedKey && fees[matchedKey]) {
-    return fees[matchedKey];
+  const entry = matchedKey && fees[matchedKey]
+    ? fees[matchedKey]
+    : {
+        amount: this.feeAmount,
+        currency: 'PKR',
+        symbol: 'Rs.',
+      };
+
+  const rawAmount = entry && typeof entry === 'object' ? entry.amount : entry;
+  if (rawAmount === null || rawAmount === undefined || typeof rawAmount === 'object') {
+    throw new Error('Corrupt fee configuration for country: ' + countryName);
   }
-  return {
-    amount: this.feeAmount || 0,
-    currency: 'PKR',
-    symbol: 'Rs.',
-  };
+  const n = typeof rawAmount === 'string' && rawAmount.trim() === '' ? NaN : Number(entry.amount);
+  if (!Number.isFinite(n) || n < 0) {
+    throw new Error('Corrupt fee configuration for country: ' + countryName);
+  }
+
+  return entry;
 };
 
 // Singleton helper: read-only retrieval of the single configuration document
