@@ -1189,13 +1189,20 @@ const login = [
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      // Increment failed login attempts
-      const attempts = (user.loginAttempts || 0) + 1;
-      user.loginAttempts = attempts;
+      // Atomically increment failed login attempts
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: user._id },
+        { $inc: { loginAttempts: 1 } },
+        { new: true }
+      );
+      const attempts = updatedUser ? updatedUser.loginAttempts : (user.loginAttempts || 0) + 1;
+
       if (attempts >= 5) {
-        user.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // 15-minute lock
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { lockUntil: new Date(Date.now() + 15 * 60 * 1000) } } // 15-minute lock
+        );
       }
-      await user.save({ validateBeforeSave: false });
 
       return res.status(401).json({
         success: false,

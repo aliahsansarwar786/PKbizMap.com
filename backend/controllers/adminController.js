@@ -1269,18 +1269,30 @@ const adminUpdateBusiness = [
         if (newFee === 0) {
           business.paymentAmount = 0;
           business.paymentStatus = 'none';
+          if (business.paymentReceipt?.publicId) {
+            cloudinary.uploader.destroy(business.paymentReceipt.publicId).catch((err) => {
+              console.error('Failed to delete receipt from Cloudinary on country change:', err.message);
+            });
+          }
+          business.paymentReceipt = { url: '', publicId: '' };
         } else {
           business.paymentAmount = newFee;
           if (!wasVerifiedAndCovered) {
             business.paymentStatus = 'pending';
             business.isApproved = false;
+            if (business.paymentReceipt?.publicId) {
+              cloudinary.uploader.destroy(business.paymentReceipt.publicId).catch((err) => {
+                console.error('Failed to delete receipt from Cloudinary on country change:', err.message);
+              });
+            }
+            business.paymentReceipt = { url: '', publicId: '' };
           }
         }
       }
     }
 
-    // FORBIDDEN fields: owner, isApproved, averageRating, reviewCount, paymentReceipt, paymentStatus, paymentAmount, images
-    // None of these are modified.
+    // FORBIDDEN fields: owner, averageRating, reviewCount, images (payment fields managed via country-change rules above)
+    // None of these are modified directly via request body.
     await business.save();
 
     res.status(200).json({

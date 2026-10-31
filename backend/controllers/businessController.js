@@ -592,11 +592,23 @@ const updateBusiness = [
         if (newFee === 0) {
           updates.paymentAmount = 0;
           updates.paymentStatus = 'none';
+          if (business.paymentReceipt?.publicId) {
+            cloudinary.uploader.destroy(business.paymentReceipt.publicId).catch((err) => {
+              console.error('Failed to delete receipt from Cloudinary on country change:', err.message);
+            });
+          }
+          updates.paymentReceipt = { url: '', publicId: '' };
         } else {
           updates.paymentAmount = newFee;
           if (!wasVerifiedAndCovered) {
             updates.paymentStatus = 'pending';
             updates.isApproved = false;
+            if (business.paymentReceipt?.publicId) {
+              cloudinary.uploader.destroy(business.paymentReceipt.publicId).catch((err) => {
+                console.error('Failed to delete receipt from Cloudinary on country change:', err.message);
+              });
+            }
+            updates.paymentReceipt = { url: '', publicId: '' };
           }
         }
       }
