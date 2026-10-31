@@ -192,6 +192,10 @@ const verifyEmail = [
         // Block expired: reset attempts and clear lock
         user.emailVerificationOTPAttempts = 0;
         user.emailVerificationOTPBlockedUntil = undefined;
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { emailVerificationOTPAttempts: 0, emailVerificationOTPBlockedUntil: null } }
+        );
       }
     }
 
@@ -490,16 +494,26 @@ const updateEmail = [
     );
 
     // Check account lockout
-    if (user.emailVerificationOTPBlockedUntil && user.emailVerificationOTPBlockedUntil.getTime() > Date.now()) {
-      const retryAfterSeconds = Math.ceil(
-        (user.emailVerificationOTPBlockedUntil.getTime() - Date.now()) / 1000
-      );
-      return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
-        success: false,
-        isBlocked: true,
-        retryAfter: retryAfterSeconds,
-        message: 'Account verification is temporarily locked for 30 minutes due to too many failed attempts.',
-      });
+    if (user.emailVerificationOTPBlockedUntil) {
+      if (user.emailVerificationOTPBlockedUntil.getTime() > Date.now()) {
+        const retryAfterSeconds = Math.ceil(
+          (user.emailVerificationOTPBlockedUntil.getTime() - Date.now()) / 1000
+        );
+        return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+          success: false,
+          isBlocked: true,
+          retryAfter: retryAfterSeconds,
+          message: 'Account verification is temporarily locked for 30 minutes due to too many failed attempts.',
+        });
+      } else {
+        // Block expired: reset attempts and clear lock
+        user.emailVerificationOTPAttempts = 0;
+        user.emailVerificationOTPBlockedUntil = undefined;
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { emailVerificationOTPAttempts: 0, emailVerificationOTPBlockedUntil: null } }
+        );
+      }
     }
 
     // 60-second cooldown check
@@ -598,9 +612,21 @@ const correctEmail = [
     const normalizedEmail = (email || '').toLowerCase().trim();
     const normalizedNewEmail = (newEmail || '').toLowerCase().trim();
 
+    // Check IP block
+    const ip = getClientIp(req);
+    const { isBlocked, retryAfterSeconds: ipRetryAfter } = await checkIpBlock(ip, 'email-verification');
+    if (isBlocked) {
+      return res.status(429).set('Retry-After', String(ipRetryAfter)).json({
+        success: false,
+        isBlocked: true,
+        retryAfter: ipRetryAfter,
+        message: 'Too many failed attempts. Your IP has been temporarily blocked for 30 minutes.',
+      });
+    }
+
     // Verify email + password with bcrypt against the User
     const user = await User.findOne({ email: normalizedEmail }).select(
-      '+password +emailVerificationLastResend +emailVerificationOTPBlockedUntil +emailVerificationOTPAttempts'
+      '+password +emailVerificationLastResend +emailVerificationOTPBlockedUntil +emailVerificationOTPAttempts +loginAttempts +lockUntil'
     );
 
     if (!user) {
@@ -611,8 +637,54 @@ const correctEmail = [
       });
     }
 
+    // Check per-account lockout (15 minutes after 5 failed logins)
+    if (user.lockUntil && user.lockUntil.getTime() > Date.now()) {
+      await bcrypt.compare(password || '', DUMMY_HASH);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password.',
+      });
+    }
+
+    if (user.lockUntil && user.lockUntil.getTime() <= Date.now()) {
+      user.loginAttempts = 0;
+      user.lockUntil = undefined;
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { loginAttempts: 0, lockUntil: null } }
+      );
+    }
+
+    // Check account lockout
+    if (user.emailVerificationOTPBlockedUntil && user.emailVerificationOTPBlockedUntil.getTime() > Date.now()) {
+      const retryAfterSeconds = Math.ceil(
+        (user.emailVerificationOTPBlockedUntil.getTime() - Date.now()) / 1000
+      );
+      return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+        success: false,
+        isBlocked: true,
+        retryAfter: retryAfterSeconds,
+        message: 'Account verification is temporarily locked for 30 minutes due to too many failed attempts.',
+      });
+    }
+
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
+      // Atomically increment failed login attempts
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: user._id },
+        { $inc: { loginAttempts: 1 } },
+        { new: true }
+      );
+      const attempts = updatedUser ? updatedUser.loginAttempts : (user.loginAttempts || 0) + 1;
+
+      if (attempts >= 5) {
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { lockUntil: new Date(Date.now() + 15 * 60 * 1000) } } // 15-minute lock
+        );
+      }
+
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password.',
@@ -631,18 +703,6 @@ const correctEmail = [
       return res.status(400).json({
         success: false,
         message: 'Please provide a different email address.',
-      });
-    }
-
-    // Check IP block
-    const ip = getClientIp(req);
-    const { isBlocked, retryAfterSeconds: ipRetryAfter } = await checkIpBlock(ip, 'email-verification');
-    if (isBlocked) {
-      return res.status(429).set('Retry-After', String(ipRetryAfter)).json({
-        success: false,
-        isBlocked: true,
-        retryAfter: ipRetryAfter,
-        message: 'Too many failed attempts. Your IP has been temporarily blocked for 30 minutes.',
       });
     }
 
@@ -907,6 +967,10 @@ const verifyResetOtp = [
         // Block expired: reset attempts and clear lock
         user.resetPasswordOTPAttempts = 0;
         user.resetPasswordOTPBlockedUntil = undefined;
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { resetPasswordOTPAttempts: 0, resetPasswordOTPBlockedUntil: null } }
+        );
       }
     }
 
