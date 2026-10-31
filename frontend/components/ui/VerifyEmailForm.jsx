@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { authAPI } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
-import { Mail, ShieldCheck, RefreshCw, AlertTriangle, CheckCircle2, Edit3, ArrowRight } from 'lucide-react';
+import { Mail, ShieldCheck, RefreshCw, AlertTriangle, CheckCircle2, Edit3, ArrowRight, Lock } from 'lucide-react';
 
 export default function VerifyEmailForm() {
   const router = useRouter();
@@ -23,6 +23,7 @@ export default function VerifyEmailForm() {
   const [blockedUntilSeconds, setBlockedUntilSeconds] = useState(0);
   const [showChangeEmail, setShowChangeEmail] = useState(false);
   const [newEmail, setNewEmail] = useState('');
+  const [changePassword, setChangePassword] = useState('');
   const [changingEmail, setChangingEmail] = useState(false);
   const [verifiedSuccess, setVerifiedSuccess] = useState(false);
 
@@ -227,26 +228,30 @@ export default function VerifyEmailForm() {
       toast.error('Please enter a valid email address.');
       return;
     }
+    if (!changePassword) {
+      toast.error('Please enter your account password.');
+      return;
+    }
 
     setChangingEmail(true);
     try {
-      const res = await authAPI.updateEmail({ newEmail: newEmail.toLowerCase() });
+      const res = await authAPI.correctEmail({
+        email: email.toLowerCase(),
+        password: changePassword,
+        newEmail: newEmail.toLowerCase(),
+      });
       const updated = res.data?.email || newEmail.toLowerCase();
       setEmail(updated);
       setShowChangeEmail(false);
       setNewEmail('');
+      setChangePassword('');
       setOtp(['', '', '', '', '', '']);
       setResendCooldown(60);
       setAttemptsRemaining(null);
       toast.success(`Email updated! Verification code sent to ${updated}`);
       inputRefs.current[0]?.focus();
     } catch (err) {
-      if (err.status === 401) {
-        toast.error('Please register with your correct email address.');
-        router.push(`/register?email=${encodeURIComponent(newEmail.toLowerCase())}`);
-      } else {
-        toast.error(err.message || 'Failed to update email.');
-      }
+      toast.error(err.message || 'Failed to update email.');
     } finally {
       setChangingEmail(false);
     }
@@ -388,6 +393,7 @@ export default function VerifyEmailForm() {
             type="button"
             onClick={() => {
               setNewEmail(email);
+              setChangePassword('');
               setShowChangeEmail(true);
             }}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-800 transition-colors"
@@ -399,21 +405,35 @@ export default function VerifyEmailForm() {
             <label className="block text-xs font-bold text-slate-700 mb-1">
               Correct Email Address
             </label>
+            <div className="relative mb-2">
+              <Mail size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="correct@example.com"
+                className="w-full text-xs h-8 pl-8 pr-2 rounded-lg border border-slate-300 bg-white outline-none focus:border-blue-500"
+                required
+              />
+            </div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">
+              Account Password
+            </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
-                <Mail size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Lock size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
-                  type="email"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  placeholder="correct@example.com"
+                  type="password"
+                  value={changePassword}
+                  onChange={(e) => setChangePassword(e.target.value)}
+                  placeholder="Password"
                   className="w-full text-xs h-8 pl-8 pr-2 rounded-lg border border-slate-300 bg-white outline-none focus:border-blue-500"
                   required
                 />
               </div>
               <button
                 type="submit"
-                disabled={changingEmail || !newEmail}
+                disabled={changingEmail || !newEmail || !changePassword}
                 className="btn-primary text-xs h-8 px-3"
               >
                 {changingEmail ? 'Updating...' : 'Update'}
@@ -421,7 +441,10 @@ export default function VerifyEmailForm() {
             </div>
             <button
               type="button"
-              onClick={() => setShowChangeEmail(false)}
+              onClick={() => {
+                setShowChangeEmail(false);
+                setChangePassword('');
+              }}
               className="text-[11px] text-slate-400 hover:text-slate-600 mt-2 block"
             >
               Cancel

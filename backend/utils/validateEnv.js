@@ -1,22 +1,20 @@
 /**
  * Startup environment variable validation.
- * Fails fast on missing required variables (MONGO_URI, JWT_SECRET, invalid NODE_ENV).
- * Warns on missing optional integration variables (Cloudinary, Email, unset NODE_ENV).
+ * Fails fast on missing required variables (NODE_ENV, MONGO_URI, JWT_SECRET).
+ * Warns on missing optional integration variables (Cloudinary, Email).
  */
 const validateEnv = () => {
   // 1. NODE_ENV validation
   const nodeEnv = process.env.NODE_ENV;
   const allowedNodeEnvs = ['development', 'production', 'test'];
 
-  if (nodeEnv) {
-    if (!allowedNodeEnvs.includes(nodeEnv)) {
-      throw new Error(
-        `Invalid NODE_ENV "${nodeEnv}". Must be one of: ${allowedNodeEnvs.join(', ')}`
-      );
-    }
-  } else {
-    console.warn(
-      '⚠️ [Startup Warning] NODE_ENV is unset. Defaulting behavior to "development".'
+  if (!nodeEnv || !nodeEnv.trim()) {
+    throw new Error('Required environment variable "NODE_ENV" is unset.');
+  }
+
+  if (!allowedNodeEnvs.includes(nodeEnv)) {
+    throw new Error(
+      `Invalid NODE_ENV "${nodeEnv}". Must be one of: ${allowedNodeEnvs.join(', ')}`
     );
   }
 

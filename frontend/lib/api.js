@@ -209,6 +209,10 @@ export const authAPI = {
   verifyEmail: (data) => api.post('/auth/verify-email', data),
   resendOtp: (data) => api.post('/auth/resend-otp', data),
   updateEmail: (data) => api.patch('/auth/email', data),
+  correctEmail: async (data) => {
+    await ensureFreshCsrfToken();
+    return api.post('/auth/correct-email', data);
+  },
   forgotPassword: (data) => api.post('/auth/forgot-password', data),
   verifyResetOtp: (data) => api.post('/auth/verify-reset-otp', data),
   resendResetOtp: (data) => api.post('/auth/resend-reset-otp', data),

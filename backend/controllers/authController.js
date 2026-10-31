@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { body } = require('express-validator');
 const User = require('../models/User');
 const SpamBlockedEmail = require('../models/SpamBlockedEmail');
 const asyncHandler = require('../utils/asyncHandler');
@@ -568,6 +569,165 @@ const updateEmail = [
         requiresVerification: true,
       }
     );
+  }),
+];
+
+const correctEmailValidator = [
+  body('email')
+    .trim()
+    .notEmpty().withMessage('Email is required')
+    .isEmail().withMessage('Please provide a valid email')
+    .normalizeEmail({ gmail_remove_dots: false }),
+  body('password')
+    .notEmpty().withMessage('Password is required'),
+  body('newEmail')
+    .trim()
+    .notEmpty().withMessage('New email address is required')
+    .isEmail().withMessage('Please provide a valid email')
+    .normalizeEmail({ gmail_remove_dots: false }),
+];
+
+// ─── POST /api/auth/correct-email ─────────────────────────────────────────────
+// Allows unauthenticated user to correct a typo'd email during verification by proving password
+const correctEmail = [
+  ...correctEmailValidator,
+  asyncHandler(async (req, res) => {
+    validate(req);
+
+    const { email, password, newEmail } = req.body;
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    const normalizedNewEmail = (newEmail || '').toLowerCase().trim();
+
+    // Verify email + password with bcrypt against the User
+    const user = await User.findOne({ email: normalizedEmail }).select(
+      '+password +emailVerificationLastResend +emailVerificationOTPBlockedUntil +emailVerificationOTPAttempts'
+    );
+
+    if (!user) {
+      await bcrypt.compare(password || '', DUMMY_HASH);
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password.',
+      });
+    }
+
+    const isMatch = await user.comparePassword(password);
+    if (!isMatch) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid email or password.',
+      });
+    }
+
+    // Require emailVerified === false (already-verified → generic 400)
+    if (user.emailVerified) {
+      return res.status(400).json({
+        success: false,
+        message: 'Your email is already verified and cannot be changed here.',
+      });
+    }
+
+    if (normalizedNewEmail === normalizedEmail) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a different email address.',
+      });
+    }
+
+    // Check IP block
+    const ip = getClientIp(req);
+    const { isBlocked, retryAfterSeconds: ipRetryAfter } = await checkIpBlock(ip, 'email-verification');
+    if (isBlocked) {
+      return res.status(429).set('Retry-After', String(ipRetryAfter)).json({
+        success: false,
+        isBlocked: true,
+        retryAfter: ipRetryAfter,
+        message: 'Too many failed attempts. Your IP has been temporarily blocked for 30 minutes.',
+      });
+    }
+
+    // Check spam blocklist
+    const isSpamBlocked = await SpamBlockedEmail.findOne({ email: normalizedNewEmail });
+    if (isSpamBlocked) {
+      return res.status(400).json({
+        success: false,
+        message: 'This email address cannot be used.',
+      });
+    }
+
+    // Check uniqueness (generic error to prevent existence oracle)
+    const existing = await User.findOne({ email: normalizedNewEmail });
+    if (existing) {
+      return res.status(400).json({
+        success: false,
+        message: 'This email address cannot be used.',
+      });
+    }
+
+    // 60-second cooldown check
+    if (user.emailVerificationLastResend) {
+      const elapsed = Date.now() - new Date(user.emailVerificationLastResend).getTime();
+      if (elapsed < RESEND_COOLDOWN_MS) {
+        const retryAfter = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
+        return res.status(429).set('Retry-After', String(retryAfter)).json({
+          success: false,
+          retryAfter,
+          message: `Please wait ${retryAfter} seconds before requesting a new code.`,
+        });
+      }
+    }
+
+    // Check per-email OTP throttle (max 5 OTP emails per hour) AFTER all no-send returns
+    const throttle = await checkAndIncrementEmailOtpLimit(normalizedNewEmail);
+    if (!throttle.allowed) {
+      return res.status(429).set('Retry-After', String(throttle.retryAfterSeconds)).json({
+        success: false,
+        message: 'Too many verification code requests for this email. Please try again later.',
+      });
+    }
+
+    // On success: update the email, reset OTP attempts + clear lock, send a fresh 6-digit OTP to the NEW email
+    const otp = generate6DigitOtp();
+    user.email = normalizedNewEmail;
+    user.emailVerificationOTP = hashOtp(otp);
+    user.emailVerificationOTPExpires = new Date(Date.now() + OTP_EXPIRY_MS);
+    user.emailVerificationLastResend = new Date();
+    user.emailVerificationOTPAttempts = 0;
+    user.emailVerificationOTPBlockedUntil = undefined;
+    await user.save({ validateBeforeSave: false });
+
+    // Send OTP to new address
+    try {
+      const sent = await sendEmail({
+        to: user.email,
+        subject: 'Your BizPrimeHub verification code',
+        html: getEmailVerificationOtpHtml({ name: user.name, otp }),
+      }).catch((err) => {
+        console.error('⚠️ [Auth:CorrectEmail] Error sending OTP to new email:', err.message);
+        return false;
+      });
+
+      if (!sent) {
+        await refundEmailOtpLimit(user.email);
+        return res.status(502).json({
+          success: false,
+          message: 'We could not send the verification code. Please try again in a minute.',
+        });
+      }
+    } catch (e) {
+      console.error('⚠️ [Auth:CorrectEmail] Unexpected error sending OTP:', e.message);
+      await refundEmailOtpLimit(user.email);
+      return res.status(502).json({
+        success: false,
+        message: 'We could not send the verification code. Please try again in a minute.',
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Email updated successfully. A new verification code has been sent to your new email.',
+      email: user.email,
+    });
   }),
 ];
 
@@ -1188,6 +1348,7 @@ module.exports = {
   verifyEmail,
   resendOtp,
   updateEmail,
+  correctEmail,
   login,
   logout,
   getMe,

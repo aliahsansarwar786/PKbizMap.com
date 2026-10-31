@@ -5,6 +5,7 @@ const {
   verifyEmail,
   resendOtp,
   updateEmail,
+  correctEmail,
   login,
   logout,
   getMe,
@@ -18,12 +19,31 @@ const {
 } = require('../controllers/authController');
 const { protect } = require('../middlewares/auth');
 const { handleAvatarUpload } = require('../middlewares/upload');
+const rateLimit = require('express-rate-limit');
+const { getClientIp } = require('../utils/otpManager');
+const createRateLimitStore = require('../utils/upstashStore');
+
+// Strict limiter for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  keyGenerator: (req) => getClientIp(req),
+  message: {
+    success: false,
+    message: 'Too many authentication attempts. Please try again after 15 minutes.',
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  store: createRateLimitStore('auth'),
+});
 
 // Public routes
 router.get('/csrf-token', getCsrfToken);
 router.post('/register', register);
 router.post('/verify-email', verifyEmail);
 router.post('/resend-otp', resendOtp);
+// POST /api/auth/correct-email
+router.post('/correct-email', authLimiter, correctEmail);
 router.post('/login', login);
 
 // Password reset OTP flow

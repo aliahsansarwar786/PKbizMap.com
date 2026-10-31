@@ -454,7 +454,7 @@ const completeClaim = asyncHandler(async (req, res) => {
     });
   }
 
-  const business = await Business.findById(claim.business._id || claim.business);
+  let business = await Business.findById(claim.business._id || claim.business);
   if (!business) {
     return res.status(404).json({ success: false, message: 'The business associated with this claim no longer exists.' });
   }
@@ -504,19 +504,96 @@ const completeClaim = asyncHandler(async (req, res) => {
     });
   }
 
-  // Transfer ownership & mark as claimed
-  business.owner = req.user._id;
-  business.isClaimed = true;
-  business.claimed = true;
-  business.claimedAt = new Date();
-  business.claimedBy = req.user._id;
-  await business.save();
+  // Transfer ownership & mark as claimed (atomic transaction with fallback)
+  let session = null;
+  let useFallback = false;
 
-  // Mark request completed
-  claim.status = 'completed';
-  claim.completedAt = new Date();
-  claim.claimedBy = req.user._id;
-  await claim.save();
+  try {
+    session = await mongoose.startSession();
+    session.startTransaction();
+  } catch (sessErr) {
+    console.warn('⚠️ [Claim:Complete] Transactions not supported on this MongoDB deployment, falling back to sequential saves:', sessErr.message);
+    if (session) {
+      try { await session.endSession(); } catch (_) {}
+      session = null;
+    }
+    useFallback = true;
+  }
+
+  if (session) {
+    try {
+      // Re-check isClaimed guard inside transaction
+      const txBusiness = await Business.findById(business._id).session(session);
+      if (!txBusiness || txBusiness.isClaimed || txBusiness.claimed) {
+        await session.abortTransaction();
+        await session.endSession();
+        return res.status(400).json({
+          success: false,
+          message: 'This business has already been claimed.',
+        });
+      }
+
+      txBusiness.owner = req.user._id;
+      txBusiness.isClaimed = true;
+      txBusiness.claimed = true;
+      txBusiness.claimedAt = new Date();
+      txBusiness.claimedBy = req.user._id;
+      await txBusiness.save({ session });
+
+      claim.status = 'completed';
+      claim.completedAt = new Date();
+      claim.claimedBy = req.user._id;
+      await claim.save({ session });
+
+      await session.commitTransaction();
+      await session.endSession();
+      business = txBusiness;
+    } catch (txErr) {
+      if (session) {
+        try { await session.abortTransaction(); } catch (_) {}
+        try { await session.endSession(); } catch (_) {}
+        session = null;
+      }
+
+      const isReplicaSetError =
+        txErr.message &&
+        (txErr.message.includes('replica set') ||
+         txErr.message.includes('Transaction numbers') ||
+         txErr.message.includes('Transactions are not supported'));
+
+      if (isReplicaSetError) {
+        console.warn('⚠️ [Claim:Complete] MongoDB transaction unsupported, falling back to sequential saves:', txErr.message);
+        useFallback = true;
+      } else {
+        console.error('⚠️ [Claim:Complete] Failed to complete claim transfer:', txErr.message);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to complete claim transfer.',
+        });
+      }
+    }
+  }
+
+  if (useFallback) {
+    if (business.isClaimed || business.claimed) {
+      return res.status(400).json({
+        success: false,
+        message: 'This business has already been claimed.',
+      });
+    }
+
+    business.owner = req.user._id;
+    business.isClaimed = true;
+    business.claimed = true;
+    business.claimedAt = new Date();
+    business.claimedBy = req.user._id;
+    await business.save();
+
+    claim.status = 'completed';
+    claim.completedAt = new Date();
+    claim.claimedBy = req.user._id;
+    await claim.save();
+  }
 
   // Strip sensitive payment fields before responding
   const businessObj = business.toObject();

@@ -28,6 +28,7 @@ async function runMigration() {
 
   console.log(`Found ${businesses.length} total businesses in DB.`);
   let updatedCount = 0;
+  const needsManualReview = [];
 
   for (const b of businesses) {
     let needsUpdate = false;
@@ -48,14 +49,23 @@ async function runMigration() {
       }
     }
 
-    // Set address.country = 'Pakistan' if missing, null, empty or undefined
-    if (!currentCountry || currentCountry.trim() === '') {
-      updates['address.country'] = 'Pakistan';
-      needsUpdate = true;
-      if (isDryRun) {
-        console.log(`[Dry Run Country Set] Business "${b.title}" (_id: ${b._id}): missing country -> "Pakistan"`);
+    // Set address.country = 'Pakistan' if missing, null, empty or undefined, ONLY if city is a valid Pakistan city
+    const trimmedCountry = typeof currentCountry === 'string' ? currentCountry.trim() : '';
+    if (!trimmedCountry) {
+      if (isValidCity('Pakistan', currentCity)) {
+        updates['address.country'] = 'Pakistan';
+        needsUpdate = true;
+        if (isDryRun) {
+          console.log(`[Dry Run Country Set] Business "${b.title}" (_id: ${b._id}): missing country -> "Pakistan" (valid PK city: "${currentCity}")`);
+        } else {
+          console.log(`[Country Set] Business "${b.title}" (_id: ${b._id}): missing country -> "Pakistan" (valid PK city: "${currentCity}")`);
+        }
       } else {
-        console.log(`[Country Set] Business "${b.title}" (_id: ${b._id}): missing country -> "Pakistan"`);
+        needsManualReview.push({
+          _id: b._id,
+          title: b.title,
+          city: currentCity,
+        });
       }
     }
 
@@ -68,6 +78,13 @@ async function runMigration() {
       }
       updatedCount++;
     }
+  }
+
+  if (needsManualReview.length > 0) {
+    console.log(`\n--- Needs Manual Review (${needsManualReview.length} businesses with missing country and unrecognized Pakistan city) ---`);
+    needsManualReview.forEach((item) => {
+      console.log(`- "${item.title}" (_id: ${item._id}, city: "${item.city}")`);
+    });
   }
 
   if (isDryRun) {

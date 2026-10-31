@@ -36,6 +36,9 @@ function WhatsAppIcon({ size = 15, className = '' }) {
 }
 
 
+// Helper to escape regex special characters
+const escapeRegExp = (str) => (str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // Helper to format full address without duplicate city
 function formatAddress(address) {
   if (!address) return '';
@@ -50,7 +53,7 @@ function formatAddress(address) {
 
   if (city) {
     const cityLower = city.toLowerCase();
-    const regex = new RegExp(`(?:,\\s*|\\s+)${cityLower}$`, 'i');
+    const regex = new RegExp(`(?:,\\s*|\\s+)${escapeRegExp(cityLower)}$`, 'i');
     if (street.toLowerCase() === cityLower || regex.test(street)) {
       includeCity = false;
     }
@@ -82,7 +85,7 @@ function formatShortAddress(address) {
   let includeCity = Boolean(city);
   if (city) {
     const cityLower = city.toLowerCase();
-    const regex = new RegExp(`(?:,\\s*|\\s+)${cityLower}$`, 'i');
+    const regex = new RegExp(`(?:,\\s*|\\s+)${escapeRegExp(cityLower)}$`, 'i');
     if (street.toLowerCase() === cityLower || regex.test(street)) {
       includeCity = false;
     }

@@ -29,6 +29,7 @@ const csrfProtection = (req, res, next) => {
     '/api/auth/forgot-password',
     '/api/auth/resend-otp',
     '/api/auth/resend-reset-otp',
+    '/api/auth/correct-email',
   ].includes(normalisedPath);
 
   if (!hasSessionCookie && !isEnforcedAuthRoute) {

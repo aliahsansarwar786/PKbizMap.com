@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const Business = require('../models/Business');
 const Review = require('../models/Review');
@@ -1543,7 +1544,7 @@ const approveClaimRequest = asyncHandler(async (req, res) => {
     });
   }
 
-  const business = await Business.findById(claim.business);
+  let business = await Business.findById(claim.business);
   if (!business) {
     return res.status(404).json({ success: false, message: 'Associated business not found.' });
   }
@@ -1613,29 +1614,133 @@ const approveClaimRequest = asyncHandler(async (req, res) => {
     });
   }
 
-  // Transfer ownership & mark as claimed (same transfer logic as registered path)
-  business.owner = claimantUser._id;
-  business.isClaimed = true;
-  business.claimed = true;
-  business.claimedAt = new Date();
-  business.claimedBy = claimantUser._id;
-  await business.save();
+  // Transfer ownership & mark as claimed (atomic transaction with fallback)
+  let session = null;
+  let useFallback = false;
 
-  // Set claim status to approved
-  claim.status = 'approved';
-  claim.completedAt = new Date();
-  claim.claimedBy = claimantUser._id;
-  await claim.save();
+  try {
+    session = await mongoose.startSession();
+    session.startTransaction();
+  } catch (sessErr) {
+    console.warn('⚠️ [Claim:Approve] Transactions not supported on this MongoDB deployment, falling back to sequential saves:', sessErr.message);
+    if (session) {
+      try { await session.endSession(); } catch (_) {}
+      session = null;
+    }
+    useFallback = true;
+  }
 
-  // FIX 6: On approval, expire/invalidate all other pending claims for the same business
-  await ClaimRequest.updateMany(
-    {
-      business: business._id,
-      _id: { $ne: claim._id },
-      status: { $in: ['pending', 'pending_admin'] },
-    },
-    { status: 'expired' }
-  );
+  if (session) {
+    try {
+      // Re-check isClaimed / isSelfClaim guard inside transaction
+      const txBusiness = await Business.findById(business._id).session(session);
+      if (!txBusiness) {
+        await session.abortTransaction();
+        await session.endSession();
+        return res.status(404).json({ success: false, message: 'Associated business not found.' });
+      }
+
+      if (txBusiness.isClaimed || txBusiness.claimed) {
+        const isSelfClaim =
+          (claim.claimedBy && String(txBusiness.claimedBy) === String(claim.claimedBy)) ||
+          (txBusiness.claimedBy && String(txBusiness.claimedBy) === String(claim.claimedBy));
+        if (!isSelfClaim) {
+          await session.abortTransaction();
+          await session.endSession();
+          return res.status(400).json({
+            success: false,
+            message: 'This business has already been claimed.',
+          });
+        }
+      }
+
+      txBusiness.owner = claimantUser._id;
+      txBusiness.isClaimed = true;
+      txBusiness.claimed = true;
+      txBusiness.claimedAt = new Date();
+      txBusiness.claimedBy = claimantUser._id;
+      await txBusiness.save({ session });
+
+      claim.status = 'approved';
+      claim.completedAt = new Date();
+      claim.claimedBy = claimantUser._id;
+      await claim.save({ session });
+
+      // Expire/invalidate all other pending claims for the same business within transaction
+      await ClaimRequest.updateMany(
+        {
+          business: txBusiness._id,
+          _id: { $ne: claim._id },
+          status: { $in: ['pending', 'pending_admin'] },
+        },
+        { status: 'expired' },
+        { session }
+      );
+
+      await session.commitTransaction();
+      await session.endSession();
+      business = txBusiness;
+    } catch (txErr) {
+      if (session) {
+        try { await session.abortTransaction(); } catch (_) {}
+        try { await session.endSession(); } catch (_) {}
+        session = null;
+      }
+
+      const isReplicaSetError =
+        txErr.message &&
+        (txErr.message.includes('replica set') ||
+         txErr.message.includes('Transaction numbers') ||
+         txErr.message.includes('Transactions are not supported'));
+
+      if (isReplicaSetError) {
+        console.warn('⚠️ [Claim:Approve] MongoDB transaction unsupported, falling back to sequential saves:', txErr.message);
+        useFallback = true;
+      } else {
+        console.error('⚠️ [Claim:Approve] Failed to approve claim transfer:', txErr.message);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to approve claim transfer.',
+        });
+      }
+    }
+  }
+
+  if (useFallback) {
+    if (business.isClaimed || business.claimed) {
+      const isSelfClaim =
+        (claim.claimedBy && String(business.claimedBy) === String(claim.claimedBy)) ||
+        (business.claimedBy && String(business.claimedBy) === String(claim.claimedBy));
+      if (!isSelfClaim) {
+        return res.status(400).json({
+          success: false,
+          message: 'This business has already been claimed.',
+        });
+      }
+    }
+
+    business.owner = claimantUser._id;
+    business.isClaimed = true;
+    business.claimed = true;
+    business.claimedAt = new Date();
+    business.claimedBy = claimantUser._id;
+    await business.save();
+
+    claim.status = 'approved';
+    claim.completedAt = new Date();
+    claim.claimedBy = claimantUser._id;
+    await claim.save();
+
+    // Expire/invalidate all other pending claims for the same business
+    await ClaimRequest.updateMany(
+      {
+        business: business._id,
+        _id: { $ne: claim._id },
+        status: { $in: ['pending', 'pending_admin'] },
+      },
+      { status: 'expired' }
+    );
+  }
 
   // FIX 6: Send approval email explaining how to sign in via forgot-password OTP
   try {
