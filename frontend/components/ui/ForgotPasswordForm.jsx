@@ -515,19 +515,6 @@ export default function ForgotPasswordForm() {
                 : 'Resend code'}
             </button>
           </div>
-
-          <div className="text-center pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                setStep(1);
-                setOtp(['', '', '', '', '', '']);
-              }}
-              className="text-xs text-slate-500 hover:text-slate-800 transition-colors inline-flex items-center gap-1"
-            >
-              <ArrowLeft size={12} /> Change email address
-            </button>
-          </div>
         </>
       )}
 
