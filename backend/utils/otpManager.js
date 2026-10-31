@@ -72,28 +72,31 @@ const checkIpBlock = async (ip, action) => {
  */
 const recordFailedAttempt = async (ip, action) => {
   const now = new Date();
-  let record = await OtpIpAttempt.findOne({ ip, action });
-  if (!record) {
-    record = new OtpIpAttempt({ ip, action, attempts: 0 });
-  }
 
   // If previous block expired, reset attempt counter
-  if (record.blockedUntil && record.blockedUntil.getTime() <= now.getTime()) {
-    record.attempts = 0;
-    record.blockedUntil = null;
-  }
+  await OtpIpAttempt.updateOne(
+    { ip, action, blockedUntil: { $ne: null, $lte: now } },
+    { $set: { attempts: 0, blockedUntil: null } }
+  );
 
-  record.attempts += 1;
+  const record = await OtpIpAttempt.findOneAndUpdate(
+    { ip, action },
+    { $inc: { attempts: 1 } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
   let isBlocked = false;
   let retryAfterSeconds = 0;
 
   if (record.attempts >= MAX_WRONG_ATTEMPTS) {
-    record.blockedUntil = new Date(Date.now() + BLOCK_DURATION_MS);
+    const blockedUntil = new Date(Date.now() + BLOCK_DURATION_MS);
+    await OtpIpAttempt.updateOne(
+      { ip, action },
+      { $set: { blockedUntil } }
+    );
     isBlocked = true;
     retryAfterSeconds = Math.ceil(BLOCK_DURATION_MS / 1000);
   }
-
-  await record.save();
 
   return {
     isBlocked,

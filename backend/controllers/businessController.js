@@ -181,7 +181,11 @@ const getBusiness = [
     if (!business.slug) {
       const { generateUniqueSlug } = require('../utils/slugify');
       business.slug = await generateUniqueSlug(business.title, business.address?.city, business._id, Business);
-      await business.save();
+      try {
+        await business.save();
+      } catch (err) {
+        console.error('⚠️ [Business:GetById] Failed to persist self-healed slug:', err.message);
+      }
     }
 
     // Get reviews for this business

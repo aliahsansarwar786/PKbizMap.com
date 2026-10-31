@@ -214,10 +214,18 @@ const verifyEmail = [
     const isMatch = timingSafeCompare(otp, user.emailVerificationOTP);
 
     if (!isMatch) {
-      user.emailVerificationOTPAttempts = (user.emailVerificationOTPAttempts || 0) + 1;
-      if (user.emailVerificationOTPAttempts >= 5) {
-        user.emailVerificationOTPBlockedUntil = new Date(Date.now() + 30 * 60 * 1000);
-        await user.save({ validateBeforeSave: false });
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: user._id },
+        { $inc: { emailVerificationOTPAttempts: 1 } },
+        { new: true }
+      );
+      const attempts = updatedUser ? updatedUser.emailVerificationOTPAttempts : (user.emailVerificationOTPAttempts || 0) + 1;
+
+      if (attempts >= 5) {
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { emailVerificationOTPBlockedUntil: new Date(Date.now() + 30 * 60 * 1000) } }
+        );
         await recordFailedAttempt(ip, 'email-verification');
         return res.status(429).set('Retry-After', '1800').json({
           success: false,
@@ -226,7 +234,6 @@ const verifyEmail = [
           message: 'Too many failed verification attempts for this account. Account verification locked for 30 minutes.',
         });
       }
-      await user.save({ validateBeforeSave: false });
 
       const fail = await recordFailedAttempt(ip, 'email-verification');
       if (fail.isBlocked) {
@@ -756,10 +763,18 @@ const verifyResetOtp = [
     const isMatch = timingSafeCompare(otp, user.resetPasswordOTP);
 
     if (!isMatch) {
-      user.resetPasswordOTPAttempts = (user.resetPasswordOTPAttempts || 0) + 1;
-      if (user.resetPasswordOTPAttempts >= 5) {
-        user.resetPasswordOTPBlockedUntil = new Date(Date.now() + 30 * 60 * 1000);
-        await user.save({ validateBeforeSave: false });
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: user._id },
+        { $inc: { resetPasswordOTPAttempts: 1 } },
+        { new: true }
+      );
+      const attempts = updatedUser ? updatedUser.resetPasswordOTPAttempts : (user.resetPasswordOTPAttempts || 0) + 1;
+
+      if (attempts >= 5) {
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { resetPasswordOTPBlockedUntil: new Date(Date.now() + 30 * 60 * 1000) } }
+        );
         await recordFailedAttempt(ip, 'password-reset');
         return res.status(429).set('Retry-After', '1800').json({
           success: false,
@@ -768,7 +783,6 @@ const verifyResetOtp = [
           message: 'Too many failed verification attempts for this account. Password reset locked for 30 minutes.',
         });
       }
-      await user.save({ validateBeforeSave: false });
 
       const fail = await recordFailedAttempt(ip, 'password-reset');
       if (fail.isBlocked) {
@@ -780,7 +794,7 @@ const verifyResetOtp = [
         });
       }
 
-      const userAttemptsRemaining = Math.max(0, 5 - user.resetPasswordOTPAttempts);
+      const userAttemptsRemaining = Math.max(0, 5 - attempts);
       return res.status(400).json({
         success: false,
         attemptsRemaining: Math.min(fail.attemptsRemaining, userAttemptsRemaining),

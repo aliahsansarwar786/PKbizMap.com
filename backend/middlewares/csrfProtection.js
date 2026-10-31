@@ -15,9 +15,21 @@ const csrfProtection = (req, res, next) => {
     return next();
   }
 
-  // CSRF protection applies to cookie-authenticated requests, plus login and register to prevent login CSRF
+  // Normalise path before matching (lowercase + strip trailing slash, except root)
+  const rawPath = typeof req.path === 'string' ? req.path.toLowerCase() : '';
+  const normalisedPath = rawPath.length > 1 ? rawPath.replace(/\/+$/, '') : rawPath;
+
+  // CSRF protection applies to cookie-authenticated requests, plus unauthenticated auth/OTP endpoints
   const hasSessionCookie = Boolean(req.cookies?.token);
-  const isEnforcedAuthRoute = req.path === '/api/auth/login' || req.path === '/api/auth/register';
+  const isEnforcedAuthRoute = [
+    '/api/auth/login',
+    '/api/auth/register',
+    '/api/auth/verify-email',
+    '/api/auth/verify-reset-otp',
+    '/api/auth/forgot-password',
+    '/api/auth/resend-otp',
+    '/api/auth/resend-reset-otp',
+  ].includes(normalisedPath);
 
   if (!hasSessionCookie && !isEnforcedAuthRoute) {
     return next();
