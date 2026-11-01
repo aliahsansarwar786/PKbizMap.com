@@ -360,19 +360,15 @@ const resendOtp = [
     // Check account lockout
     if (user.emailVerificationOTPBlockedUntil) {
       if (user.emailVerificationOTPBlockedUntil.getTime() > Date.now()) {
-        const retryAfterSeconds = Math.ceil(
-          (user.emailVerificationOTPBlockedUntil.getTime() - Date.now()) / 1000
-        );
-        return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
-          success: false,
-          isBlocked: true,
-          retryAfter: retryAfterSeconds,
-          message: 'Account verification is temporarily locked for 30 minutes due to too many failed attempts.',
-        });
+        return res.status(200).json(genericResponse);
       } else {
         // 30-minute block has expired: reset running count and clear lock
         user.emailVerificationOTPAttempts = 0;
         user.emailVerificationOTPBlockedUntil = undefined;
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { emailVerificationOTPAttempts: 0, emailVerificationOTPBlockedUntil: null } }
+        );
       }
     }
 
@@ -380,22 +376,14 @@ const resendOtp = [
     if (user.emailVerificationLastResend) {
       const elapsed = Date.now() - new Date(user.emailVerificationLastResend).getTime();
       if (elapsed < RESEND_COOLDOWN_MS) {
-        const retryAfter = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
-        return res.status(429).set('Retry-After', String(retryAfter)).json({
-          success: false,
-          retryAfter,
-          message: `Please wait ${retryAfter} seconds before requesting a new code.`,
-        });
+        return res.status(200).json(genericResponse);
       }
     }
 
     // Check per-email OTP throttle (max 5 OTP emails per hour)
     const throttle = await checkAndIncrementEmailOtpLimit(normalizedEmail);
     if (!throttle.allowed) {
-      return res.status(429).set('Retry-After', String(throttle.retryAfterSeconds)).json({
-        success: false,
-        message: 'Too many verification code requests for this email. Please try again later.',
-      });
+      return res.status(200).json(genericResponse);
     }
 
     // Generate fresh OTP (running failed attempts count is preserved)
@@ -417,18 +405,12 @@ const resendOtp = [
 
       if (!sent) {
         await refundEmailOtpLimit(user.email);
-        return res.status(502).json({
-          success: false,
-          message: 'We could not send the verification code. Please try again in a minute.',
-        });
+        return res.status(200).json(genericResponse);
       }
     } catch (e) {
       console.error('⚠️ [Auth:ResendOtp] Unexpected error sending OTP:', e.message);
       await refundEmailOtpLimit(user.email);
-      return res.status(502).json({
-        success: false,
-        message: 'We could not send the verification code. Please try again in a minute.',
-      });
+      return res.status(200).json(genericResponse);
     }
 
     res.status(200).json(genericResponse);
@@ -829,19 +811,15 @@ const forgotPassword = [
     // Check account lockout
     if (user.resetPasswordOTPBlockedUntil) {
       if (user.resetPasswordOTPBlockedUntil.getTime() > Date.now()) {
-        const retryAfterSeconds = Math.ceil(
-          (user.resetPasswordOTPBlockedUntil.getTime() - Date.now()) / 1000
-        );
-        return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
-          success: false,
-          isBlocked: true,
-          retryAfter: retryAfterSeconds,
-          message: 'Password reset is temporarily locked for 30 minutes due to too many failed attempts.',
-        });
+        return res.status(200).json(genericResponse);
       } else {
         // 30-minute block has expired: reset running count and clear lock
         user.resetPasswordOTPAttempts = 0;
         user.resetPasswordOTPBlockedUntil = undefined;
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { resetPasswordOTPAttempts: 0, resetPasswordOTPBlockedUntil: null } }
+        );
       }
     }
 
@@ -849,22 +827,14 @@ const forgotPassword = [
     if (user.resetPasswordLastResend) {
       const elapsed = Date.now() - new Date(user.resetPasswordLastResend).getTime();
       if (elapsed < RESEND_COOLDOWN_MS) {
-        const retryAfter = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
-        return res.status(429).set('Retry-After', String(retryAfter)).json({
-          success: false,
-          retryAfter,
-          message: `Please wait ${retryAfter} seconds before requesting a new code.`,
-        });
+        return res.status(200).json(genericResponse);
       }
     }
 
     // Check per-email OTP throttle (max 5 OTP emails per hour)
     const throttle = await checkAndIncrementEmailOtpLimit(normalizedEmail);
     if (!throttle.allowed) {
-      return res.status(429).set('Retry-After', String(throttle.retryAfterSeconds)).json({
-        success: false,
-        message: 'Too many verification code requests for this email. Please try again later.',
-      });
+      return res.status(200).json(genericResponse);
     }
 
     // Generate fresh OTP (running failed attempts count is preserved)
@@ -889,18 +859,12 @@ const forgotPassword = [
 
       if (!sent) {
         await refundEmailOtpLimit(user.email);
-        return res.status(502).json({
-          success: false,
-          message: 'We could not send the verification code. Please try again in a minute.',
-        });
+        return res.status(200).json(genericResponse);
       }
     } catch (e) {
       console.error('⚠️ [Auth:ForgotPassword] Unexpected error sending reset OTP:', e.message);
       await refundEmailOtpLimit(user.email);
-      return res.status(502).json({
-        success: false,
-        message: 'We could not send the verification code. Please try again in a minute.',
-      });
+      return res.status(200).json(genericResponse);
     }
 
     res.status(200).json(genericResponse);
@@ -954,14 +918,10 @@ const verifyResetOtp = [
     // Check if account is locked due to 5 failed OTP attempts
     if (user.resetPasswordOTPBlockedUntil) {
       if (user.resetPasswordOTPBlockedUntil.getTime() > Date.now()) {
-        const retryAfterSeconds = Math.ceil(
-          (user.resetPasswordOTPBlockedUntil.getTime() - Date.now()) / 1000
-        );
-        return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+        return res.status(400).json({
           success: false,
-          isBlocked: true,
-          retryAfter: retryAfterSeconds,
-          message: 'Too many failed verification attempts for this account. Password reset locked for 30 minutes.',
+          attemptsRemaining: 0,
+          message: 'Invalid or expired verification code.',
         });
       } else {
         // Block expired: reset attempts and clear lock
@@ -976,10 +936,11 @@ const verifyResetOtp = [
 
     // 3. Expiry check
     if (!user.resetPasswordOTPExpires || user.resetPasswordOTPExpires.getTime() < Date.now()) {
+      const userAttemptsRemaining = Math.max(0, 5 - (user.resetPasswordOTPAttempts || 0));
       return res.status(400).json({
         success: false,
-        isExpired: true,
-        message: 'Verification code has expired. Please request a new code.',
+        attemptsRemaining: userAttemptsRemaining,
+        message: 'Invalid or expired verification code.',
       });
     }
 
@@ -999,13 +960,6 @@ const verifyResetOtp = [
           { _id: user._id },
           { $set: { resetPasswordOTPBlockedUntil: new Date(Date.now() + 30 * 60 * 1000) } }
         );
-        await recordFailedAttempt(ip, 'password-reset');
-        return res.status(429).set('Retry-After', '1800').json({
-          success: false,
-          isBlocked: true,
-          retryAfter: 1800,
-          message: 'Too many failed verification attempts for this account. Password reset locked for 30 minutes.',
-        });
       }
 
       const fail = await recordFailedAttempt(ip, 'password-reset');
@@ -1022,7 +976,7 @@ const verifyResetOtp = [
       return res.status(400).json({
         success: false,
         attemptsRemaining: Math.min(fail.attemptsRemaining, userAttemptsRemaining),
-        message: `Invalid verification code. ${userAttemptsRemaining} attempt${userAttemptsRemaining === 1 ? '' : 's'} remaining before account lockout.`,
+        message: 'Invalid or expired verification code.',
       });
     }
 
@@ -1143,19 +1097,15 @@ const resendResetOtp = [
     // Check account lockout
     if (user.resetPasswordOTPBlockedUntil) {
       if (user.resetPasswordOTPBlockedUntil.getTime() > Date.now()) {
-        const retryAfterSeconds = Math.ceil(
-          (user.resetPasswordOTPBlockedUntil.getTime() - Date.now()) / 1000
-        );
-        return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
-          success: false,
-          isBlocked: true,
-          retryAfter: retryAfterSeconds,
-          message: 'Password reset is temporarily locked for 30 minutes due to too many failed attempts.',
-        });
+        return res.status(200).json(genericResponse);
       } else {
         // 30-minute block has expired: reset running count and clear lock
         user.resetPasswordOTPAttempts = 0;
         user.resetPasswordOTPBlockedUntil = undefined;
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { resetPasswordOTPAttempts: 0, resetPasswordOTPBlockedUntil: null } }
+        );
       }
     }
 
@@ -1163,22 +1113,14 @@ const resendResetOtp = [
     if (user.resetPasswordLastResend) {
       const elapsed = Date.now() - new Date(user.resetPasswordLastResend).getTime();
       if (elapsed < RESEND_COOLDOWN_MS) {
-        const retryAfter = Math.ceil((RESEND_COOLDOWN_MS - elapsed) / 1000);
-        return res.status(429).set('Retry-After', String(retryAfter)).json({
-          success: false,
-          retryAfter,
-          message: `Please wait ${retryAfter} seconds before requesting a new code.`,
-        });
+        return res.status(200).json(genericResponse);
       }
     }
 
     // Check per-email OTP throttle (max 5 OTP emails per hour)
     const throttle = await checkAndIncrementEmailOtpLimit(normalizedEmail);
     if (!throttle.allowed) {
-      return res.status(429).set('Retry-After', String(throttle.retryAfterSeconds)).json({
-        success: false,
-        message: 'Too many verification code requests for this email. Please try again later.',
-      });
+      return res.status(200).json(genericResponse);
     }
 
     const otp = generate6DigitOtp();
@@ -1199,18 +1141,12 @@ const resendResetOtp = [
 
       if (!sent) {
         await refundEmailOtpLimit(user.email);
-        return res.status(502).json({
-          success: false,
-          message: 'We could not send the verification code. Please try again in a minute.',
-        });
+        return res.status(200).json(genericResponse);
       }
     } catch (e) {
       console.error('⚠️ [Auth:ResendResetOtp] Unexpected error sending OTP:', e.message);
       await refundEmailOtpLimit(user.email);
-      return res.status(502).json({
-        success: false,
-        message: 'We could not send the verification code. Please try again in a minute.',
-      });
+      return res.status(200).json(genericResponse);
     }
 
     res.status(200).json(genericResponse);
