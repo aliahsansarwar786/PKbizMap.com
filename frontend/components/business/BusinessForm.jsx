@@ -166,6 +166,7 @@ export default function BusinessForm({
   const [existingImages, setExistingImages] = useState(existingBusiness?.images || []);
 
   const [paymentSettings, setPaymentSettings] = useState(null);
+  const [paymentSettingsLoading, setPaymentSettingsLoading] = useState(true);
   const [paymentSettingsError, setPaymentSettingsError] = useState(false);
   const [paymentReceiptFile, setPaymentReceiptFile] = useState(null);
   const [paymentReceiptPreview, setPaymentReceiptPreview] = useState(null);
@@ -184,6 +185,7 @@ export default function BusinessForm({
   // Load public payment settings
   useEffect(() => {
     if (!isEdit) {
+      setPaymentSettingsLoading(true);
       settingsAPI.getPayment()
         .then((res) => {
           setPaymentSettings(res.data?.settings || null);
@@ -191,7 +193,12 @@ export default function BusinessForm({
         })
         .catch(() => {
           setPaymentSettingsError(true);
+        })
+        .finally(() => {
+          setPaymentSettingsLoading(false);
         });
+    } else {
+      setPaymentSettingsLoading(false);
     }
   }, [isEdit]);
 
@@ -553,7 +560,9 @@ export default function BusinessForm({
     }
 
     // Section 6: Payment (When enabled)
-    if (!isEdit && paymentSettingsError) {
+    if (!isEdit && paymentSettingsLoading) {
+      errs.paymentSettings = 'Payment settings are still loading. Please wait a moment and try again.';
+    } else if (!isEdit && paymentSettingsError) {
       errs.paymentSettings = 'Payment settings could not be loaded. Please refresh the page and try again.';
     }
 
@@ -1898,15 +1907,17 @@ export default function BusinessForm({
         </button>
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || (!isEdit && paymentSettingsLoading)}
           className="w-full sm:flex-1 h-12 rounded-xl bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold text-sm transition-all shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
         >
-          {loading && <span className="spinner" />}
+          {(loading || (!isEdit && paymentSettingsLoading)) && <span className="spinner" />}
           <span>
             {loading
               ? isEdit
                 ? 'Updating Business...'
                 : 'Submitting...'
+              : (!isEdit && paymentSettingsLoading)
+              ? 'Payment settings are still loading. Please wait a moment and try again.'
               : isEdit
               ? 'Update Business Details'
               : 'Submit Business for Approval'}

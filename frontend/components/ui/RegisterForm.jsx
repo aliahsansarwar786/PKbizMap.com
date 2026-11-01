@@ -198,7 +198,12 @@ function RegisterFormContent() {
 
       <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
         Already have an account?{' '}
-        <Link href="/login" style={{ color: '#2563eb', fontWeight: 500 }}>Sign in</Link>
+        <Link
+          href={getSafeRedirect() ? `/login?redirect=${encodeURIComponent(getSafeRedirect())}` : '/login'}
+          style={{ color: '#2563eb', fontWeight: 500 }}
+        >
+          Sign in
+        </Link>
       </p>
     </div>
   );

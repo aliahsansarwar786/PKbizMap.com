@@ -437,7 +437,7 @@ export default function AdminDashboardClient() {
     if (isSuperAdmin || perms.canModerateReviews) {
       list.push({ id: 'reviews', label: 'Reviews', badge: dashStats?.totalReviews });
     }
-    if (isSuperAdmin || perms.canApproveListings) {
+    if (isSuperAdmin) {
       const pendingClaimsCount = claimRequests.filter((c) => c.status === 'pending_admin').length;
       list.push({
         id: 'claims',
@@ -5389,7 +5389,7 @@ export default function AdminDashboardClient() {
                               </span>
                             </td>
                             <td className="py-3 px-4 text-right whitespace-nowrap">
-                              {claim.status === 'pending_admin' && (isSuperAdmin || perms.canApproveListings) ? (
+                              {claim.status === 'pending_admin' && isSuperAdmin ? (
                                 <div className="flex items-center justify-end gap-1.5">
                                   <button
                                     type="button"

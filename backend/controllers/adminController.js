@@ -498,8 +498,9 @@ const updateUserRole = [
       return res.status(404).json({ success: false, message: 'User not found.' });
     }
 
+    const isDemotingAdmin = targetUser.role === 'admin' && role !== 'admin';
     // Operational lockout guard: block demoting the LAST remaining admin
-    if (targetUser.role === 'admin' && role !== 'admin') {
+    if (isDemotingAdmin) {
       const adminCount = await User.countDocuments({ role: 'admin' });
       if (adminCount <= 1) {
         return res.status(400).json({
@@ -522,6 +523,17 @@ const updateUserRole = [
         canDeleteListings: false,
         canModerateReviews: false,
       };
+    }
+
+    // Re-count admins immediately before mutation to guard against concurrent requests
+    if (isDemotingAdmin) {
+      const freshAdminCount = await User.countDocuments({ role: 'admin' });
+      if (freshAdminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot demote the last remaining admin.',
+        });
+      }
     }
 
     await targetUser.save();
@@ -669,6 +681,17 @@ const deleteUser = [
       );
     }
 
+    // Re-count admins immediately before deletion to guard against concurrent requests
+    if (user.role === 'admin') {
+      const freshAdminCount = await User.countDocuments({ role: 'admin' });
+      if (freshAdminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot delete the last remaining admin.',
+        });
+      }
+    }
+
     await User.findByIdAndDelete(req.params.id);
 
     logActivity({
@@ -737,6 +760,17 @@ const spamUser = [
     if (user.role === 'admin') {
       const adminCount = await User.countDocuments({ role: 'admin' });
       if (adminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: 'Cannot flag the last remaining admin as spam.',
+        });
+      }
+    }
+
+    // Re-count admins immediately before mutation to guard against concurrent requests
+    if (user.role === 'admin') {
+      const freshAdminCount = await User.countDocuments({ role: 'admin' });
+      if (freshAdminCount <= 1) {
         return res.status(400).json({
           success: false,
           message: 'Cannot flag the last remaining admin as spam.',
@@ -1336,7 +1370,13 @@ const adminUpdateBusiness = [
 
     if (countryChanged) {
       const paymentSetting = await PaymentSetting.getSettings();
-      if (paymentSetting && paymentSetting.isEnabled) {
+      if (!paymentSetting) {
+        return res.status(503).json({
+          success: false,
+          message: 'Payment settings are currently unavailable. Update is temporarily blocked.',
+        });
+      }
+      if (paymentSetting.isEnabled) {
         let newFee;
         let feeInfo;
         try {

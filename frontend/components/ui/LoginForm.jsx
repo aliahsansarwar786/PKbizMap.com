@@ -110,7 +110,7 @@ function LoginFormContent() {
               <ArrowRight size={14} />
             </Link>
             <Link
-              href={`/verify-email?email=${encodeURIComponent(unverifiedInfo.email)}&resend=true`}
+              href={`/verify-email?email=${encodeURIComponent(unverifiedInfo.email)}&resend=true${getSafeRedirect() ? `&next=${encodeURIComponent(getSafeRedirect())}` : ''}`}
               className="text-xs text-blue-700 hover:text-blue-900 font-semibold py-1.5 px-2.5 rounded-lg hover:bg-amber-100/60 transition-colors"
             >
               Resend Code &rarr;
@@ -186,7 +186,10 @@ function LoginFormContent() {
 
       <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem', color: '#6b7280' }}>
         Don&apos;t have an account?{' '}
-        <Link href="/register" style={{ color: '#2563eb', fontWeight: 500 }}>
+        <Link
+          href={getSafeRedirect() ? `/register?redirect=${encodeURIComponent(getSafeRedirect())}` : '/register'}
+          style={{ color: '#2563eb', fontWeight: 500 }}
+        >
           Create one free
         </Link>
       </p>

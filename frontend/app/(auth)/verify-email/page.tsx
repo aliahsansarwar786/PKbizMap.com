@@ -6,6 +6,7 @@ import { Suspense } from 'react';
 export const metadata = {
   title: 'Verify Your Email - BizPrimeHub',
   description: 'Enter your 6-digit verification code to activate your BizPrimeHub account.',
+  robots: { index: false, follow: false },
 };
 
 export default function VerifyEmailPage() {

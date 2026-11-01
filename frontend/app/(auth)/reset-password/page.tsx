@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 
 export const metadata = {
   title: 'Reset Password - BizPrimeHub',
+  robots: { index: false, follow: false },
 };
 
 export default function ResetPasswordPage() {

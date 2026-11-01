@@ -695,7 +695,14 @@ const updateBusiness = [
         await destroyUploadedFiles(req);
         throw err;
       }
-      if (paymentSetting && paymentSetting.isEnabled) {
+      if (!paymentSetting) {
+        await destroyUploadedFiles(req);
+        return res.status(503).json({
+          success: false,
+          message: 'Payment settings are currently unavailable. Update is temporarily blocked.',
+        });
+      }
+      if (paymentSetting.isEnabled) {
         const targetCountry = newCountry.trim();
         let newFee;
         let feeInfo;

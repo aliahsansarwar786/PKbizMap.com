@@ -27,6 +27,10 @@ export default function VerifyEmailForm() {
   const [changingEmail, setChangingEmail] = useState(false);
   const [verifiedSuccess, setVerifiedSuccess] = useState(false);
 
+  const rawNext = searchParams.get('next');
+  const isValidNext = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.startsWith('/\\');
+  const nextUrl = isValidNext ? rawNext : '/dashboard';
+
   const inputRefs = useRef([]);
   const autoResendTriggered = useRef(false);
 
@@ -170,9 +174,6 @@ export default function VerifyEmailForm() {
         updateUser(res.data.user);
       }
       setTimeout(() => {
-        const rawNext = searchParams.get('next');
-        const isValidNext = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.startsWith('/\\');
-        const nextUrl = isValidNext ? rawNext : '/dashboard';
         router.push(nextUrl);
       }, 1500);
     } catch (err) {
@@ -273,7 +274,7 @@ export default function VerifyEmailForm() {
         <p className="text-sm text-slate-600 mb-6">
           Your account is now fully active. Redirecting you to your dashboard...
         </p>
-        <Link href="/dashboard" className="btn-primary w-full justify-center">
+        <Link href={nextUrl} className="btn-primary w-full justify-center">
           Go to Dashboard Now &rarr;
         </Link>
       </div>

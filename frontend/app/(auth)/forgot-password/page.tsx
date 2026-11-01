@@ -5,6 +5,7 @@ import ForgotPasswordForm from '@/components/ui/ForgotPasswordForm';
 export const metadata = {
   title: 'Forgot Password - BizPrimeHub',
   description: 'Reset your BizPrimeHub account password.',
+  robots: { index: false, follow: false },
 };
 
 export default function ForgotPasswordPage() {

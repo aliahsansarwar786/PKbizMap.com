@@ -4,6 +4,7 @@ import ProfileClient from '@/components/ui/ProfileClient';
 
 export const metadata = {
   title: 'My Profile - BizPrimeHub',
+  robots: { index: false, follow: false },
 };
 
 export default function ProfilePage() {

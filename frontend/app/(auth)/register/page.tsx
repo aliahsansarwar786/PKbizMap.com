@@ -5,6 +5,7 @@ import RegisterForm from '@/components/ui/RegisterForm';
 export const metadata = {
   title: 'Create Account - BizPrimeHub',
   description: 'Create your free BizPrimeHub account and start listing or discovering businesses.',
+  robots: { index: false, follow: false },
 };
 
 export default function RegisterPage() {

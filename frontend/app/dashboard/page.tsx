@@ -5,6 +5,7 @@ import DashboardClient from '@/components/ui/DashboardClient';
 export const metadata = {
   title: 'Dashboard - BizPrimeHub',
   description: 'Manage your businesses, reviews, and account settings.',
+  robots: { index: false, follow: false },
 };
 
 export default function DashboardPage() {
