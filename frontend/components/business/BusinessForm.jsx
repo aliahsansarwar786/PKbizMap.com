@@ -166,6 +166,7 @@ export default function BusinessForm({
   const [existingImages, setExistingImages] = useState(existingBusiness?.images || []);
 
   const [paymentSettings, setPaymentSettings] = useState(null);
+  const [paymentSettingsError, setPaymentSettingsError] = useState(false);
   const [paymentReceiptFile, setPaymentReceiptFile] = useState(null);
   const [paymentReceiptPreview, setPaymentReceiptPreview] = useState(null);
   const [copiedRaastId, setCopiedRaastId] = useState(false);
@@ -184,8 +185,13 @@ export default function BusinessForm({
   useEffect(() => {
     if (!isEdit) {
       settingsAPI.getPayment()
-        .then((res) => setPaymentSettings(res.data?.settings || null))
-        .catch(() => {});
+        .then((res) => {
+          setPaymentSettings(res.data?.settings || null);
+          setPaymentSettingsError(false);
+        })
+        .catch(() => {
+          setPaymentSettingsError(true);
+        });
     }
   }, [isEdit]);
 
@@ -547,9 +553,13 @@ export default function BusinessForm({
     }
 
     // Section 6: Payment (When enabled)
+    if (!isEdit && paymentSettingsError) {
+      errs.paymentSettings = 'Payment settings could not be loaded. Please refresh the page and try again.';
+    }
+
     const currentCountry = form.country || 'Pakistan';
     const currentFeeConfig = paymentSettings?.fees?.[currentCountry] || {
-      amount: currentCountry === 'Pakistan' ? (paymentSettings?.feeAmount ?? 50) : 0,
+      amount: currentCountry === 'Pakistan' ? (paymentSettings?.feeAmount ?? 0) : 0,
     };
     const isCurrentCountryFree = (Number(currentFeeConfig.amount) || 0) === 0;
 
@@ -634,7 +644,7 @@ export default function BusinessForm({
 
         newImages.forEach((img) => formData.append('images', img));
         const currentCountry = form.country || 'Pakistan';
-        const currentFee = paymentSettings?.fees?.[currentCountry]?.amount ?? (currentCountry === 'Pakistan' ? (paymentSettings?.feeAmount ?? 50) : 0);
+        const currentFee = paymentSettings?.fees?.[currentCountry]?.amount ?? (currentCountry === 'Pakistan' ? (paymentSettings?.feeAmount ?? 0) : 0);
         const isFreeCountry = (Number(currentFee) || 0) === 0;
         if (!isFreeCountry && paymentReceiptFile) {
           formData.append('paymentReceipt', paymentReceiptFile);
@@ -1435,10 +1445,26 @@ export default function BusinessForm({
           SECTION 6 — LISTING CHARGES (Only when Payment is ON)
           Card Title strictly: "Listing Charges"
       ───────────────────────────────────────────────────────────── */}
-      {!isEdit && paymentSettings?.isEnabled && (() => {
+      {!isEdit && paymentSettingsError && (
+        <section className="bg-white rounded-2xl p-6 sm:p-8 border border-rose-200 shadow-sm space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-base">
+              6
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">Listing Charges</h2>
+              <p className="text-xs text-rose-600 font-medium mt-0.5">
+                Payment settings could not be loaded. Please refresh the page and try again.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {!isEdit && !paymentSettingsError && paymentSettings?.isEnabled && (() => {
         const selectedCountry = form.country || 'Pakistan';
         const countryFeeConfig = paymentSettings?.fees?.[selectedCountry] || {
-          amount: selectedCountry === 'Pakistan' ? (paymentSettings?.feeAmount ?? 50) : 0,
+          amount: selectedCountry === 'Pakistan' ? (paymentSettings?.feeAmount ?? 0) : 0,
           currency: selectedCountry === 'Pakistan' ? 'PKR' : selectedCountry === 'UAE' ? 'AED' : 'USD',
           symbol: selectedCountry === 'Pakistan' ? 'Rs.' : selectedCountry === 'UAE' ? 'AED ' : '$',
         };

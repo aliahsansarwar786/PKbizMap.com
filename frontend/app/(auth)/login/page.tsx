@@ -5,6 +5,10 @@ import LoginForm from '@/components/ui/LoginForm';
 export const metadata = {
   title: 'Login - BizPrimeHub',
   description: 'Sign in to your BizPrimeHub account.',
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function LoginPage() {

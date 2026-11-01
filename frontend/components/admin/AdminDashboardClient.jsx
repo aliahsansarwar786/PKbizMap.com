@@ -5311,6 +5311,7 @@ export default function AdminDashboardClient() {
                                 <Link
                                   href={`/businesses/${claim.business.slug || claim.business._id}`}
                                   target="_blank"
+                                  rel="noopener noreferrer"
                                   className="text-blue-600 hover:underline flex items-center gap-1 font-bold"
                                 >
                                   {claim.business.title} <ExternalLink size={12} />

@@ -5,6 +5,10 @@ import AdminDashboardClient from '@/components/admin/AdminDashboardClient';
 export const metadata = {
   title: 'Admin Dashboard - BizPrimeHub',
   description: 'Manage businesses, users, and reviews.',
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export default function AdminPage() {

@@ -33,7 +33,7 @@ async function getBusiness(id: string) {
   } catch (error) {
     if (primaryApi !== fallbackApi) {
       try {
-        const fbRes = await fetch(`${fallbackApi}/businesses/${id}`, {
+        const fbRes = await fetch(`${fallbackApi}/businesses/${encodeURIComponent(id)}`, {
           next: { revalidate: 3600 },
         });
         if (fbRes.ok) {

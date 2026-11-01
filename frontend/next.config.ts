@@ -12,7 +12,7 @@ const cspHeader = `
   img-src 'self' data: blob: https://res.cloudinary.com https://ui-avatars.com https://images.unsplash.com https://www.google-analytics.com https://www.googletagmanager.com;
   font-src 'self' data: https://fonts.gstatic.com;
   connect-src 'self' https://pkbizmap-backend.vercel.app${devConnectSources} https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com;
-  frame-src 'self' https://maps.google.com;
+  frame-src 'self' https://maps.google.com https://www.google.com;
   frame-ancestors 'none';
   form-action 'self';
   base-uri 'self';
@@ -26,12 +26,17 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
-        pathname: '/image/upload/**',
+        pathname: '/*/image/upload/**',
       },
       {
         protocol: 'https',
         hostname: 'ui-avatars.com',
         pathname: '/api/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        pathname: '/photo-*',
       },
       {
         protocol: 'https',
