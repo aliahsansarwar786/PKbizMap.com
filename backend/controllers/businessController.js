@@ -24,6 +24,35 @@ const isValidHttpUrl = (str) => {
   }
 };
 
+// Helper to clean up newly uploaded files from Cloudinary on request failure
+const destroyUploadedFiles = async (req) => {
+  try {
+    const imageFiles = Array.isArray(req.files) ? req.files : (req.files?.images || []);
+    const receiptFile = req.files?.paymentReceipt?.[0];
+    const promises = [];
+
+    if (imageFiles && imageFiles.length > 0) {
+      imageFiles.forEach((file) => {
+        const publicId = file?.filename || file?.publicId;
+        if (publicId) {
+          promises.push(cloudinary.uploader.destroy(publicId).catch(() => {}));
+        }
+      });
+    }
+
+    const receiptPublicId = receiptFile?.filename || receiptFile?.publicId;
+    if (receiptPublicId) {
+      promises.push(cloudinary.uploader.destroy(receiptPublicId).catch(() => {}));
+    }
+
+    if (promises.length > 0) {
+      await Promise.all(promises);
+    }
+  } catch {
+    // Never throw from cleanup helper
+  }
+};
+
 // ─── GET /api/businesses ──────────────────────────────────────────────────────
 // Public: Returns only approved businesses with search, filter, pagination
 const getBusinesses = asyncHandler(async (req, res) => {
@@ -247,7 +276,12 @@ const createBusiness = [
       });
     }
 
-    validate(req);
+    try {
+      validate(req);
+    } catch (err) {
+      await destroyUploadedFiles(req);
+      throw err;
+    }
 
     const {
       title,
@@ -429,26 +463,32 @@ const createBusiness = [
     }
 
     // NEVER trust owner from req.body - always use authenticated user
-    const business = await Business.create({
-      title,
-      description,
-      category,
-      subcategory: subcategory || '',
-      contactPerson: contactPerson || '',
-      email: email ? email.trim().toLowerCase() : '',
-      phone: phone ? phone.trim() : '',
-      whatsapp: whatsapp ? whatsapp.trim() : '',
-      website: website || '',
-      socialLinks: parsedSocialLinks,
-      openingHours: parsedOpeningHours,
-      address: businessAddress,
-      images,
-      paymentReceipt,
-      paymentStatus,
-      paymentAmount,
-      owner: req.user._id, // Server-side only
-      isApproved: req.user.role === 'admin' && !requiresPayment, // Auto-approve if Admin
-    });
+    let business;
+    try {
+      business = await Business.create({
+        title,
+        description,
+        category,
+        subcategory: subcategory || '',
+        contactPerson: contactPerson || '',
+        email: email ? email.trim().toLowerCase() : '',
+        phone: phone ? phone.trim() : '',
+        whatsapp: whatsapp ? whatsapp.trim() : '',
+        website: website || '',
+        socialLinks: parsedSocialLinks,
+        openingHours: parsedOpeningHours,
+        address: businessAddress,
+        images,
+        paymentReceipt,
+        paymentStatus,
+        paymentAmount,
+        owner: req.user._id, // Server-side only
+        isApproved: req.user.role === 'admin' && !requiresPayment, // Auto-approve if Admin
+      });
+    } catch (err) {
+      await destroyUploadedFiles(req);
+      throw err;
+    }
 
     // Owner Notification: New listing submitted alert
     // Awaited before responding so Vercel serverless functions do not freeze SMTP delivery.
@@ -497,7 +537,12 @@ const updateBusiness = [
   ...objectIdValidator('id'),
   ...updateBusinessValidator,
   asyncHandler(async (req, res) => {
-    validate(req);
+    try {
+      validate(req);
+    } catch (err) {
+      await destroyUploadedFiles(req);
+      throw err;
+    }
 
     const business = await Business.findById(req.params.id);
     if (!business) {
@@ -612,6 +657,7 @@ const updateBusiness = [
       };
     }
 
+    const oldReceiptsToDelete = [];
     const oldCountry = business.address?.country || 'Pakistan';
     const newCountry = updates.address?.country;
     const countryChanged = Boolean(newCountry && newCountry.trim().toLowerCase() !== oldCountry.trim().toLowerCase());
@@ -663,10 +709,8 @@ const updateBusiness = [
         if (newFee === 0) {
           updates.paymentAmount = 0;
           updates.paymentStatus = 'none';
-          if (business.paymentReceipt?.publicId) {
-            cloudinary.uploader.destroy(business.paymentReceipt.publicId).catch((err) => {
-              console.error('Failed to delete receipt from Cloudinary on country change:', err.message);
-            });
+          if (business.paymentReceipt?.publicId && !oldReceiptsToDelete.includes(business.paymentReceipt.publicId)) {
+            oldReceiptsToDelete.push(business.paymentReceipt.publicId);
           }
           updates.paymentReceipt = { url: '', publicId: '' };
         } else {
@@ -674,10 +718,8 @@ const updateBusiness = [
           if (!wasVerifiedAndCovered) {
             updates.paymentStatus = 'pending';
             updates.isApproved = false;
-            if (business.paymentReceipt?.publicId) {
-              cloudinary.uploader.destroy(business.paymentReceipt.publicId).catch((err) => {
-                console.error('Failed to delete receipt from Cloudinary on country change:', err.message);
-              });
+            if (business.paymentReceipt?.publicId && !oldReceiptsToDelete.includes(business.paymentReceipt.publicId)) {
+              oldReceiptsToDelete.push(business.paymentReceipt.publicId);
             }
             updates.paymentReceipt = { url: '', publicId: '' };
           }
@@ -696,6 +738,7 @@ const updateBusiness = [
       // Check total images won't exceed 5
       const totalImages = business.images.length + newImages.length;
       if (totalImages > 5) {
+        await destroyUploadedFiles(req);
         return res.status(400).json({
           success: false,
           message: `Cannot upload ${newImages.length} more images. Maximum 5 images allowed. Current: ${business.images.length}`,
@@ -708,8 +751,8 @@ const updateBusiness = [
     // Handle new payment receipt upload
     const updatedReceiptFile = req.files?.paymentReceipt?.[0];
     if (updatedReceiptFile) {
-      if (business.paymentReceipt?.publicId) {
-        await cloudinary.uploader.destroy(business.paymentReceipt.publicId).catch(() => {});
+      if (business.paymentReceipt?.publicId && !oldReceiptsToDelete.includes(business.paymentReceipt.publicId)) {
+        oldReceiptsToDelete.push(business.paymentReceipt.publicId);
       }
       updates.paymentReceipt = {
         url: updatedReceiptFile.path,
@@ -759,10 +802,24 @@ const updateBusiness = [
       updates.isApproved = false;
     }
 
-    const updated = await Business.findByIdAndUpdate(req.params.id, updates, {
-      new: true,
-      runValidators: true,
-    });
+    let updated;
+    try {
+      updated = await Business.findByIdAndUpdate(req.params.id, updates, {
+        new: true,
+        runValidators: true,
+      });
+    } catch (err) {
+      await destroyUploadedFiles(req);
+      throw err;
+    }
+
+    if (oldReceiptsToDelete.length > 0) {
+      oldReceiptsToDelete.forEach((publicId) => {
+        cloudinary.uploader.destroy(publicId).catch((err) => {
+          console.error('Failed to delete receipt from Cloudinary on country change:', err.message);
+        });
+      });
+    }
 
     res.status(200).json({
       success: true,
