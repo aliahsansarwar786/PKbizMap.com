@@ -324,7 +324,22 @@ const createBusiness = [
     // Check payment system settings (Multi-country fee support)
     let requiresPayment = false;
     const paymentSetting = await PaymentSetting.getSettings();
-    if (paymentSetting && paymentSetting.isEnabled) {
+    if (!paymentSetting) {
+      if (images.length > 0) {
+        await Promise.all(
+          images.map((img) => cloudinary.uploader.destroy(img.publicId).catch(() => {}))
+        );
+      }
+      if (receiptFile) {
+        await cloudinary.uploader.destroy(receiptFile.filename).catch(() => {});
+      }
+      return res.status(503).json({
+        success: false,
+        message: 'Payment settings are currently unavailable. Listing creation is temporarily blocked.',
+      });
+    }
+
+    if (paymentSetting.isEnabled) {
       const targetCountry = address?.country || req.body?.country || req.body?.['address[country]'] || 'Pakistan';
       let effectiveFee;
       let feeInfo;
@@ -759,6 +774,7 @@ const updateBusiness = [
         publicId: updatedReceiptFile.filename,
       };
       updates.paymentStatus = 'pending';
+      updates.isApproved = false;
 
       const paymentSetting = await PaymentSetting.getSettings();
       if (paymentSetting && paymentSetting.isEnabled) {

@@ -842,6 +842,7 @@ const unspamUser = [
 
     let restoredCount = 0;
     let heldForPaymentCount = 0;
+    const oldReceiptsToDelete = [];
 
     for (const b of hiddenBusinesses) {
       if (!paymentsOn) {
@@ -866,6 +867,11 @@ const unspamUser = [
           }
           fee = parsedFee;
         } catch (feeErr) {
+          if (b.paymentReceipt?.publicId) {
+            oldReceiptsToDelete.push(b.paymentReceipt.publicId);
+          }
+          b.paymentReceipt = { url: '', publicId: '' };
+          b.paymentAmount = 0;
           b.isApproved = false;
           b.hiddenBySpam = false;
           b.paymentStatus = 'pending';
@@ -875,6 +881,11 @@ const unspamUser = [
         }
 
         if (!Number.isFinite(fee) || fee < 0) {
+          if (b.paymentReceipt?.publicId) {
+            oldReceiptsToDelete.push(b.paymentReceipt.publicId);
+          }
+          b.paymentReceipt = { url: '', publicId: '' };
+          b.paymentAmount = 0;
           b.isApproved = false;
           b.hiddenBySpam = false;
           b.paymentStatus = 'pending';
@@ -884,12 +895,21 @@ const unspamUser = [
         }
 
         if (fee > 0 && !(b.paymentStatus === 'verified' && Number(b.paymentAmount) >= fee)) {
+          if (b.paymentReceipt?.publicId) {
+            oldReceiptsToDelete.push(b.paymentReceipt.publicId);
+          }
+          b.paymentReceipt = { url: '', publicId: '' };
+          b.paymentAmount = 0;
           b.isApproved = false;
           b.hiddenBySpam = false;
           b.paymentStatus = 'pending';
           await b.save();
           heldForPaymentCount++;
         } else if (fee === 0) {
+          if (b.paymentReceipt?.publicId) {
+            oldReceiptsToDelete.push(b.paymentReceipt.publicId);
+          }
+          b.paymentReceipt = { url: '', publicId: '' };
           b.isApproved = true;
           b.hiddenBySpam = false;
           b.paymentAmount = 0;
@@ -903,6 +923,14 @@ const unspamUser = [
           restoredCount++;
         }
       }
+    }
+
+    if (oldReceiptsToDelete.length > 0) {
+      oldReceiptsToDelete.forEach((publicId) => {
+        cloudinary.uploader.destroy(publicId).catch((err) => {
+          console.error(`Failed to delete receipt ${publicId}:`, err.message);
+        });
+      });
     }
 
     // (c) send the un-spam email (best-effort)
@@ -1518,6 +1546,7 @@ const updateBusinessPaymentStatus = [
       return res.status(404).json({ success: false, message: 'Business not found.' });
     }
 
+    let receiptToDelete = null;
     if (status === 'verified') {
       if (typeof business.paymentReceipt?.url !== 'string' || !business.paymentReceipt.url.trim()) {
         return res.status(400).json({
@@ -1566,12 +1595,20 @@ const updateBusinessPaymentStatus = [
       business.paymentAmount = verifiedFee;
       business.paymentStatus = 'verified';
     } else if (status === 'rejected') {
+      receiptToDelete = business.paymentReceipt?.publicId || null;
+      business.paymentReceipt = { url: '', publicId: '' };
       business.paymentStatus = 'rejected';
       business.isApproved = false;
       business.paymentAmount = 0;
     }
 
     await business.save();
+
+    if (receiptToDelete) {
+      cloudinary.uploader.destroy(receiptToDelete).catch((err) => {
+        console.error(`Failed to delete receipt ${receiptToDelete}:`, err.message);
+      });
+    }
 
     logActivity({
       actorId: req.user?._id,
