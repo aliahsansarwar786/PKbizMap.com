@@ -73,6 +73,54 @@ const register = [
     // Check if user exists: if so, return the same generic success response without creating duplicate
     const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
+      if (existingUser.emailVerified) {
+        return res.status(201).json(genericSuccess);
+      }
+
+      // Check per-email OTP throttle (max 5 OTP emails per hour)
+      const throttle = await checkAndIncrementEmailOtpLimit(normalizedEmail);
+      if (!throttle.allowed) {
+        return res.status(429).set('Retry-After', String(throttle.retryAfterSeconds)).json({
+          success: false,
+          message: 'Too many verification code requests for this email. Please try again later.',
+        });
+      }
+
+      // Regenerate fresh OTP for existing unverified user
+      const otp = generate6DigitOtp();
+      existingUser.emailVerificationOTP = hashOtp(otp);
+      existingUser.emailVerificationOTPExpires = new Date(Date.now() + OTP_EXPIRY_MS);
+      existingUser.emailVerificationOTPAttempts = 0;
+      existingUser.emailVerificationLastResend = new Date();
+      await existingUser.save({ validateBeforeSave: false });
+
+      // Send OTP verification email: awaited before response so Vercel does not freeze
+      try {
+        const sent = await sendEmail({
+          to: existingUser.email,
+          subject: 'Your BizPrimeHub verification code',
+          html: getEmailVerificationOtpHtml({ name: existingUser.name, otp }),
+        }).catch((err) => {
+          console.error('⚠️ [Auth:Register] Error sending verification OTP email:', err.message);
+          return false;
+        });
+
+        if (!sent) {
+          await refundEmailOtpLimit(existingUser.email);
+          return res.status(502).json({
+            success: false,
+            message: 'We could not send the verification code. Please try again in a minute.',
+          });
+        }
+      } catch (e) {
+        console.error('⚠️ [Auth:Register] Unexpected error sending verification OTP:', e.message);
+        await refundEmailOtpLimit(existingUser.email);
+        return res.status(502).json({
+          success: false,
+          message: 'We could not send the verification code. Please try again in a minute.',
+        });
+      }
+
       return res.status(201).json(genericSuccess);
     }
 
@@ -523,6 +571,7 @@ const updateEmail = [
     // Generate fresh OTP for the new email (preserve running attempts and lock state)
     const otp = generate6DigitOtp();
     user.email = normalizedNewEmail;
+    user.emailVerified = false;
     user.emailVerificationOTP = hashOtp(otp);
     user.emailVerificationOTPExpires = new Date(Date.now() + OTP_EXPIRY_MS);
     user.emailVerificationLastResend = new Date();
@@ -1127,6 +1176,9 @@ const resendResetOtp = [
     user.resetPasswordOTP = hashOtp(otp);
     user.resetPasswordOTPExpires = new Date(Date.now() + OTP_EXPIRY_MS);
     user.resetPasswordLastResend = new Date();
+    // Clear any previous reset tokens
+    user.resetPasswordTokenHash = undefined;
+    user.resetPasswordTokenExpires = undefined;
     await user.save({ validateBeforeSave: false });
 
     try {
