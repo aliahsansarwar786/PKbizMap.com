@@ -575,6 +575,14 @@ const completeClaim = asyncHandler(async (req, res) => {
   }
 
   if (useFallback) {
+    business = await Business.findById(business._id);
+    if (!business) {
+      return res.status(404).json({
+        success: false,
+        message: 'The business associated with this claim no longer exists.',
+      });
+    }
+
     if (business.isClaimed || business.claimed) {
       return res.status(400).json({
         success: false,

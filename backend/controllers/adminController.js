@@ -1852,6 +1852,11 @@ const approveClaimRequest = asyncHandler(async (req, res) => {
   }
 
   if (useFallback) {
+    business = await Business.findById(business._id);
+    if (!business) {
+      return res.status(404).json({ success: false, message: 'Associated business not found.' });
+    }
+
     if (business.isClaimed || business.claimed) {
       const isSelfClaim =
         (claim.claimedBy && String(business.claimedBy) === String(claim.claimedBy)) ||

@@ -106,7 +106,7 @@ router.delete('/reviews/:id', checkPermission('canModerateReviews'), adminDelete
 
 // ─── Claim Requests Management ────────────────────────────────────────────────
 router.get('/claims', checkPermission('canApproveListings'), getClaimRequests);
-router.patch('/claims/:id/approve', checkPermission('canApproveListings'), approveClaimRequest);
-router.patch('/claims/:id/reject', checkPermission('canApproveListings'), rejectClaimRequest);
+router.patch('/claims/:id/approve', authorize('admin'), approveClaimRequest);
+router.patch('/claims/:id/reject', authorize('admin'), rejectClaimRequest);
 
 module.exports = router;
