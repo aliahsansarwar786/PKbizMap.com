@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, Building2, Mail, Lock, User, Check } from 'lucide-react';
@@ -42,13 +42,22 @@ function PasswordStrength({ password }) {
   );
 }
 
-export default function RegisterForm() {
+function RegisterFormContent() {
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const { register } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const getSafeRedirect = () => {
+    const redirect = searchParams.get('redirect');
+    if (redirect && redirect.startsWith('/') && !redirect.startsWith('//') && !redirect.startsWith('/\\')) {
+      return redirect;
+    }
+    return null;
+  };
 
   const validate = () => {
     const errs = {};
@@ -72,7 +81,9 @@ export default function RegisterForm() {
     try {
       const res = await register({ name: form.name.trim(), email: form.email.toLowerCase(), password: form.password });
       toast.success('Account created! Please verify your email with the 6-digit code sent to you.');
-      router.push(`/verify-email?email=${encodeURIComponent(form.email.toLowerCase())}&registered=true`);
+      const safeRedirect = getSafeRedirect();
+      const nextParam = safeRedirect ? `&next=${encodeURIComponent(safeRedirect)}` : '';
+      router.push(`/verify-email?email=${encodeURIComponent(form.email.toLowerCase())}&registered=true${nextParam}`);
     } catch (err) {
       if (err.status === 409) {
         setErrors({ email: 'An account with this email already exists.' });
@@ -190,5 +201,13 @@ export default function RegisterForm() {
         <Link href="/login" style={{ color: '#2563eb', fontWeight: 500 }}>Sign in</Link>
       </p>
     </div>
+  );
+}
+
+export default function RegisterForm() {
+  return (
+    <Suspense fallback={<div className="card p-8 max-w-md mx-auto text-center py-12 text-slate-400">Loading registration form...</div>}>
+      <RegisterFormContent />
+    </Suspense>
   );
 }

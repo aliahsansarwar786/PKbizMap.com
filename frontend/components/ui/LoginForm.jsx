@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, Building2, Mail, Lock, AlertTriangle, ArrowRight } from 'lucide-react';
 
-export default function LoginForm() {
+function LoginFormContent() {
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -15,16 +15,26 @@ export default function LoginForm() {
   const [unverifiedInfo, setUnverifiedInfo] = useState(null);
   const { login, isAuthenticated, user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const getSafeRedirect = () => {
+    const redirect = searchParams.get('redirect');
+    if (redirect && redirect.startsWith('/') && !redirect.startsWith('//') && !redirect.startsWith('/\\')) {
+      return redirect;
+    }
+    return null;
+  };
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
       if (user?.role === 'admin' || user?.role === 'subadmin') {
         router.push('/folder/new/admin');
       } else {
-        router.push('/dashboard');
+        const safeRedirect = getSafeRedirect();
+        router.push(safeRedirect || '/dashboard');
       }
     }
-  }, [authLoading, isAuthenticated, user, router]);
+  }, [authLoading, isAuthenticated, user, router, searchParams]);
 
   const validate = () => {
     const errs = {};
@@ -47,7 +57,8 @@ export default function LoginForm() {
       if (role === 'admin' || role === 'subadmin') {
         router.push('/folder/new/admin');
       } else {
-        router.push('/dashboard');
+        const safeRedirect = getSafeRedirect();
+        router.push(safeRedirect || '/dashboard');
       }
     } catch (err) {
       if (err.requiresVerification || (err.status === 403 && err.data?.requiresVerification)) {
@@ -92,7 +103,7 @@ export default function LoginForm() {
           </div>
           <div className="flex flex-wrap items-center gap-2 pt-2.5 border-t border-amber-200/70">
             <Link
-              href={`/verify-email?email=${encodeURIComponent(unverifiedInfo.email)}`}
+              href={`/verify-email?email=${encodeURIComponent(unverifiedInfo.email)}${getSafeRedirect() ? `&next=${encodeURIComponent(getSafeRedirect())}` : ''}`}
               className="btn-primary text-xs py-2 px-3.5 inline-flex items-center gap-1.5 font-semibold shadow-xs"
             >
               <span>Verify Email Now</span>
@@ -180,5 +191,13 @@ export default function LoginForm() {
         </Link>
       </p>
     </div>
+  );
+}
+
+export default function LoginForm() {
+  return (
+    <Suspense fallback={<div className="card p-8 max-w-md mx-auto text-center py-12 text-slate-400">Loading login form...</div>}>
+      <LoginFormContent />
+    </Suspense>
   );
 }
