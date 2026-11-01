@@ -77,11 +77,13 @@ const sendEmail = async ({ to, subject, html, text, type = 'system', sentBy = nu
     }
 
     const fromAddress = `"BizPrimeHub" <${process.env.EMAIL_USER}>`;
+    const safeSubject = String(subject || '').replace(/[\r\n]+/g, ' ');
+    const safeTo = String(to || '').replace(/[\r\n]+/g, ' ').trim();
 
     const info = await mailer.sendMail({
       from: fromAddress,
-      to,
-      subject,
+      to: safeTo,
+      subject: safeSubject,
       html,
       text: text || (html ? html.replace(/<[^>]+>/g, ' ') : ''),
     });

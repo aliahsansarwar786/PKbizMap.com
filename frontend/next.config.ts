@@ -26,17 +26,17 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'res.cloudinary.com',
-        pathname: '/**',
+        pathname: '/image/upload/**',
       },
       {
         protocol: 'https',
         hostname: 'ui-avatars.com',
-        pathname: '/**',
+        pathname: '/api/**',
       },
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
-        pathname: '/**',
+        pathname: '/photo-*/**',
       },
     ],
   },

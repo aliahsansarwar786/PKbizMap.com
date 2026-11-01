@@ -161,7 +161,7 @@ const requestClaim = asyncHandler(async (req, res) => {
 
   const emailSent = await sendEmail({
     to: targetEmail,
-    subject: `[Verification Code] Claim Listing "${business.title}" on BizPrimeHub`,
+    subject: `[Verification Code] Claim Listing "${String(business.title || '').replace(/[\r\n]+/g, ' ').trim()}" on BizPrimeHub`,
     html: emailHtml,
     text: `Claim Verification for ${business.title}\n\nYour 6-digit verification code is: ${code}\n(This code expires in 30 minutes)\n\nEnter this code on BizPrimeHub to verify ownership of your business listing.\n\nIf you did not request this, please disregard.`,
   });

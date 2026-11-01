@@ -27,6 +27,37 @@ const validateEnv = () => {
     }
   }
 
+  // JWT_SECRET strength check
+  const weakPlaceholders = [
+    'secret',
+    'your-secret',
+    'your_jwt_secret',
+    'changeme',
+    'change-me',
+    'jwt-secret',
+    'jwt_secret',
+    'test',
+    'password',
+    'dev-secret',
+    'bizprimehub',
+  ];
+
+  const jwtSecret = (process.env.JWT_SECRET || '').trim();
+  const isWeakPlaceholder = weakPlaceholders.includes(jwtSecret.toLowerCase());
+  const isShortSecret = jwtSecret.length < 32;
+
+  if (isShortSecret || isWeakPlaceholder) {
+    if (nodeEnv === 'production') {
+      throw new Error(
+        'Insecure JWT_SECRET in production. It must be at least 32 characters long and not a common placeholder.'
+      );
+    } else {
+      console.warn(
+        '⚠️ [Startup Warning] JWT_SECRET is weak or shorter than 32 characters. Consider using a stronger secret.'
+      );
+    }
+  }
+
   // 3. Optional integration variables: Cloudinary, Email
   const optionalWarnVars = [
     'CLOUDINARY_CLOUD_NAME',
