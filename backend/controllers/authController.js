@@ -708,16 +708,26 @@ const correctEmail = [
     }
 
     // Check account lockout
-    if (user.emailVerificationOTPBlockedUntil && user.emailVerificationOTPBlockedUntil.getTime() > Date.now()) {
-      const retryAfterSeconds = Math.ceil(
-        (user.emailVerificationOTPBlockedUntil.getTime() - Date.now()) / 1000
-      );
-      return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
-        success: false,
-        isBlocked: true,
-        retryAfter: retryAfterSeconds,
-        message: 'Account verification is temporarily locked for 30 minutes due to too many failed attempts.',
-      });
+    if (user.emailVerificationOTPBlockedUntil) {
+      if (user.emailVerificationOTPBlockedUntil.getTime() > Date.now()) {
+        const retryAfterSeconds = Math.ceil(
+          (user.emailVerificationOTPBlockedUntil.getTime() - Date.now()) / 1000
+        );
+        return res.status(429).set('Retry-After', String(retryAfterSeconds)).json({
+          success: false,
+          isBlocked: true,
+          retryAfter: retryAfterSeconds,
+          message: 'Account verification is temporarily locked for 30 minutes due to too many failed attempts.',
+        });
+      } else {
+        // Block expired: reset attempts and clear lock
+        user.emailVerificationOTPAttempts = 0;
+        user.emailVerificationOTPBlockedUntil = undefined;
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { emailVerificationOTPAttempts: 0, emailVerificationOTPBlockedUntil: null } }
+        );
+      }
     }
 
     const isMatch = await user.comparePassword(password);
@@ -736,6 +746,8 @@ const correctEmail = [
           { $set: { lockUntil: new Date(Date.now() + 15 * 60 * 1000) } } // 15-minute lock
         );
       }
+
+      await recordFailedAttempt(ip, 'email-verification');
 
       return res.status(401).json({
         success: false,
@@ -801,6 +813,7 @@ const correctEmail = [
     // On success: update the email, reset OTP attempts + clear lock, send a fresh 6-digit OTP to the NEW email
     const otp = generate6DigitOtp();
     user.email = normalizedNewEmail;
+    user.emailVerified = false;
     user.emailVerificationOTP = hashOtp(otp);
     user.emailVerificationOTPExpires = new Date(Date.now() + OTP_EXPIRY_MS);
     user.emailVerificationLastResend = new Date();
@@ -1104,6 +1117,8 @@ const resetPassword = [
     user.resetPasswordExpire = undefined;
     await user.save();
 
+    await User.updateOne({ _id: user._id }, { $set: { loginAttempts: 0, lockUntil: null } });
+
     // Send confirmation email: "password changed"
     try {
       await sendEmail({
@@ -1354,10 +1369,51 @@ const changePassword = [
 
     const { currentPassword, newPassword } = req.body;
 
-    const user = await User.findById(req.user._id).select('+password');
+    const ip = getClientIp(req);
+    const { isBlocked } = await checkIpBlock(ip, 'login');
+    if (isBlocked) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect.',
+      });
+    }
+
+    const user = await User.findById(req.user._id).select('+password +loginAttempts +lockUntil');
+
+    // Check per-account lockout (15 minutes after 5 failed logins)
+    if (user.lockUntil && user.lockUntil.getTime() > Date.now()) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect.',
+      });
+    }
+
+    if (user.lockUntil && user.lockUntil.getTime() <= Date.now()) {
+      user.loginAttempts = 0;
+      user.lockUntil = undefined;
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { loginAttempts: 0, lockUntil: null } }
+      );
+    }
 
     const isMatch = await user.comparePassword(currentPassword);
     if (!isMatch) {
+      // Atomically increment failed login attempts
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: user._id },
+        { $inc: { loginAttempts: 1 } },
+        { new: true }
+      );
+      const attempts = updatedUser ? updatedUser.loginAttempts : (user.loginAttempts || 0) + 1;
+
+      if (attempts >= 5) {
+        await User.updateOne(
+          { _id: user._id },
+          { $set: { lockUntil: new Date(Date.now() + 15 * 60 * 1000) } } // 15-minute lock
+        );
+      }
+
       return res.status(401).json({
         success: false,
         message: 'Current password is incorrect.',
@@ -1369,6 +1425,16 @@ const changePassword = [
         success: false,
         message: 'New password must be different from current password.',
       });
+    }
+
+    // Success: clear loginAttempts/lockUntil like login does
+    if (user.loginAttempts > 0 || user.lockUntil) {
+      user.loginAttempts = 0;
+      user.lockUntil = undefined;
+      await User.updateOne(
+        { _id: user._id },
+        { $set: { loginAttempts: 0, lockUntil: null } }
+      );
     }
 
     user.password = newPassword;

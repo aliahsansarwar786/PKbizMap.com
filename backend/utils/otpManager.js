@@ -72,17 +72,36 @@ const checkIpBlock = async (ip, action) => {
  */
 const recordFailedAttempt = async (ip, action) => {
   const now = new Date();
-
-  // If previous block expired, reset attempt counter
-  await OtpIpAttempt.updateOne(
-    { ip, action, blockedUntil: { $ne: null, $lte: now } },
-    { $set: { attempts: 0, blockedUntil: null } }
-  );
+  const isBlockExpired = {
+    $and: [
+      { $ne: [{ $ifNull: ['$blockedUntil', null] }, null] },
+      { $lte: ['$blockedUntil', now] },
+    ],
+  };
 
   const record = await OtpIpAttempt.findOneAndUpdate(
     { ip, action },
-    { $inc: { attempts: 1 } },
-    { upsert: true, new: true, setDefaultsOnInsert: true }
+    [
+      {
+        $set: {
+          attempts: {
+            $cond: [
+              isBlockExpired,
+              1,
+              { $add: [{ $ifNull: ['$attempts', 0] }, 1] },
+            ],
+          },
+          blockedUntil: {
+            $cond: [
+              isBlockExpired,
+              null,
+              '$blockedUntil',
+            ],
+          },
+        },
+      },
+    ],
+    { upsert: true, new: true }
   );
 
   let isBlocked = false;
@@ -160,7 +179,7 @@ const checkAndIncrementEmailOtpLimit = async (email) => {
     return { allowed: true, retryAfterSeconds: 0 };
   } catch (err) {
     console.error('Failed to check/increment email OTP limit:', err.message);
-    return { allowed: true, retryAfterSeconds: 0 };
+    return { allowed: false, retryAfterSeconds: 60 };
   }
 };
 
