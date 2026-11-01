@@ -1332,6 +1332,7 @@ const adminUpdateBusiness = [
 
     const newCountry = business.address?.country || 'Pakistan';
     const countryChanged = newCountry.trim().toLowerCase() !== oldCountry.trim().toLowerCase();
+    const oldReceiptsToDelete = [];
 
     if (countryChanged) {
       const paymentSetting = await PaymentSetting.getSettings();
@@ -1370,9 +1371,7 @@ const adminUpdateBusiness = [
           business.paymentAmount = 0;
           business.paymentStatus = 'none';
           if (business.paymentReceipt?.publicId) {
-            cloudinary.uploader.destroy(business.paymentReceipt.publicId).catch((err) => {
-              console.error('Failed to delete receipt from Cloudinary on country change:', err.message);
-            });
+            oldReceiptsToDelete.push(business.paymentReceipt.publicId);
           }
           business.paymentReceipt = { url: '', publicId: '' };
         } else {
@@ -1381,9 +1380,7 @@ const adminUpdateBusiness = [
             business.paymentStatus = 'pending';
             business.isApproved = false;
             if (business.paymentReceipt?.publicId) {
-              cloudinary.uploader.destroy(business.paymentReceipt.publicId).catch((err) => {
-                console.error('Failed to delete receipt from Cloudinary on country change:', err.message);
-              });
+              oldReceiptsToDelete.push(business.paymentReceipt.publicId);
             }
             business.paymentReceipt = { url: '', publicId: '' };
           }
@@ -1394,6 +1391,14 @@ const adminUpdateBusiness = [
     // FORBIDDEN fields: owner, averageRating, reviewCount, images (payment fields managed via country-change rules above)
     // None of these are modified directly via request body.
     await business.save();
+
+    if (oldReceiptsToDelete.length > 0) {
+      oldReceiptsToDelete.forEach((publicId) => {
+        cloudinary.uploader.destroy(publicId).catch((err) => {
+          console.error('Failed to delete receipt from Cloudinary on country change:', err.message);
+        });
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -1496,17 +1501,19 @@ const deleteBusinessReceipt = [
       return res.status(404).json({ success: false, message: 'Business not found.' });
     }
 
-    if (business.paymentReceipt?.publicId) {
-      await cloudinary.uploader.destroy(business.paymentReceipt.publicId).catch((err) => {
-        console.error('Failed to delete receipt from Cloudinary:', err.message);
-      });
-    }
+    const oldReceiptPublicId = business.paymentReceipt?.publicId;
 
     business.paymentReceipt = { url: '', publicId: '' };
     business.paymentStatus = 'none';
     business.paymentAmount = 0;
     business.isApproved = false;
     await business.save();
+
+    if (oldReceiptPublicId) {
+      cloudinary.uploader.destroy(oldReceiptPublicId).catch((err) => {
+        console.error('Failed to delete receipt from Cloudinary:', err.message);
+      });
+    }
 
     logActivity({
       actorId: req.user?._id,

@@ -336,22 +336,20 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
     settings.ownerNotificationEmail = trimmedEmail;
   }
 
+  const oldQrPublicIdsToDelete = [];
+
   // Handle QR Code deletion if requested
   if (removeQrCode === true || removeQrCode === 'true') {
     if (settings.qrCode?.publicId) {
-      await cloudinary.uploader.destroy(settings.qrCode.publicId).catch((err) => {
-        console.error('Failed to delete old QR code from Cloudinary:', err.message);
-      });
+      oldQrPublicIdsToDelete.push(settings.qrCode.publicId);
     }
     settings.qrCode = { url: '', publicId: '' };
   }
 
   // Handle new QR Code upload
   if (req.file) {
-    if (settings.qrCode?.publicId) {
-      await cloudinary.uploader.destroy(settings.qrCode.publicId).catch((err) => {
-        console.error('Failed to delete old QR code from Cloudinary:', err.message);
-      });
+    if (settings.qrCode?.publicId && !oldQrPublicIdsToDelete.includes(settings.qrCode.publicId)) {
+      oldQrPublicIdsToDelete.push(settings.qrCode.publicId);
     }
     settings.qrCode = {
       url: req.file.path,
@@ -359,7 +357,22 @@ const updatePaymentSettings = asyncHandler(async (req, res) => {
     };
   }
 
-  await settings.save();
+  try {
+    await settings.save();
+  } catch (err) {
+    if (req.file) {
+      await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+    }
+    throw err;
+  }
+
+  if (oldQrPublicIdsToDelete.length > 0) {
+    oldQrPublicIdsToDelete.forEach((pubId) => {
+      cloudinary.uploader.destroy(pubId).catch((err) => {
+        console.error('Failed to delete old QR code from Cloudinary:', err.message);
+      });
+    });
+  }
 
   logActivity({
     actorId: req.user?._id,
@@ -408,14 +421,16 @@ const deletePaymentQrCode = asyncHandler(async (req, res) => {
     });
   }
 
-  if (settings.qrCode?.publicId) {
-    await cloudinary.uploader.destroy(settings.qrCode.publicId).catch((err) => {
-      console.error('Failed to delete QR code from Cloudinary:', err.message);
-    });
-  }
+  const oldQrPublicId = settings.qrCode?.publicId;
 
   settings.qrCode = { url: '', publicId: '' };
   await settings.save();
+
+  if (oldQrPublicId) {
+    cloudinary.uploader.destroy(oldQrPublicId).catch((err) => {
+      console.error('Failed to delete QR code from Cloudinary:', err.message);
+    });
+  }
 
   logActivity({
     actorId: req.user?._id,
@@ -646,19 +661,28 @@ const updatePaymentMethod = asyncHandler(async (req, res) => {
   }
 
   // Handle replacing card image
+  const oldCardImagePublicId = req.file && method.cardImage?.publicId ? method.cardImage.publicId : null;
   if (req.file) {
-    if (method.cardImage?.publicId) {
-      await cloudinary.uploader.destroy(method.cardImage.publicId).catch((err) => {
-        console.error('Failed to delete old card image:', err.message);
-      });
-    }
     method.cardImage = {
       url: req.file.path,
       publicId: req.file.filename,
     };
   }
 
-  await settings.save();
+  try {
+    await settings.save();
+  } catch (err) {
+    if (req.file) {
+      await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+    }
+    throw err;
+  }
+
+  if (oldCardImagePublicId) {
+    cloudinary.uploader.destroy(oldCardImagePublicId).catch((err) => {
+      console.error('Failed to delete old card image:', err.message);
+    });
+  }
 
   logActivity({
     actorId: req.user?._id,
@@ -704,16 +728,18 @@ const deletePaymentMethod = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Payment method not found.' });
   }
 
-  if (method.cardImage?.publicId) {
-    await cloudinary.uploader.destroy(method.cardImage.publicId).catch((err) => {
-      console.error('Failed to delete card image from Cloudinary:', err.message);
-    });
-  }
+  const oldCardImagePublicId = method.cardImage?.publicId || null;
 
   const methodName = method.name;
   const methodIdObj = method._id;
   settings.paymentMethods.pull(methodId);
   await settings.save();
+
+  if (oldCardImagePublicId) {
+    cloudinary.uploader.destroy(oldCardImagePublicId).catch((err) => {
+      console.error('Failed to delete card image from Cloudinary:', err.message);
+    });
+  }
 
   logActivity({
     actorId: req.user?._id,

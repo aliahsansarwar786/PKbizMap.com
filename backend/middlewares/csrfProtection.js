@@ -19,18 +19,23 @@ const csrfProtection = (req, res, next) => {
   const rawPath = typeof req.path === 'string' ? req.path.toLowerCase() : '';
   const normalisedPath = rawPath.length > 1 ? rawPath.replace(/\/+$/, '') : rawPath;
 
-  // CSRF protection applies to cookie-authenticated requests, plus unauthenticated auth/OTP endpoints
+  // CSRF protection applies to cookie-authenticated requests, plus unauthenticated auth/OTP and claim endpoints
   const hasSessionCookie = Boolean(req.cookies?.token);
-  const isEnforcedAuthRoute = [
-    '/api/auth/login',
-    '/api/auth/register',
-    '/api/auth/verify-email',
-    '/api/auth/verify-reset-otp',
-    '/api/auth/forgot-password',
-    '/api/auth/resend-otp',
-    '/api/auth/resend-reset-otp',
-    '/api/auth/correct-email',
-  ].includes(normalisedPath);
+  const isClaimRoute =
+    normalisedPath === '/api/claims/verify' ||
+    (normalisedPath.startsWith('/api/businesses/') && normalisedPath.endsWith('/claim'));
+  const isEnforcedAuthRoute =
+    [
+      '/api/auth/login',
+      '/api/auth/register',
+      '/api/auth/verify-email',
+      '/api/auth/verify-reset-otp',
+      '/api/auth/forgot-password',
+      '/api/auth/resend-otp',
+      '/api/auth/resend-reset-otp',
+      '/api/auth/correct-email',
+      '/api/claims/verify',
+    ].includes(normalisedPath) || isClaimRoute;
 
   if (!hasSessionCookie && !isEnforcedAuthRoute) {
     return next();

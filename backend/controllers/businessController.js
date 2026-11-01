@@ -323,7 +323,13 @@ const createBusiness = [
 
     // Check payment system settings (Multi-country fee support)
     let requiresPayment = false;
-    const paymentSetting = await PaymentSetting.getSettings();
+    let paymentSetting;
+    try {
+      paymentSetting = await PaymentSetting.getSettings();
+    } catch (err) {
+      await destroyUploadedFiles(req);
+      throw err;
+    }
     if (!paymentSetting) {
       if (images.length > 0) {
         await Promise.all(
@@ -561,6 +567,7 @@ const updateBusiness = [
 
     const business = await Business.findById(req.params.id);
     if (!business) {
+      await destroyUploadedFiles(req);
       return res.status(404).json({ success: false, message: 'Business not found.' });
     }
 
@@ -569,6 +576,7 @@ const updateBusiness = [
     const isAdmin = req.user.role === 'admin';
 
     if (!isOwner && !isAdmin) {
+      await destroyUploadedFiles(req);
       return res.status(403).json({
         success: false,
         message: 'You are not authorized to edit this business.',
@@ -635,6 +643,7 @@ const updateBusiness = [
 
     // Validate website scheme (http/https only)
     if (updates.website !== undefined && !isValidHttpUrl(updates.website)) {
+      await destroyUploadedFiles(req);
       return res.status(400).json({
         success: false,
         message: 'Website must be a valid URL starting with http:// or https://',
@@ -645,6 +654,7 @@ const updateBusiness = [
     if (updates.socialLinks) {
       for (const [key, val] of Object.entries(updates.socialLinks)) {
         if (val && !isValidHttpUrl(val)) {
+          await destroyUploadedFiles(req);
           return res.status(400).json({
             success: false,
             message: `${key} must be a valid URL starting with http:// or https://`,
@@ -678,7 +688,13 @@ const updateBusiness = [
     const countryChanged = Boolean(newCountry && newCountry.trim().toLowerCase() !== oldCountry.trim().toLowerCase());
 
     if (countryChanged) {
-      const paymentSetting = await PaymentSetting.getSettings();
+      let paymentSetting;
+      try {
+        paymentSetting = await PaymentSetting.getSettings();
+      } catch (err) {
+        await destroyUploadedFiles(req);
+        throw err;
+      }
       if (paymentSetting && paymentSetting.isEnabled) {
         const targetCountry = newCountry.trim();
         let newFee;
@@ -776,7 +792,13 @@ const updateBusiness = [
       updates.paymentStatus = 'pending';
       updates.isApproved = false;
 
-      const paymentSetting = await PaymentSetting.getSettings();
+      let paymentSetting;
+      try {
+        paymentSetting = await PaymentSetting.getSettings();
+      } catch (err) {
+        await destroyUploadedFiles(req);
+        throw err;
+      }
       if (paymentSetting && paymentSetting.isEnabled) {
         const targetCountry = updates.address?.country || business.address?.country || 'Pakistan';
         let reuploadFee;
@@ -794,7 +816,7 @@ const updateBusiness = [
           }
           reuploadFee = parsedFee;
         } catch (feeErr) {
-          await cloudinary.uploader.destroy(updatedReceiptFile.filename).catch(() => {});
+          await destroyUploadedFiles(req);
           return res.status(503).json({
             success: false,
             message: 'Payment settings are currently unavailable. Receipt update is temporarily blocked.',
@@ -802,7 +824,7 @@ const updateBusiness = [
         }
 
         if (!Number.isFinite(reuploadFee) || reuploadFee < 0) {
-          await cloudinary.uploader.destroy(updatedReceiptFile.filename).catch(() => {});
+          await destroyUploadedFiles(req);
           return res.status(503).json({
             success: false,
             message: 'Payment settings are currently unavailable. Receipt update is temporarily blocked.',
@@ -923,12 +945,14 @@ const deleteBusinessImage = asyncHandler(async (req, res) => {
     return res.status(404).json({ success: false, message: 'Image not found in this business.' });
   }
 
-  // Delete from Cloudinary
-  await cloudinary.uploader.destroy(publicId);
-
-  // Remove from DB
+  // Remove from DB first
   await Business.findByIdAndUpdate(req.params.id, {
     $pull: { images: { publicId } },
+  });
+
+  // Delete from Cloudinary only after DB update succeeds
+  await cloudinary.uploader.destroy(publicId).catch((err) => {
+    console.error('Failed to delete image from Cloudinary:', err.message);
   });
 
   res.status(200).json({

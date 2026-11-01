@@ -1460,20 +1460,32 @@ const updateProfile = [
       }
     });
 
+    const oldAvatarPublicId = req.file && req.user.avatar?.publicId ? req.user.avatar.publicId : null;
     if (req.file) {
-      if (req.user.avatar?.publicId) {
-        await cloudinary.uploader.destroy(req.user.avatar.publicId);
-      }
       updates.avatar = {
         url: req.file.path,
         publicId: req.file.filename,
       };
     }
 
-    const user = await User.findByIdAndUpdate(req.user._id, updates, {
-      new: true,
-      runValidators: true,
-    });
+    let user;
+    try {
+      user = await User.findByIdAndUpdate(req.user._id, updates, {
+        new: true,
+        runValidators: true,
+      });
+    } catch (err) {
+      if (req.file) {
+        await cloudinary.uploader.destroy(req.file.filename).catch(() => {});
+      }
+      throw err;
+    }
+
+    if (oldAvatarPublicId) {
+      cloudinary.uploader.destroy(oldAvatarPublicId).catch((err) => {
+        console.error('Failed to delete old avatar from Cloudinary:', err.message);
+      });
+    }
 
     res.status(200).json({
       success: true,

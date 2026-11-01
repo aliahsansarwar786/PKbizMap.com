@@ -134,6 +134,15 @@ const requestClaim = asyncHandler(async (req, res) => {
   const expiresAtCode = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
   const expiresAtToken = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
+  // Re-read latest claim immediately before creation to guard against concurrent requests
+  const freshLatestClaim = await ClaimRequest.findOne({ business: business._id }).sort({ createdAt: -1 });
+  if (freshLatestClaim && freshLatestClaim.createdAt >= new Date(Date.now() - 60 * 1000)) {
+    return res.status(429).json({
+      success: false,
+      message: 'Too many claim requests for this business. Please try again later.',
+    });
+  }
+
   const claimRequest = await ClaimRequest.create({
     business: business._id,
     claimantName: claimantName.trim(),
@@ -291,8 +300,18 @@ const verifyClaim = asyncHandler(async (req, res) => {
   const isStatusValid = ['pending', 'verified', 'pending_admin'].includes(candidateClaim.status);
 
   if (!isCodeMatch || !isNotExpired || !isStatusValid) {
-    candidateClaim.failedAttempts = (candidateClaim.failedAttempts || 0) + 1;
-    await candidateClaim.save();
+    const updated = await ClaimRequest.findOneAndUpdate(
+      { _id: candidateClaim._id },
+      { $inc: { failedAttempts: 1 } },
+      { new: true }
+    );
+    const attempts = updated ? updated.failedAttempts : (candidateClaim.failedAttempts || 0) + 1;
+    if (attempts >= 5) {
+      return res.status(400).json({
+        success: false,
+        message: 'Too many failed verification attempts. This code has been locked. Please submit a new claim request.',
+      });
+    }
     return res.status(400).json({
       success: false,
       message: 'Invalid or expired verification code. Please submit a new claim request.',
