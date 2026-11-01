@@ -71,10 +71,32 @@ const register = [
     }
 
     // Check if user exists: if so, return the same generic success response without creating duplicate
-    const existingUser = await User.findOne({ email: normalizedEmail });
+    const existingUser = await User.findOne({ email: normalizedEmail }).select(
+      '+emailVerificationLastResend +emailVerificationOTPBlockedUntil +emailVerificationOTPAttempts'
+    );
     if (existingUser) {
       if (existingUser.emailVerified) {
         return res.status(201).json(genericSuccess);
+      }
+
+      // Check if IP is currently blocked
+      const ip = getClientIp(req);
+      const ipBlock = await checkIpBlock(ip, 'email-verification');
+      if (ipBlock.isBlocked) {
+        return res.status(201).json(genericSuccess);
+      }
+
+      // Check account lockout
+      if (existingUser.emailVerificationOTPBlockedUntil && existingUser.emailVerificationOTPBlockedUntil.getTime() > Date.now()) {
+        return res.status(201).json(genericSuccess);
+      }
+
+      // 60-second cooldown check
+      if (existingUser.emailVerificationLastResend) {
+        const elapsed = Date.now() - new Date(existingUser.emailVerificationLastResend).getTime();
+        if (elapsed < RESEND_COOLDOWN_MS) {
+          return res.status(201).json(genericSuccess);
+        }
       }
 
       // Check per-email OTP throttle (max 5 OTP emails per hour)
@@ -90,7 +112,6 @@ const register = [
       const otp = generate6DigitOtp();
       existingUser.emailVerificationOTP = hashOtp(otp);
       existingUser.emailVerificationOTPExpires = new Date(Date.now() + OTP_EXPIRY_MS);
-      existingUser.emailVerificationOTPAttempts = 0;
       existingUser.emailVerificationLastResend = new Date();
       await existingUser.save({ validateBeforeSave: false });
 
@@ -959,7 +980,6 @@ const verifyResetOtp = [
       }
       return res.status(400).json({
         success: false,
-        attemptsRemaining: fail.attemptsRemaining,
         message: 'Invalid or expired verification code.',
       });
     }
@@ -969,7 +989,6 @@ const verifyResetOtp = [
       if (user.resetPasswordOTPBlockedUntil.getTime() > Date.now()) {
         return res.status(400).json({
           success: false,
-          attemptsRemaining: 0,
           message: 'Invalid or expired verification code.',
         });
       } else {
@@ -985,10 +1004,8 @@ const verifyResetOtp = [
 
     // 3. Expiry check
     if (!user.resetPasswordOTPExpires || user.resetPasswordOTPExpires.getTime() < Date.now()) {
-      const userAttemptsRemaining = Math.max(0, 5 - (user.resetPasswordOTPAttempts || 0));
       return res.status(400).json({
         success: false,
-        attemptsRemaining: userAttemptsRemaining,
         message: 'Invalid or expired verification code.',
       });
     }
@@ -1021,10 +1038,8 @@ const verifyResetOtp = [
         });
       }
 
-      const userAttemptsRemaining = Math.max(0, 5 - attempts);
       return res.status(400).json({
         success: false,
-        attemptsRemaining: Math.min(fail.attemptsRemaining, userAttemptsRemaining),
         message: 'Invalid or expired verification code.',
       });
     }

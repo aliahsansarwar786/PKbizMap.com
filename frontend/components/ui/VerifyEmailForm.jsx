@@ -171,7 +171,7 @@ export default function VerifyEmailForm() {
       }
       setTimeout(() => {
         const rawNext = searchParams.get('next');
-        const isValidNext = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//');
+        const isValidNext = rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') && !rawNext.startsWith('/\\');
         const nextUrl = isValidNext ? rawNext : '/dashboard';
         router.push(nextUrl);
       }, 1500);
