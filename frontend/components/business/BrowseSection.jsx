@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { businessAPI } from '@/lib/api';
 import { COUNTRIES, getCities } from '@/data/locations';
 import { CATEGORIES as CATEGORIES_LIST } from '@/data/categories';
+import { getCategorySlug, getCountrySlug, getCitySlug } from '@/lib/slugify';
 import {
   ChevronLeft,
   ChevronRight,
@@ -385,13 +386,14 @@ export default function BrowseSection({
     }
   };
 
-  // Category click: navigates with full filters (Country + City + Category)
+  // Category click: navigates to pretty landing page when on home page
   const handleCategoryClick = (categoryName) => {
     if (isHomePage) {
-      let url = `/businesses?country=${encodeURIComponent(effectiveCountry)}`;
-      if (effectiveCity) url += `&city=${encodeURIComponent(effectiveCity)}`;
-      url += `&category=${encodeURIComponent(categoryName)}`;
-      router.push(url);
+      if (effectiveCity) {
+        router.push(`/categories/${getCategorySlug(categoryName)}/${getCitySlug(effectiveCity)}`);
+      } else {
+        router.push(`/categories/${getCategorySlug(categoryName)}`);
+      }
     } else {
       if (selectedCategory === categoryName) {
         if (onSelectCategory) onSelectCategory('');
@@ -411,11 +413,11 @@ export default function BrowseSection({
   };
 
   const handleViewAllCity = () => {
-    router.push(`/businesses?country=${encodeURIComponent(effectiveCountry)}&city=${encodeURIComponent(effectiveCity)}`);
+    router.push(`/cities/${getCountrySlug(effectiveCountry)}/${getCitySlug(effectiveCity)}`);
   };
 
   const handleViewAllCountry = () => {
-    router.push(`/businesses?country=${encodeURIComponent(effectiveCountry)}`);
+    router.push(`/cities/${getCountrySlug(effectiveCountry)}`);
   };
 
   // Helper: City listing count

@@ -1,5 +1,16 @@
 import { MetadataRoute } from 'next';
 import { getAllPosts } from '@/data/blogPosts';
+import { CATEGORIES } from '@/data/categories';
+import { COUNTRIES } from '@/data/locations';
+import {
+  getCategorySlug,
+  getCountrySlug,
+  getCitySlug,
+} from '@/lib/slugify';
+import {
+  fetchBusinessSummary,
+  getCategoryTotalCount,
+} from '@/lib/landingData';
 
 export const revalidate = 86400;
 
@@ -121,6 +132,74 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }));
 
+  let landingRoutes: MetadataRoute.Sitemap = [];
+  try {
+    const summary = await fetchBusinessSummary();
+    if (summary) {
+      // 1. Categories (count > 0)
+      for (const cat of CATEGORIES) {
+        const count = getCategoryTotalCount(summary, cat.name);
+        if (count > 0) {
+          landingRoutes.push({
+            url: `${baseUrl}/categories/${getCategorySlug(cat.name)}`,
+            lastModified: new Date(),
+            changeFrequency: 'weekly',
+            priority: 0.8,
+          });
+        }
+      }
+
+      // 2. Countries (count > 0)
+      for (const country of COUNTRIES) {
+        const count = summary.countries?.[country] || 0;
+        if (count > 0) {
+          landingRoutes.push({
+            url: `${baseUrl}/cities/${getCountrySlug(country)}`,
+            lastModified: new Date(),
+            changeFrequency: 'weekly',
+            priority: 0.8,
+          });
+        }
+      }
+
+      // 3. Cities (count > 0)
+      for (const country of COUNTRIES) {
+        const cityMap = summary.cities?.[country] || {};
+        for (const [cityName, cityCount] of Object.entries(cityMap)) {
+          if (cityCount > 0) {
+            landingRoutes.push({
+              url: `${baseUrl}/cities/${getCountrySlug(country)}/${getCitySlug(cityName, country)}`,
+              lastModified: new Date(),
+              changeFrequency: 'weekly',
+              priority: 0.75,
+            });
+          }
+        }
+      }
+
+      // 4. Nonzero Combos
+      if (summary.categoriesByCity) {
+        for (const country of COUNTRIES) {
+          const countryCombos = summary.categoriesByCity[country] || {};
+          for (const [cityName, catMap] of Object.entries(countryCombos)) {
+            for (const [catName, catCount] of Object.entries(catMap || {})) {
+              if (catCount > 0) {
+                landingRoutes.push({
+                  url: `${baseUrl}/categories/${getCategorySlug(catName)}/${getCitySlug(cityName, country)}`,
+                  lastModified: new Date(),
+                  changeFrequency: 'weekly',
+                  priority: 0.75,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching landing routes for sitemap:', err);
+  }
+
   let businessRoutes: MetadataRoute.Sitemap = [];
   let failedPagesCount = 0;
 
@@ -177,5 +256,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     businessRoutes = [];
   }
 
-  return [...staticRoutes, ...blogRoutes, ...businessRoutes];
+  return [...staticRoutes, ...blogRoutes, ...landingRoutes, ...businessRoutes];
 }

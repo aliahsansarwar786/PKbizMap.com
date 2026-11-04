@@ -3,6 +3,7 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import Link from 'next/link';
 import { CATEGORIES } from '@/data/categories';
+import { getCategorySlug } from '@/lib/slugify';
 
 export const metadata: Metadata = {
   title: 'Browse Categories',
@@ -41,7 +42,7 @@ export default function CategoriesPage() {
               {CATEGORIES.map(({ name, image, description }) => (
                 <Link
                   key={name}
-                  href={`/businesses?category=${encodeURIComponent(name)}`}
+                  href={`/categories/${getCategorySlug(name)}`}
                   className="flex items-center gap-3.5 sm:gap-5 p-3.5 sm:p-4 bg-white rounded-2xl border border-slate-200 hover:border-blue-400 hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
                   suppressHydrationWarning
                 >

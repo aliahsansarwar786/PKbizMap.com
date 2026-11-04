@@ -6,33 +6,13 @@ import BusinessDirectory from '@/components/business/BusinessDirectory';
 import CategoryBreadcrumbs from '@/components/business/CategoryBreadcrumbs';
 import { safeJsonLd } from '@/lib/safeJsonLd';
 import { CATEGORY_NAMES, CATEGORY_ALIASES } from '@/data/categories';
-
-export const metadata: Metadata = {
-  title: {
-    absolute: 'Business Directory Pakistan, UAE & USA | BizPrimeHub',
-  },
-  description:
-    'Browse 1,200+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
-  alternates: {
-    canonical: 'https://www.bizprimehub.com/businesses',
-  },
-  openGraph: {
-    title: 'Business Directory Pakistan, UAE & USA | BizPrimeHub',
-    description:
-      'Browse 1,200+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
-    url: 'https://www.bizprimehub.com/businesses',
-    siteName: 'BizPrimeHub',
-    type: 'website',
-    images: ['/og-default.jpg'],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Business Directory Pakistan, UAE & USA | BizPrimeHub',
-    description:
-      'Browse 1,200+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
-    images: ['/og-default.jpg'],
-  },
-};
+import {
+  getCategorySlug,
+  getCountryBySlug,
+  getCountrySlug,
+  getCityBySlug,
+  slugify,
+} from '@/lib/slugify';
 
 interface BusinessesPageProps {
   searchParams?: Promise<{ category?: string; [key: string]: string | string[] | undefined }>;
@@ -55,6 +35,81 @@ function sanitizeCategory(rawCategory?: string): string | undefined {
     return trimmed;
   }
   return undefined;
+}
+
+function getCanonicalForQuery(params?: { [key: string]: string | string[] | undefined }): string {
+  const defaultCanonical = 'https://www.bizprimehub.com/businesses';
+  if (!params) return defaultCanonical;
+
+  // If there are search keywords, ratings, sort, or pagination > 1, stay on /businesses
+  const rawKeyword = typeof params.keyword === 'string' ? params.keyword.trim() : '';
+  const rawRating = typeof params.rating === 'string' ? params.rating.trim() : '';
+  const rawPage = typeof params.page === 'string' ? params.page.trim() : '';
+  if (rawKeyword || rawRating || (rawPage && rawPage !== '1')) {
+    return defaultCanonical;
+  }
+
+  const rawCat = typeof params.category === 'string' ? params.category : undefined;
+  const rawCity = typeof params.city === 'string' ? params.city : undefined;
+  const rawCountry = typeof params.country === 'string' ? params.country : undefined;
+
+  const categoryName = sanitizeCategory(rawCat);
+  const cityInfo = rawCity ? getCityBySlug(slugify(rawCity)) : undefined;
+  const country = rawCountry ? getCountryBySlug(slugify(rawCountry)) : cityInfo?.country;
+
+  // 1. Category + City
+  if (categoryName && cityInfo) {
+    return `https://www.bizprimehub.com/categories/${getCategorySlug(categoryName)}/${cityInfo.slug}`;
+  }
+
+  // 2. Category only
+  if (categoryName && !rawCity) {
+    return `https://www.bizprimehub.com/categories/${getCategorySlug(categoryName)}`;
+  }
+
+  // 3. City (and country)
+  if (cityInfo && !categoryName) {
+    return `https://www.bizprimehub.com/cities/${getCountrySlug(cityInfo.country)}/${cityInfo.slug}`;
+  }
+
+  // 4. Country only
+  if (country && !rawCity && !categoryName) {
+    return `https://www.bizprimehub.com/cities/${getCountrySlug(country)}`;
+  }
+
+  return defaultCanonical;
+}
+
+export async function generateMetadata({ searchParams }: BusinessesPageProps): Promise<Metadata> {
+  const resolved = searchParams ? await searchParams : undefined;
+  const canonical = getCanonicalForQuery(resolved);
+
+  return {
+    title: {
+      absolute: 'Business Directory Pakistan, UAE & USA | BizPrimeHub',
+    },
+    description:
+      'Browse 1,200+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
+    alternates: {
+      canonical,
+    },
+    openGraph: {
+      title: 'Business Directory Pakistan, UAE & USA | BizPrimeHub',
+      description:
+        'Browse 1,200+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
+      url: canonical,
+      siteName: 'BizPrimeHub',
+      type: 'website',
+      images: ['/og-default.jpg'],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: 'Business Directory Pakistan, UAE & USA | BizPrimeHub',
+      description:
+        'Browse 1,200+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
+      images: ['/og-default.jpg'],
+    },
+  };
 }
 
 export default async function BusinessesPage({ searchParams }: BusinessesPageProps) {
