@@ -9,6 +9,28 @@ interface BusinessDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
+function decodeHtmlEntities(str: string): string {
+  if (!str) return '';
+  return str
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#(\d+);/g, (_, dec) => String.fromCharCode(Number(dec)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+}
+
+function cutAtWordBoundary(str: string, maxLen: number): string {
+  if (str.length <= maxLen) return str;
+  const sub = str.slice(0, maxLen + 1);
+  const lastSpace = sub.lastIndexOf(' ');
+  if (lastSpace > 0) {
+    return sub.slice(0, lastSpace).trim();
+  }
+  return str.slice(0, maxLen).trim();
+}
+
 async function getBusiness(id: string) {
   const primaryApi = process.env.NEXT_PUBLIC_API_URL || 'https://pkbizmap-backend.vercel.app/api';
   const fallbackApi = 'https://pkbizmap-backend.vercel.app/api';
@@ -60,45 +82,82 @@ export async function generateMetadata({ params }: BusinessDetailPageProps): Pro
     };
   }
 
-  const city = (business.address?.city || '').trim();
+  const name = decodeHtmlEntities(business.title || '').trim();
   const category = (business.category || 'Business').trim();
-  const title = `${business.title} — ${category}${city ? ` in ${city}` : ''}`;
+  const city = (business.address?.city || '').trim();
+
+  const nameContainsCity = Boolean(city && name.toLowerCase().includes(city.toLowerCase()));
+  const inCity = city && !nameContainsCity ? ` in ${city}` : '';
+
+  const candA = `${name} — ${category}${inCity}`;
+  const candB = `${name}${inCity}`;
+  const candC = `${name} — ${category}`;
+  const candD = cutAtWordBoundary(name, 47);
+
+  let baseTitle = candD;
+  if (candA.length <= 47) {
+    baseTitle = candA;
+  } else if (candB.length <= 47) {
+    baseTitle = candB;
+  } else if (candC.length <= 47) {
+    baseTitle = candC;
+  }
+
+  const finalTitle = `${baseTitle} | BizPrimeHub`;
   const slug = business.slug || id;
   const canonicalUrl = `https://www.bizprimehub.com/businesses/${slug}`;
 
-  let rawDesc = (business.description || '').replace(/\s+/g, ' ').trim();
-  let description = '';
-  if (rawDesc) {
-    description = rawDesc.length > 150 ? rawDesc.slice(0, 150).trim() : rawDesc;
+  let firstSentence = '';
+  if (business.description) {
+    const cleanDesc = decodeHtmlEntities(business.description).replace(/\s+/g, ' ').trim();
+    if (cleanDesc) {
+      const match = cleanDesc.match(/^(.*?[.!?])(?:\s|$)/);
+      firstSentence = match ? match[1].trim() : cleanDesc;
+    }
   }
-  if (!description) {
-    description = `${business.title} is a ${category} business${city ? ` in ${city}` : ''}, listed for free on BizPrimeHub. View contact details, address and reviews.`;
+
+  const street = (business.address?.street || '').trim();
+  let middle = '';
+  if (firstSentence) {
+    middle = firstSentence;
+  } else if (street) {
+    middle = street.endsWith('.') ? street : `${street}.`;
   }
+
+  let composedDesc = '';
+  if (middle) {
+    const intro = city ? `${name} is a ${category} business in ${city}.` : `${name} is a ${category} business.`;
+    composedDesc = `${intro} ${middle} Find phone, address and reviews on BizPrimeHub.`;
+  } else {
+    composedDesc = `${name} is a ${category} business in ${city ? `${city}, Pakistan` : 'Pakistan'}. Find phone, address and reviews on BizPrimeHub.`;
+  }
+
+  const description = cutAtWordBoundary(composedDesc, 156);
 
   const defaultOgImage = 'https://www.bizprimehub.com/og-default.jpg';
   const ogImage = business.images?.[0]?.url || defaultOgImage;
 
   return {
-    title,
+    title: baseTitle,
     description,
     alternates: {
       canonical: canonicalUrl,
     },
     openGraph: {
-      title: `${title} | BizPrimeHub`,
+      title: finalTitle,
       description,
       url: canonicalUrl,
       type: 'website',
       images: [
         {
           url: ogImage,
-          alt: title,
+          alt: finalTitle,
         },
       ],
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${title} | BizPrimeHub`,
+      title: finalTitle,
       description,
       images: [ogImage],
     },
@@ -117,10 +176,18 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
 
   let jsonLd = null;
   let breadcrumbJsonLd = null;
+  let introParagraph = '';
+  let decodedTitle = '';
+
   if (business) {
+    decodedTitle = decodeHtmlEntities(business.title || '').trim();
     const city = (business.address?.city || '').trim();
     const country = (business.address?.country || 'Pakistan').trim();
+    const category = (business.category || 'Business').trim();
     const street = (business.address?.street || '').trim();
+    const location = city ? `${city}, ${country}` : country;
+    introParagraph = `${decodedTitle} is a ${category} business in ${location}.${street ? ` ${street}` : ''}`;
+
     const zip = (business.address?.zipCode || '').trim();
     const rawDesc = (business.description || '').replace(/\s+/g, ' ').trim();
     const slug = business.slug || id;
@@ -235,6 +302,16 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
       )}
       <Navbar />
       <main>
+        {business && (
+          <div className="container-max pt-6">
+            <h1 style={{ fontSize: '1.625rem', fontWeight: 700, color: '#1f2937' }}>
+              {decodedTitle}
+            </h1>
+            <p style={{ fontSize: '0.875rem', color: '#4b5563', marginTop: '0.5rem' }}>
+              {introParagraph}
+            </p>
+          </div>
+        )}
         <BusinessDetail id={business?.slug || id} />
       </main>
       <Footer />

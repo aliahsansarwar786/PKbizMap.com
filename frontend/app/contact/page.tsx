@@ -6,13 +6,15 @@ import ContactForm from '@/components/ui/ContactForm';
 
 export const metadata: Metadata = {
   title: 'Contact Us',
-  description: 'Get in touch with the BizPrimeHub support team.',
+  description:
+    'Contact BizPrimeHub — email info@bizprimehub.com or call +92 310 6131361. Our Multan office helps businesses list free and customers find local services.',
   alternates: {
     canonical: 'https://www.bizprimehub.com/contact',
   },
   openGraph: {
     title: 'Contact Us | BizPrimeHub',
-    description: 'Get in touch with the BizPrimeHub support team.',
+    description:
+      'Contact BizPrimeHub — email info@bizprimehub.com or call +92 310 6131361. Our Multan office helps businesses list free and customers find local services.',
     url: 'https://www.bizprimehub.com/contact',
     type: 'website',
     images: ['/og-default.jpg'],

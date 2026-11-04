@@ -6,13 +6,15 @@ import { CATEGORIES } from '@/data/categories';
 
 export const metadata: Metadata = {
   title: 'Browse Categories',
-  description: 'Explore all business categories on BizPrimeHub and find the services you need.',
+  description:
+    'Browse business categories on BizPrimeHub — banks, restaurants, hotels, clinics, shops and more across Pakistan, UAE and the USA. Find local services.',
   alternates: {
     canonical: 'https://www.bizprimehub.com/categories',
   },
   openGraph: {
     title: 'Browse Categories | BizPrimeHub',
-    description: 'Explore all business categories on BizPrimeHub and find the services you need.',
+    description:
+      'Browse business categories on BizPrimeHub — banks, restaurants, hotels, clinics, shops and more across Pakistan, UAE and the USA. Find local services.',
     url: 'https://www.bizprimehub.com/categories',
     type: 'website',
     images: ['/og-default.jpg'],

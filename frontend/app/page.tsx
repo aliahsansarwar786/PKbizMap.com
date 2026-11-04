@@ -61,19 +61,19 @@ const STATS = [
 
 export const metadata: Metadata = {
   title: {
-    absolute: 'Free Business Listing & Local Business Directory in Pakistan, UAE & USA | BizPrimeHub',
+    absolute: 'Free Business Directory Pakistan, UAE & USA | BizPrimeHub',
   },
   description:
-    "List your business for free on BizPrimeHub, Pakistan, UAE & USA's trusted local business directory. Find shops, hotels, restaurants, clinics and services near you in Multan, Lahore, Karachi and across Pakistan, UAE and the USA.",
+    'List your business free on BizPrimeHub — Pakistan, UAE & USA trusted local business directory. Find shops, hotels, restaurants and services near you.',
   keywords:
     'free business listing, business directory Pakistan, list your business free, local businesses near me, Pakistan business directory, free listing site, add your business, trusted local businesses, businesses in Multan, find businesses in Pakistan',
   alternates: {
     canonical: 'https://www.bizprimehub.com',
   },
   openGraph: {
-    title: 'Free Business Listing & Local Business Directory in Pakistan, UAE & USA | BizPrimeHub',
+    title: 'Free Business Directory Pakistan, UAE & USA | BizPrimeHub',
     description:
-      "List your business for free on BizPrimeHub, Pakistan, UAE & USA's trusted local business directory. Find shops, hotels, restaurants, clinics and services near you in Multan, Lahore, Karachi and across Pakistan, UAE and the USA.",
+      'List your business free on BizPrimeHub — Pakistan, UAE & USA trusted local business directory. Find shops, hotels, restaurants and services near you.',
     url: 'https://www.bizprimehub.com',
     siteName: 'BizPrimeHub',
     type: 'website',
@@ -88,9 +88,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Free Business Listing & Local Business Directory in Pakistan, UAE & USA | BizPrimeHub',
+    title: 'Free Business Directory Pakistan, UAE & USA | BizPrimeHub',
     description:
-      "List your business for free on BizPrimeHub, Pakistan, UAE & USA's trusted local business directory. Find shops, hotels, restaurants, clinics and services near you in Multan, Lahore, Karachi and across Pakistan, UAE and the USA.",
+      'List your business free on BizPrimeHub — Pakistan, UAE & USA trusted local business directory. Find shops, hotels, restaurants and services near you.',
     images: ['/og-default.jpg'],
   },
 };

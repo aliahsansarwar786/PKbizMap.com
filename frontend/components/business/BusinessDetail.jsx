@@ -443,9 +443,9 @@ export default function BusinessDetail({ id }) {
                     )}
                   </div>
 
-                  <h1 style={{ fontSize: '1.625rem', fontWeight: 700, color: '#1f2937' }}>
+                  <p style={{ fontSize: '1.625rem', fontWeight: 700, color: '#1f2937' }}>
                     {business.title}
-                  </h1>
+                  </p>
 
                   <div className="flex items-center gap-2 mt-2">
                     <MapPin size={14} style={{ color: '#6b7280', flexShrink: 0 }} />

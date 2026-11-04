@@ -4,13 +4,15 @@ import Footer from '@/components/layout/Footer';
 
 export const metadata: Metadata = {
   title: 'About Us',
-  description: 'Learn more about BizPrimeHub, our mission, and our team.',
+  description:
+    'About BizPrimeHub — the business listing directory for Pakistan, UAE and the USA. Our mission, our Multan team, and how we help local businesses get found.',
   alternates: {
     canonical: 'https://www.bizprimehub.com/about',
   },
   openGraph: {
     title: 'About Us | BizPrimeHub',
-    description: 'Learn more about BizPrimeHub, our mission, and our team.',
+    description:
+      'About BizPrimeHub — the business listing directory for Pakistan, UAE and the USA. Our mission, our Multan team, and how we help local businesses get found.',
     url: 'https://www.bizprimehub.com/about',
     type: 'website',
     images: ['/og-default.jpg'],

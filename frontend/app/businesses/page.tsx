@@ -8,16 +8,18 @@ import { safeJsonLd } from '@/lib/safeJsonLd';
 import { CATEGORY_NAMES, CATEGORY_ALIASES } from '@/data/categories';
 
 export const metadata: Metadata = {
-  title: 'Business Directory — Find Local Businesses in Pakistan',
+  title: {
+    absolute: 'Business Directory Pakistan, UAE & USA | BizPrimeHub',
+  },
   description:
-    'Browse 1,100+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
+    'Browse 1,200+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
   alternates: {
     canonical: 'https://www.bizprimehub.com/businesses',
   },
   openGraph: {
-    title: 'Business Directory — Find Local Businesses in Pakistan | BizPrimeHub',
+    title: 'Business Directory Pakistan, UAE & USA | BizPrimeHub',
     description:
-      'Browse 1,100+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
+      'Browse 1,200+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
     url: 'https://www.bizprimehub.com/businesses',
     siteName: 'BizPrimeHub',
     type: 'website',
@@ -25,9 +27,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Business Directory — Find Local Businesses in Pakistan | BizPrimeHub',
+    title: 'Business Directory Pakistan, UAE & USA | BizPrimeHub',
     description:
-      'Browse 1,100+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
+      'Browse 1,200+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
     images: ['/og-default.jpg'],
   },
 };
