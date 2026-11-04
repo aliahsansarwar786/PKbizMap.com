@@ -92,14 +92,14 @@ export async function generateMetadata({ params }: BusinessDetailPageProps): Pro
   const candA = `${name} — ${category}${inCity}`;
   const candB = `${name}${inCity}`;
   const candC = `${name} — ${category}`;
-  const candD = cutAtWordBoundary(name, 47);
+  const candD = cutAtWordBoundary(name, 46);
 
   let baseTitle = candD;
-  if (candA.length <= 47) {
+  if (candA.length <= 46) {
     baseTitle = candA;
-  } else if (candB.length <= 47) {
+  } else if (candB.length <= 46) {
     baseTitle = candB;
-  } else if (candC.length <= 47) {
+  } else if (candC.length <= 46) {
     baseTitle = candC;
   }
 
