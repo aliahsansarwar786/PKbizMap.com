@@ -129,9 +129,8 @@ export default function Footer() {
           </div>
           
           <div className="flex items-center gap-1.5 bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-800 text-slate-300">
-            <span>Made with care</span>
+            <span>Designed & Developed by <strong className="!text-white font-semibold">Ahsan Ali</strong></span>
             <Heart size={13} className="text-red-500 fill-red-500" />
-            <span>by <strong className="!text-white font-semibold">Ahsan Ali</strong></span>
           </div>
           
           <div className="flex items-center gap-6">
