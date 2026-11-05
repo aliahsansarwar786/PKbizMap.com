@@ -440,7 +440,7 @@ export default async function HomePage() {
               <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col">
                 <h3 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center justify-between">
                   <span>Recently Listed</span>
-                  <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                  <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
                     Latest
                   </span>
                 </h3>
@@ -547,7 +547,7 @@ export default async function HomePage() {
             <h2 id="cta-heading" style={{ fontSize: '1.75rem', fontWeight: 700, color: '#ffffff', marginBottom: '0.75rem' }}>
               Own a Business? List It for Free!
             </h2>
-            <p style={{ color: '#bfdbfe', maxWidth: 480, margin: '0 auto 2rem', lineHeight: 1.7 }}>
+            <p style={{ color: '#eff6ff', maxWidth: 480, margin: '0 auto 2rem', lineHeight: 1.7 }}>
               Reach potential customers in your community. Create your business listing today — it's completely free to get started.
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
