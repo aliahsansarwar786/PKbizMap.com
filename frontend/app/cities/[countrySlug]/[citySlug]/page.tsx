@@ -19,7 +19,7 @@ import {
   getCityTotalCount,
 } from '@/lib/landingData';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 interface CityPageProps {
   params: Promise<{ countrySlug: string; citySlug: string }>;

@@ -20,7 +20,7 @@ import {
   getCategoryTotalCount,
 } from '@/lib/landingData';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 interface CategoryPageProps {
   params: Promise<{ categorySlug: string }>;

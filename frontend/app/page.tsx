@@ -30,6 +30,8 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { CATEGORIES } from '@/data/categories';
+import { getCategorySlug, getCountrySlug, getCitySlug } from '@/lib/slugify';
+import { fetchBusinessSummary } from '@/lib/landingData';
 
 const HOW_IT_WORKS = [
   {
@@ -95,7 +97,69 @@ export const metadata: Metadata = {
   },
 };
 
+async function fetchRecentBusinesses(): Promise<any[]> {
+  const primaryApi = process.env.NEXT_PUBLIC_API_URL || 'https://pkbizmap-backend.vercel.app/api';
+  const fallbackApi = 'https://pkbizmap-backend.vercel.app/api';
+
+  try {
+    const res = await fetch(`${primaryApi}/businesses?limit=8&sort=-createdAt`, {
+      next: { revalidate: 3600 },
+    });
+    if (res.ok) {
+      const json = await res.json();
+      if (json?.data?.businesses && Array.isArray(json.data.businesses)) {
+        return json.data.businesses;
+      }
+    }
+  } catch (err) {
+    // try fallback
+  }
+
+  if (primaryApi !== fallbackApi) {
+    try {
+      const fbRes = await fetch(`${fallbackApi}/businesses?limit=8&sort=-createdAt`, {
+        next: { revalidate: 3600 },
+      });
+      if (fbRes.ok) {
+        const json = await fbRes.json();
+        if (json?.data?.businesses && Array.isArray(json.data.businesses)) {
+          return json.data.businesses;
+        }
+      }
+    } catch (fbErr) {
+      // ignore
+    }
+  }
+
+  return [];
+}
+
 export default async function HomePage() {
+  const [summary, recentBusinesses] = await Promise.all([
+    fetchBusinessSummary(),
+    fetchRecentBusinesses(),
+  ]);
+
+  const topCities: { city: string; country: string; count: number; citySlug: string; countrySlug: string }[] = [];
+  if (summary?.cities) {
+    for (const [countryName, cityMap] of Object.entries(summary.cities)) {
+      if (!cityMap) continue;
+      for (const [cityName, count] of Object.entries(cityMap)) {
+        if (count > 0) {
+          topCities.push({
+            city: cityName,
+            country: countryName,
+            count,
+            citySlug: getCitySlug(cityName, countryName as any),
+            countrySlug: getCountrySlug(countryName),
+          });
+        }
+      }
+    }
+  }
+  topCities.sort((a, b) => b.count - a.count);
+  const top12Cities = topCities.slice(0, 12);
+
   let businessCount = 0;
   try {
     const primaryApi = process.env.NEXT_PUBLIC_API_URL || 'https://pkbizmap-backend.vercel.app/api';
@@ -282,6 +346,110 @@ export default async function HomePage() {
         <Suspense fallback={null}>
           <RecentlyListed />
         </Suspense>
+
+        {/* ── Directory Links (Server-Rendered for Crawlers & Fast Navigation) ── */}
+        <section
+          className="section"
+          style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}
+          aria-labelledby="directory-links-heading"
+        >
+          <div className="container-max">
+            <div className="text-center mb-10">
+              <h2
+                id="directory-links-heading"
+                style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.5rem' }}
+              >
+                Explore BizPrimeHub Directory
+              </h2>
+              <p style={{ color: '#64748b', fontSize: '0.9375rem' }}>
+                Browse verified local listings by industry category, popular locations, and recently approved businesses.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Group 1: Browse by Category */}
+              <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col">
+                <h3 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center justify-between">
+                  <span>Browse by Category</span>
+                  <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                    {CATEGORIES.length} Categories
+                  </span>
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {CATEGORIES.map((cat) => (
+                    <Link
+                      key={cat.name}
+                      href={`/categories/${getCategorySlug(cat.name)}`}
+                      className="text-xs sm:text-sm text-slate-700 hover:text-blue-600 hover:bg-blue-50/60 px-2.5 py-1.5 rounded-lg transition-colors truncate"
+                      title={cat.name}
+                    >
+                      {cat.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+
+              {/* Group 2: Browse by Country & City */}
+              <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col">
+                <h3 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">
+                  Browse by Country &amp; City
+                </h3>
+                <div className="mb-4">
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Countries</div>
+                  <div className="flex flex-wrap gap-2">
+                    {['Pakistan', 'UAE', 'USA'].map((country) => (
+                      <Link
+                        key={country}
+                        href={`/cities/${getCountrySlug(country)}`}
+                        className="inline-flex items-center text-xs sm:text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        {country}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Popular Cities</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {top12Cities.map((c) => (
+                      <Link
+                        key={`${c.countrySlug}-${c.citySlug}`}
+                        href={`/cities/${c.countrySlug}/${c.citySlug}`}
+                        className="text-xs sm:text-sm text-slate-700 hover:text-blue-600 hover:bg-blue-50/60 px-2.5 py-1.5 rounded-lg transition-colors truncate"
+                        title={`${c.city}, ${c.country}`}
+                      >
+                        {c.city}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Group 3: Recently Listed */}
+              <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col">
+                <h3 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center justify-between">
+                  <span>Recently Listed</span>
+                  <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                    Latest
+                  </span>
+                </h3>
+                <ul className="space-y-2">
+                  {recentBusinesses.map((b: any) => (
+                    <li key={b._id || b.slug}>
+                      <Link
+                        href={`/businesses/${b.slug || b._id}`}
+                        className="text-xs sm:text-sm text-slate-700 hover:text-blue-600 hover:bg-blue-50/60 px-2.5 py-1.5 rounded-lg transition-colors block truncate"
+                        title={b.title}
+                      >
+                        {b.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* ── How It Works ────────────────────────────────────────────────── */}
         <section className="section" style={{ background: '#ffffff', borderTop: '1px solid #f1f5f9' }} aria-labelledby="how-heading">

@@ -18,7 +18,7 @@ import {
   getComboTotalCount,
 } from '@/lib/landingData';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 interface ComboPageProps {
   params: Promise<{ categorySlug: string; citySlug: string }>;

@@ -30,7 +30,7 @@ const FALLBACK_API = 'https://pkbizmap-backend.vercel.app/api';
 export async function fetchBusinessSummary(): Promise<SummaryData | null> {
   try {
     const res = await fetch(`${PRIMARY_API}/businesses/summary`, {
-      next: { revalidate: 86400 },
+      next: { revalidate: 3600 },
     });
     if (res.ok) {
       const json = await res.json();
@@ -43,7 +43,7 @@ export async function fetchBusinessSummary(): Promise<SummaryData | null> {
   if (PRIMARY_API !== FALLBACK_API) {
     try {
       const fbRes = await fetch(`${FALLBACK_API}/businesses/summary`, {
-        next: { revalidate: 86400 },
+        next: { revalidate: 3600 },
       });
       if (fbRes.ok) {
         const json = await fbRes.json();
@@ -78,7 +78,7 @@ export async function fetchLandingBusinesses(params: FetchBusinessesParams): Pro
 
   try {
     const res = await fetch(`${PRIMARY_API}/businesses?${qs}`, {
-      next: { revalidate: 86400 },
+      next: { revalidate: 3600 },
     });
     if (res.ok) {
       const json = await res.json();
@@ -94,7 +94,7 @@ export async function fetchLandingBusinesses(params: FetchBusinessesParams): Pro
   if (PRIMARY_API !== FALLBACK_API) {
     try {
       const fbRes = await fetch(`${FALLBACK_API}/businesses?${qs}`, {
-        next: { revalidate: 86400 },
+        next: { revalidate: 3600 },
       });
       if (fbRes.ok) {
         const json = await fbRes.json();
