@@ -85,18 +85,16 @@ export async function generateMetadata({ searchParams }: BusinessesPageProps): P
   const canonical = getCanonicalForQuery(resolved);
 
   return {
-    title: {
-      absolute: 'Business Directory Pakistan, UAE & USA | BizPrimeHub',
-    },
+    title: 'Browse All Businesses',
     description:
-      'Browse 1,200+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
+      'Browse trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
     alternates: {
       canonical,
     },
     openGraph: {
-      title: 'Business Directory Pakistan, UAE & USA | BizPrimeHub',
+      title: 'Browse All Businesses | BizPrimeHub',
       description:
-        'Browse 1,200+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
+        'Browse trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
       url: canonical,
       siteName: 'BizPrimeHub',
       type: 'website',
@@ -104,9 +102,9 @@ export async function generateMetadata({ searchParams }: BusinessesPageProps): P
     },
     twitter: {
       card: 'summary_large_image',
-      title: 'Business Directory Pakistan, UAE & USA | BizPrimeHub',
+      title: 'Browse All Businesses | BizPrimeHub',
       description:
-        'Browse 1,200+ trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
+        'Browse trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
       images: ['/og-default.jpg'],
     },
   };

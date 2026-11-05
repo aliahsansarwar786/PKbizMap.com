@@ -139,7 +139,7 @@ export default function BlogClient({ initialPosts }: BlogClientProps) {
                       onError={(e) => {
                         const target = e.currentTarget;
                         target.onerror = null;
-                        target.src = 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80';
+                        target.src = '/images/blog-fallback.jpg';
                       }}
                     />
                     <div className="absolute top-3 left-3">

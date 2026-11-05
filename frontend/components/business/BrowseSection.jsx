@@ -24,9 +24,9 @@ import {
 // Verified working Unsplash images (Status 200 OK audited, 100% unique photo IDs)
 const COUNTRY_FALLBACKS = {
   Pakistan: [
-    'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=400&q=80', // Northern green valley
-    'https://images.unsplash.com/photo-1519999482648-25049ddd37b1?w=400&q=80', // Old city bazaar
-    'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=400&q=80', // Scenic mountain pass
+    '/images/browse-northern-valley.jpg', // Northern green valley
+    '/images/browse-old-city.jpg', // Old city bazaar
+    '/images/browse-mountain-pass.jpg', // Scenic mountain pass
     'https://images.unsplash.com/photo-1528728329032-2972f65dfb3f?w=400&q=80', // Northern landscape
     'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=400&q=80', // Bustling marketplace
   ],
@@ -139,7 +139,7 @@ const CITY_IMAGES = {
   Quetta: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&q=80',
   Mingora: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=400&q=80',
   Hunza: 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=400&q=80',
-  Mansehra: 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=400&q=80',
+  Mansehra: '/images/browse-mountain-pass.jpg',
   Hyderabad: 'https://images.unsplash.com/photo-1582510003544-4d00b7f74220?w=400&q=80',
   Sialkot: 'https://images.unsplash.com/photo-1565008447742-97f6f38c985c?w=400&q=80',
   Gujranwala: 'https://images.unsplash.com/photo-1577083552431-6e5fd01aa342?w=400&q=80',

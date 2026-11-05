@@ -209,7 +209,7 @@ export default async function HomePage() {
 
         {/* ── Elevated Search Section ──────────────────────────────────────────────── */}
         <section className="relative z-20 -mt-16 max-w-5xl mx-auto px-4 mb-16">
-          <HeroSearch categories={CATEGORIES as any} />
+          <HeroSearch categories={CATEGORIES.map(c => ({ name: c.name })) as any} />
         </section>
 
         {/* ── Stats ──────────────────────────────────────────────────────── */}
@@ -344,7 +344,7 @@ export default async function HomePage() {
               </div>
               <div className="relative h-[400px] rounded-2xl overflow-hidden" style={{ background: '#f3f4f6' }}>
                 <img 
-                  src="https://images.unsplash.com/photo-1556761175-5973dc0f32e7?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80" 
+                  src="/images/homepage-hero.jpg" 
                   alt="Business meeting" 
                   className="w-full h-full object-cover"
                 />

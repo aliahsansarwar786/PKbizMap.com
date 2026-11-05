@@ -39,14 +39,15 @@ export async function generateMetadata({ params }: CountryPageProps): Promise<Me
   const count = getCountryTotalCount(summary, country);
   if (count <= 0) return {};
 
-  const cityCount = Object.keys(summary?.cities?.[country] || {}).length;
   const { baseTitle, finalTitle } = formatTitle(
     `Businesses in ${country} Directory`,
     `Businesses in ${country}`,
     country
   );
 
-  const prefix = `Find ${count} verified businesses in ${country} across ${cityCount} cities on BizPrimeHub.`;
+  const prefix = count === 1
+    ? `Find the verified business in ${country} on BizPrimeHub.`
+    : `Find verified businesses in ${country} on BizPrimeHub.`;
   const description = formatDescription(prefix);
   const canonical = `https://www.bizprimehub.com/cities/${countrySlug}`;
 
@@ -62,13 +63,13 @@ export async function generateMetadata({ params }: CountryPageProps): Promise<Me
       url: canonical,
       siteName: 'BizPrimeHub',
       type: 'website',
-      images: ['/og-default.jpg'],
+      images: [{ url: '/og-default.jpg', alt: finalTitle }],
     },
     twitter: {
       card: 'summary_large_image',
       title: finalTitle,
       description,
-      images: ['/og-default.jpg'],
+      images: [{ url: '/og-default.jpg', alt: finalTitle }],
     },
   };
 }
@@ -115,7 +116,10 @@ export default async function CountryLandingPage({ params }: CountryPageProps) {
   categoriesList.sort((a, b) => b.count - a.count);
 
   const canonicalUrl = `https://www.bizprimehub.com/cities/${countrySlug}`;
-  const introParagraph = `Explore ${count} verified businesses across ${citiesList.length} cities and ${categoriesList.length} categories in ${country} on BizPrimeHub. Find local company listings, contact details, reviews, and addresses.`;
+  const introPrefix = count === 1
+    ? `Find the verified business in ${country} on BizPrimeHub.`
+    : `Find verified businesses in ${country} on BizPrimeHub.`;
+  const introParagraph = `${introPrefix} Find local company listings, contact details, reviews, and addresses.`;
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',

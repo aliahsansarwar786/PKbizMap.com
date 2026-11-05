@@ -3,18 +3,25 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 
 export const metadata: Metadata = {
-  title: 'About Us',
+  title: 'About BizPrimeHub — Business Directory',
   description:
     'About BizPrimeHub — the business listing directory for Pakistan, UAE and the USA. Our mission, our Multan team, and how we help local businesses get found.',
   alternates: {
     canonical: 'https://www.bizprimehub.com/about',
   },
   openGraph: {
-    title: 'About Us | BizPrimeHub',
+    title: 'About BizPrimeHub — Business Directory | BizPrimeHub',
     description:
       'About BizPrimeHub — the business listing directory for Pakistan, UAE and the USA. Our mission, our Multan team, and how we help local businesses get found.',
     url: 'https://www.bizprimehub.com/about',
     type: 'website',
+    images: ['/og-default.jpg'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'About BizPrimeHub — Business Directory | BizPrimeHub',
+    description:
+      'About BizPrimeHub — the business listing directory for Pakistan, UAE and the USA. Our mission, our Multan team, and how we help local businesses get found.',
     images: ['/og-default.jpg'],
   },
 };

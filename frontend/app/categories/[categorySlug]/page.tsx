@@ -55,7 +55,9 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
     categoryName
   );
 
-  const prefix = `Explore ${count} verified ${categoryName} businesses across Pakistan, UAE and the USA on BizPrimeHub.`;
+  const prefix = count === 1
+    ? `Explore the verified ${categoryName} business across Pakistan, UAE and the USA on BizPrimeHub.`
+    : `Explore verified ${categoryName} businesses across Pakistan, UAE and the USA on BizPrimeHub.`;
   const description = formatDescription(prefix);
   const canonical = `https://www.bizprimehub.com/categories/${categorySlug}`;
 
@@ -71,13 +73,13 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
       url: canonical,
       siteName: 'BizPrimeHub',
       type: 'website',
-      images: ['/og-default.jpg'],
+      images: [{ url: '/og-default.jpg', alt: finalTitle }],
     },
     twitter: {
       card: 'summary_large_image',
       title: finalTitle,
       description,
-      images: ['/og-default.jpg'],
+      images: [{ url: '/og-default.jpg', alt: finalTitle }],
     },
   };
 }
@@ -131,7 +133,10 @@ export default async function CategoryLandingPage({ params }: CategoryPageProps)
   citiesWithCategory.sort((a, b) => b.count - a.count);
 
   const canonicalUrl = `https://www.bizprimehub.com/categories/${categorySlug}`;
-  const introParagraph = `Explore ${count} verified ${categoryName} businesses across Pakistan, UAE and the USA on BizPrimeHub. Find top-rated companies, contact numbers, addresses, and customer reviews.`;
+  const introPrefix = count === 1
+    ? `Explore the verified ${categoryName} business across Pakistan, UAE and the USA on BizPrimeHub.`
+    : `Explore verified ${categoryName} businesses across Pakistan, UAE and the USA on BizPrimeHub.`;
+  const introParagraph = `${introPrefix} Find top-rated companies, contact numbers, addresses, and customer reviews.`;
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',

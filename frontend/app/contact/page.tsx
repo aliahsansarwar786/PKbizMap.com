@@ -5,18 +5,25 @@ import { Mail, Phone, MapPin } from 'lucide-react';
 import ContactForm from '@/components/ui/ContactForm';
 
 export const metadata: Metadata = {
-  title: 'Contact Us',
+  title: 'Contact BizPrimeHub — Get in Touch',
   description:
     'Contact BizPrimeHub — email info@bizprimehub.com or call +92 310 6131361. Our Multan office helps businesses list free and customers find local services.',
   alternates: {
     canonical: 'https://www.bizprimehub.com/contact',
   },
   openGraph: {
-    title: 'Contact Us | BizPrimeHub',
+    title: 'Contact BizPrimeHub — Get in Touch | BizPrimeHub',
     description:
       'Contact BizPrimeHub — email info@bizprimehub.com or call +92 310 6131361. Our Multan office helps businesses list free and customers find local services.',
     url: 'https://www.bizprimehub.com/contact',
     type: 'website',
+    images: ['/og-default.jpg'],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Contact BizPrimeHub — Get in Touch | BizPrimeHub',
+    description:
+      'Contact BizPrimeHub — email info@bizprimehub.com or call +92 310 6131361. Our Multan office helps businesses list free and customers find local services.',
     images: ['/og-default.jpg'],
   },
 };

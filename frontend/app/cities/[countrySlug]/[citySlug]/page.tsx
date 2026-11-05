@@ -62,7 +62,9 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
     `Businesses in ${cityInfo.city}`
   );
 
-  const prefix = `Find ${count} verified businesses in ${cityInfo.city}, ${country} on BizPrimeHub.`;
+  const prefix = count === 1
+    ? `Find the verified business in ${cityInfo.city}, ${country} on BizPrimeHub.`
+    : `Find verified businesses in ${cityInfo.city}, ${country} on BizPrimeHub.`;
   const description = formatDescription(prefix);
   const canonical = `https://www.bizprimehub.com/cities/${countrySlug}/${citySlug}`;
 
@@ -78,13 +80,13 @@ export async function generateMetadata({ params }: CityPageProps): Promise<Metad
       url: canonical,
       siteName: 'BizPrimeHub',
       type: 'website',
-      images: ['/og-default.jpg'],
+      images: [{ url: '/og-default.jpg', alt: finalTitle }],
     },
     twitter: {
       card: 'summary_large_image',
       title: finalTitle,
       description,
-      images: ['/og-default.jpg'],
+      images: [{ url: '/og-default.jpg', alt: finalTitle }],
     },
   };
 }
@@ -131,7 +133,10 @@ export default async function CityLandingPage({ params }: CityPageProps) {
   cityCategories.sort((a, b) => b.count - a.count);
 
   const canonicalUrl = `https://www.bizprimehub.com/cities/${countrySlug}/${citySlug}`;
-  const introParagraph = `Explore ${count} verified businesses in ${cityInfo.city}, ${country} on BizPrimeHub. Discover top-rated local services, company profiles, addresses, contact numbers, and reviews.`;
+  const introPrefix = count === 1
+    ? `Find the verified business in ${cityInfo.city}, ${country} on BizPrimeHub.`
+    : `Find verified businesses in ${cityInfo.city}, ${country} on BizPrimeHub.`;
+  const introParagraph = `${introPrefix} Discover top-rated local services, company profiles, addresses, contact numbers, and reviews.`;
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',

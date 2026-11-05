@@ -40,7 +40,9 @@ export async function generateMetadata({ params }: ComboPageProps): Promise<Meta
     `${categoryName} in ${cityInfo.city}`
   );
 
-  const prefix = `Find ${count} verified ${categoryName} businesses in ${cityInfo.city}, ${cityInfo.country} on BizPrimeHub.`;
+  const prefix = count === 1
+    ? `Find the verified ${categoryName} business in ${cityInfo.city}, ${cityInfo.country} on BizPrimeHub.`
+    : `Find verified ${categoryName} businesses in ${cityInfo.city}, ${cityInfo.country} on BizPrimeHub.`;
   const description = formatDescription(prefix);
   const canonical = `https://www.bizprimehub.com/categories/${categorySlug}/${citySlug}`;
 
@@ -56,13 +58,13 @@ export async function generateMetadata({ params }: ComboPageProps): Promise<Meta
       url: canonical,
       siteName: 'BizPrimeHub',
       type: 'website',
-      images: ['/og-default.jpg'],
+      images: [{ url: '/og-default.jpg', alt: finalTitle }],
     },
     twitter: {
       card: 'summary_large_image',
       title: finalTitle,
       description,
-      images: ['/og-default.jpg'],
+      images: [{ url: '/og-default.jpg', alt: finalTitle }],
     },
   };
 }
@@ -91,7 +93,10 @@ export default async function CategoryCityComboPage({ params }: ComboPageProps) 
 
   const countrySlug = getCountrySlug(cityInfo.country);
   const canonicalUrl = `https://www.bizprimehub.com/categories/${categorySlug}/${citySlug}`;
-  const introParagraph = `Explore ${count} verified ${categoryName} businesses in ${cityInfo.city}, ${cityInfo.country} on BizPrimeHub. Find top-rated companies, contact numbers, addresses, and customer reviews.`;
+  const introPrefix = count === 1
+    ? `Find the verified ${categoryName} business in ${cityInfo.city}, ${cityInfo.country} on BizPrimeHub.`
+    : `Find verified ${categoryName} businesses in ${cityInfo.city}, ${cityInfo.country} on BizPrimeHub.`;
+  const introParagraph = `${introPrefix} Find top-rated companies, contact numbers, addresses, and customer reviews.`;
 
   const breadcrumbJsonLd = {
     '@context': 'https://schema.org',
