@@ -1,13 +1,16 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import Navbar from '@/components/layout/Navbar';
 import { safeJsonLd } from '@/lib/safeJsonLd';
 import Footer from '@/components/layout/Footer';
 import HeroSearch from '@/components/home/HeroSearch';
 import BrowseSection from '@/components/business/BrowseSection';
 import RecentlyListed from '@/components/business/RecentlyListed';
-import FaqSection from '@/components/home/FaqSection';
+
+const FaqSection = dynamic(() => import('@/components/home/FaqSection'));
 import {
   Search,
   ArrowRight,
@@ -267,7 +270,15 @@ export default async function HomePage() {
           {/* Mobile Image (Visible only on mobile/tablet, shown below text) */}
           <div className="w-full lg:hidden relative -mt-4">
              <div className="absolute top-0 left-0 right-0 h-16 bg-gradient-to-b from-[#e0f2fe] to-transparent z-10"></div>
-             <img src="/hero-bg.jpg" alt="Pakistan Business Map" className="w-full h-auto object-cover object-right" />
+             <Image
+               src="/hero-bg.jpg"
+               alt="Pakistan Business Map"
+               width={1376}
+               height={768}
+               priority
+               sizes="(max-width: 1024px) 100vw, 1376px"
+               className="w-full h-auto object-cover object-right"
+             />
           </div>
         </section>
 
@@ -395,7 +406,7 @@ export default async function HomePage() {
                   Browse by Country &amp; City
                 </h3>
                 <div className="mb-4">
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Countries</div>
+                  <div className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Countries</div>
                   <div className="flex flex-wrap gap-2">
                     {['Pakistan', 'UAE', 'USA'].map((country) => (
                       <Link
@@ -409,7 +420,7 @@ export default async function HomePage() {
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Popular Cities</div>
+                  <div className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Popular Cities</div>
                   <div className="grid grid-cols-2 gap-2">
                     {top12Cities.map((c) => (
                       <Link
@@ -503,7 +514,7 @@ export default async function HomePage() {
                         <CheckCircle2 size={24} />
                       </div>
                       <div>
-                        <h4 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#1f2937', marginBottom: '0.25rem' }}>{item.title}</h4>
+                        <h3 style={{ fontSize: '1.125rem', fontWeight: 600, color: '#1f2937', marginBottom: '0.25rem' }}>{item.title}</h3>
                         <p style={{ color: '#6b7280', fontSize: '0.9375rem', lineHeight: 1.6 }}>{item.desc}</p>
                       </div>
                     </div>
@@ -511,9 +522,12 @@ export default async function HomePage() {
                 </div>
               </div>
               <div className="relative h-[400px] rounded-2xl overflow-hidden" style={{ background: '#f3f4f6' }}>
-                <img 
+                <Image 
                   src="/images/homepage-hero.jpg" 
                   alt="Business meeting" 
+                  width={800}
+                  height={450}
+                  loading="lazy"
                   className="w-full h-full object-cover"
                 />
               </div>

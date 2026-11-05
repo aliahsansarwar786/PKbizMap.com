@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { businessAPI } from '@/lib/api';
 import { COUNTRIES, getCities } from '@/data/locations';
@@ -453,7 +454,6 @@ export default function BrowseSection({
 
   return (
     <div
-      aria-label="Browse Section"
       className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-5 sm:p-7 mb-8 transition-all duration-300"
     >
       {/* ───────────────────────────────────────────────────────────────── */}
@@ -500,9 +500,11 @@ export default function BrowseSection({
                 >
                   {/* Left: 100x100px rounded image */}
                   <div className="w-[100px] h-[100px] min-w-[100px] min-h-[100px] rounded-[10px] overflow-hidden relative shrink-0 bg-slate-100 border border-slate-100 shadow-xs">
-                    <img
+                    <Image
                       src={info.image}
                       alt={info.name}
+                      width={100}
+                      height={100}
                       loading="lazy"
                       onError={(e) => {
                         e.currentTarget.onerror = null;
@@ -649,9 +651,11 @@ export default function BrowseSection({
                   >
                     {/* Left: 100x100px rounded image */}
                     <div className="w-[100px] h-[100px] min-w-[100px] min-h-[100px] rounded-[10px] overflow-hidden relative shrink-0 bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-100 shadow-xs">
-                      <img
+                      <Image
                         src={cityImg}
                         alt={cityName}
+                        width={100}
+                        height={100}
                         loading="lazy"
                         onError={(e) => {
                           e.currentTarget.onerror = (ev) => {
@@ -667,9 +671,9 @@ export default function BrowseSection({
                     {/* Right: City Name (bold), Description, Listings count */}
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                       <div className="flex items-center justify-between gap-1">
-                        <h5 className="text-base sm:text-[17px] font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
+                        <h4 className="text-base sm:text-[17px] font-bold text-slate-900 group-hover:text-blue-600 transition-colors truncate">
                           {cityName}
-                        </h5>
+                        </h4>
                         <ArrowRight size={14} className="text-slate-300 group-hover:text-blue-600 group-hover:translate-x-1 transition-all shrink-0" />
                       </div>
 
@@ -864,9 +868,11 @@ export default function BrowseSection({
                   >
                     {/* Left: 100x100px rounded image */}
                     <div className="w-[100px] h-[100px] min-w-[100px] min-h-[100px] rounded-[10px] overflow-hidden relative shrink-0 bg-slate-100 border border-slate-100 shadow-xs">
-                      <img
+                      <Image
                         src={cat.image}
                         alt={cat.name}
+                        width={100}
+                        height={100}
                         loading="lazy"
                         onError={(e) => {
                           e.currentTarget.onerror = null;
@@ -879,9 +885,9 @@ export default function BrowseSection({
                     {/* Right: Category Title (bold), exact description, Listings count */}
                     <div className="flex-1 min-w-0 flex flex-col justify-center">
                       <div className="flex items-center justify-between gap-1">
-                        <h5 className="text-base sm:text-[17px] font-bold text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
+                        <h4 className="text-base sm:text-[17px] font-bold text-slate-900 group-hover:text-indigo-600 transition-colors truncate">
                           {cat.name}
-                        </h5>
+                        </h4>
                         {isSelected ? (
                           <Check size={16} className="text-indigo-600 shrink-0" />
                         ) : (
