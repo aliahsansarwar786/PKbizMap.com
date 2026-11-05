@@ -619,28 +619,6 @@ export default function BusinessDetail({ id }) {
                 </div>
               )}
             </div>
-
-            {/* Task 6: Similar Businesses Section */}
-            {similarBusinesses.length > 0 && (
-              <div className="card p-6 border border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1f2937' }}>
-                    Similar {business.category} in {business.address?.city || 'Pakistan'}
-                  </h2>
-                  <Link
-                    href={`/businesses?category=${encodeURIComponent(business.category)}&city=${encodeURIComponent(business.address?.city || '')}`}
-                    className="text-xs font-semibold text-blue-600 hover:text-blue-700"
-                  >
-                    View All
-                  </Link>
-                </div>
-                <div className="grid sm:grid-cols-2 gap-4">
-                  {similarBusinesses.map((simBiz) => (
-                    <BusinessCard key={simBiz._id} business={simBiz} />
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* ── Right: Sidebar ────────────────────────────────── */}
@@ -923,6 +901,28 @@ export default function BusinessDetail({ id }) {
               )}
             </div>
           </div>
+
+          {/* Similar Businesses Section (Third child of grid: row 2 on desktop, after sidebar on mobile) */}
+          {similarBusinesses.length > 0 && (
+            <div className="lg:col-span-2 card p-6 border border-gray-100">
+              <div className="flex items-center justify-between mb-4">
+                <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1f2937' }}>
+                  Similar {business.category} in {business.address?.city || 'Pakistan'}
+                </h2>
+                <Link
+                  href={`/businesses?category=${encodeURIComponent(business.category)}&city=${encodeURIComponent(business.address?.city || '')}`}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                >
+                  View All
+                </Link>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
+                {similarBusinesses.map((simBiz) => (
+                  <BusinessCard key={simBiz._id} business={simBiz} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
