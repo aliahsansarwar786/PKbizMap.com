@@ -26,7 +26,7 @@ export const BLOG_POSTS: BlogPost[] = [
     category: "Local SEO",
     author: {
       name: "Ahsan Ali",
-      role: "Digital Growth Specialist",
+      role: "Founder, BizPrimeHub",
       avatar: "https://ui-avatars.com/api/?name=Ahsan+Ali&background=2563eb&color=fff&size=96"
     },
     publishedAt: "2026-10-17",
@@ -129,7 +129,7 @@ Ready to dominate local searches in your neighborhood? Take 5 minutes to **[add 
     category: "Marketing & Tools",
     author: {
       name: "Ahsan Ali",
-      role: "Digital Growth Specialist",
+      role: "Founder, BizPrimeHub",
       avatar: "https://ui-avatars.com/api/?name=Ahsan+Ali&background=2563eb&color=fff&size=96"
     },
     publishedAt: "2026-10-15",
@@ -231,10 +231,10 @@ If you have not already claimed your free directory profile, take a moment to **
     category: "Local SEO",
     author: {
       name: "Ahsan Ali",
-      role: "Digital Growth Specialist",
+      role: "Founder, BizPrimeHub",
       avatar: "https://ui-avatars.com/api/?name=Ahsan+Ali&background=2563eb&color=fff&size=96"
     },
-    publishedAt: "2026-03-25",
+    publishedAt: "2026-10-15",
     readTime: "8 min read",
     coverImage: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80",
     coverImageAlt: "Local SEO analytics, search rankings, and Google maps on laptop screen",
@@ -287,10 +287,10 @@ Begin by [adding your business details](/add-business) with comprehensive descri
     category: "Marketing & Tools",
     author: {
       name: "Ahsan Ali",
-      role: "Digital Growth Specialist",
+      role: "Founder, BizPrimeHub",
       avatar: "https://ui-avatars.com/api/?name=Ahsan+Ali&background=2563eb&color=fff&size=96"
     },
-    publishedAt: "2026-03-20",
+    publishedAt: "2026-10-15",
     readTime: "6 min read",
     coverImage: "https://images.unsplash.com/photo-1611746872915-64382b5c76da?auto=format&fit=crop&w=1200&q=80",
     coverImageAlt: "WhatsApp Business interface and smartphone messaging for local retailers",
@@ -353,10 +353,10 @@ WhatsApp strictly penalizes unsolicited broadcast spam. Never purchase random ph
     category: "Business Growth",
     author: {
       name: "Ahsan Ali",
-      role: "Digital Growth Specialist",
+      role: "Founder, BizPrimeHub",
       avatar: "https://ui-avatars.com/api/?name=Ahsan+Ali&background=2563eb&color=fff&size=96"
     },
-    publishedAt: "2026-03-15",
+    publishedAt: "2026-10-15",
     readTime: "7 min read",
     coverImage: "https://images.unsplash.com/photo-1556740758-90de374c12ad?auto=format&fit=crop&w=1200&q=80",
     coverImageAlt: "Local shop owner in Pakistan using mobile smartphone for digital business orders",

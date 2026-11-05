@@ -255,10 +255,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const summary = await fetchBusinessSummary();
     if (summary) {
-      // 1. Categories (count > 0)
+      // 1. Categories (count >= 3)
       for (const cat of CATEGORIES) {
         const count = getCategoryTotalCount(summary, cat.name);
-        if (count > 0) {
+        if (count >= 3) {
           const lastMod = categoryLastMod.get(cat.name) || new Date();
           landingRoutes.push({
             url: `${baseUrl}/categories/${getCategorySlug(cat.name)}`,
@@ -269,10 +269,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }
       }
 
-      // 2. Countries (count > 0)
+      // 2. Countries (count >= 3)
       for (const country of COUNTRIES) {
         const count = summary.countries?.[country] || 0;
-        if (count > 0) {
+        if (count >= 3) {
           const lastMod = countryLastMod.get(country.toLowerCase()) || new Date();
           landingRoutes.push({
             url: `${baseUrl}/cities/${getCountrySlug(country)}`,
@@ -283,11 +283,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }
       }
 
-      // 3. Cities (count > 0)
+      // 3. Cities (count >= 3)
       for (const country of COUNTRIES) {
         const cityMap = summary.cities?.[country] || {};
         for (const [cityName, cityCount] of Object.entries(cityMap)) {
-          if (cityCount > 0) {
+          if (cityCount >= 3) {
             const cityInfo = getCityBySlug(slugify(cityName));
             const cName = cityInfo?.city || cityName.trim();
             const cityKey = `${country.toLowerCase()}:${cName.toLowerCase()}`;
@@ -302,13 +302,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         }
       }
 
-      // 4. Nonzero Combos
+      // 4. Nonzero Combos (count >= 3)
       if (summary.categoriesByCity) {
         for (const country of COUNTRIES) {
           const countryCombos = summary.categoriesByCity[country] || {};
           for (const [cityName, catMap] of Object.entries(countryCombos)) {
             for (const [catName, catCount] of Object.entries(catMap || {})) {
-              if (catCount > 0) {
+              if (catCount >= 3) {
                 const canonicalCat = normalizeCategory(catName);
                 const cityInfo = getCityBySlug(slugify(cityName));
                 const cName = cityInfo?.city || cityName.trim();

@@ -156,6 +156,21 @@ export default async function BusinessesPage({ searchParams }: BusinessesPagePro
 
   const { businesses: initialBusinesses, pagination: initialPagination } = await fetchDefaultBusinesses();
 
+  const canonical = getCanonicalForQuery(resolvedParams);
+  const collectionJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: 'Browse All Businesses',
+    url: canonical,
+    description:
+      'Browse trusted local businesses across Pakistan, UAE and the USA. Free business listing — add your business and get found on Google.',
+    isPartOf: {
+      '@type': 'Organization',
+      name: 'BizPrimeHub',
+      url: 'https://www.bizprimehub.com',
+    },
+  };
+
   const breadcrumbJsonLd = categoryParam
     ? {
         '@context': 'https://schema.org',
@@ -185,6 +200,10 @@ export default async function BusinessesPage({ searchParams }: BusinessesPagePro
 
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(collectionJsonLd) }}
+      />
       {breadcrumbJsonLd && (
         <script
           type="application/ld+json"

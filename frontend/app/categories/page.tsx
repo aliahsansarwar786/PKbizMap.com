@@ -4,6 +4,7 @@ import Footer from '@/components/layout/Footer';
 import Link from 'next/link';
 import { CATEGORIES } from '@/data/categories';
 import { getCategorySlug } from '@/lib/slugify';
+import { safeJsonLd } from '@/lib/safeJsonLd';
 
 export const metadata: Metadata = {
   title: 'Browse Categories',
@@ -23,8 +24,19 @@ export const metadata: Metadata = {
 };
 
 export default function CategoriesPage() {
+  const collectionJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    url: 'https://www.bizprimehub.com/categories',
+    name: 'Business Categories',
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(collectionJsonLd) }}
+      />
       <Navbar />
       <main suppressHydrationWarning>
         <div className="bg-slate-50 py-16 border-b border-slate-100" suppressHydrationWarning>

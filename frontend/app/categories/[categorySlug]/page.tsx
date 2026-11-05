@@ -64,6 +64,7 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   return {
     title: baseTitle,
     description,
+    robots: count < 3 ? { index: false, follow: true } : { index: true, follow: true },
     alternates: {
       canonical,
     },

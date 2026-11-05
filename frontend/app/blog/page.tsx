@@ -4,6 +4,7 @@ import Footer from '@/components/layout/Footer';
 import BlogClient from './BlogClient';
 import { getAllPosts } from '@/data/blogPosts';
 import { BookOpen, Sparkles } from 'lucide-react';
+import { safeJsonLd } from '@/lib/safeJsonLd';
 
 export const metadata: Metadata = {
   title: 'Business Growth & Local SEO Blog',
@@ -26,8 +27,24 @@ export const dynamic = 'force-dynamic';
 export default function BlogPage() {
   const posts = getAllPosts();
 
+  const blogJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    url: 'https://www.bizprimehub.com/blog',
+    name: 'BizPrimeHub Blog',
+    author: {
+      '@type': 'Person',
+      name: 'Ahsan Ali',
+      jobTitle: 'Founder, BizPrimeHub',
+    },
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(blogJsonLd) }}
+      />
       <Navbar />
       <main>
         {/* Hero Section */}

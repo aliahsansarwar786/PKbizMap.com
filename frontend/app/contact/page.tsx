@@ -3,6 +3,7 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { Mail, Phone, MapPin } from 'lucide-react';
 import ContactForm from '@/components/ui/ContactForm';
+import { safeJsonLd } from '@/lib/safeJsonLd';
 
 export const metadata: Metadata = {
   title: 'Contact BizPrimeHub — Get in Touch',
@@ -29,8 +30,26 @@ export const metadata: Metadata = {
 };
 
 export default function ContactPage() {
+  const contactJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'ContactPage',
+    url: 'https://www.bizprimehub.com/contact',
+    name: 'Contact BizPrimeHub',
+    mainEntity: {
+      '@type': 'Organization',
+      name: 'BizPrimeHub',
+      url: 'https://www.bizprimehub.com',
+      email: 'info@bizprimehub.com',
+      telephone: '+92 310 6131361',
+    },
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(contactJsonLd) }}
+      />
       <Navbar />
       <main>
         <div className="page-header" suppressHydrationWarning>

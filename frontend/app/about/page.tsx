@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
+import { safeJsonLd } from '@/lib/safeJsonLd';
 
 export const metadata: Metadata = {
   title: 'About BizPrimeHub — Business Directory',
@@ -27,8 +28,26 @@ export const metadata: Metadata = {
 };
 
 export default function AboutPage() {
+  const aboutJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'AboutPage',
+    url: 'https://www.bizprimehub.com/about',
+    name: 'About BizPrimeHub',
+    mainEntity: {
+      '@type': 'Organization',
+      name: 'BizPrimeHub',
+      url: 'https://www.bizprimehub.com',
+      description:
+        'About BizPrimeHub — the business listing directory for Pakistan, UAE and the USA. Our mission, our Multan team, and how we help local businesses get found.',
+    },
+  };
+
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(aboutJsonLd) }}
+      />
       <Navbar />
       <main>
         <div className="page-header" suppressHydrationWarning>
