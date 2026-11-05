@@ -1,22 +1,30 @@
 import { MetadataRoute } from 'next';
 import { getAllPosts } from '@/data/blogPosts';
-import { CATEGORIES } from '@/data/categories';
+import { CATEGORIES, normalizeCategory } from '@/data/categories';
 import { COUNTRIES } from '@/data/locations';
 import {
   getCategorySlug,
   getCountrySlug,
   getCitySlug,
+  getCityBySlug,
+  slugify,
 } from '@/lib/slugify';
 import {
   fetchBusinessSummary,
   getCategoryTotalCount,
 } from '@/lib/landingData';
 
-export const revalidate = 86400;
+export const revalidate = 3600;
 
 interface BusinessSitemapItem {
   _id: string;
   slug?: string;
+  category?: string;
+  address?: {
+    city?: string;
+    country?: string;
+    street?: string;
+  };
   updatedAt?: string;
   createdAt?: string;
 }
@@ -26,7 +34,7 @@ const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 async function fetchWithRetry(url: string, page: number, label: string) {
   // First attempt
   try {
-    const res = await fetch(url, { next: { revalidate: 86400 } });
+    const res = await fetch(url, { next: { revalidate: 3600 } });
     if (res.ok) return await res.json();
     console.error(`[Sitemap] ${label} non-ok response (${res.status}) on page ${page}. Retrying in 500ms...`);
   } catch (err: any) {
@@ -38,7 +46,7 @@ async function fetchWithRetry(url: string, page: number, label: string) {
 
   // Retry attempt
   try {
-    const res = await fetch(url, { next: { revalidate: 86400 } });
+    const res = await fetch(url, { next: { revalidate: 3600 } });
     if (res.ok) return await res.json();
     console.error(`[Sitemap] ${label} retry failed with HTTP status ${res.status} on page ${page}`);
   } catch (err: any) {
@@ -132,75 +140,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }));
 
-  let landingRoutes: MetadataRoute.Sitemap = [];
-  try {
-    const summary = await fetchBusinessSummary();
-    if (summary) {
-      // 1. Categories (count > 0)
-      for (const cat of CATEGORIES) {
-        const count = getCategoryTotalCount(summary, cat.name);
-        if (count > 0) {
-          landingRoutes.push({
-            url: `${baseUrl}/categories/${getCategorySlug(cat.name)}`,
-            lastModified: new Date(),
-            changeFrequency: 'weekly',
-            priority: 0.8,
-          });
-        }
-      }
-
-      // 2. Countries (count > 0)
-      for (const country of COUNTRIES) {
-        const count = summary.countries?.[country] || 0;
-        if (count > 0) {
-          landingRoutes.push({
-            url: `${baseUrl}/cities/${getCountrySlug(country)}`,
-            lastModified: new Date(),
-            changeFrequency: 'weekly',
-            priority: 0.8,
-          });
-        }
-      }
-
-      // 3. Cities (count > 0)
-      for (const country of COUNTRIES) {
-        const cityMap = summary.cities?.[country] || {};
-        for (const [cityName, cityCount] of Object.entries(cityMap)) {
-          if (cityCount > 0) {
-            landingRoutes.push({
-              url: `${baseUrl}/cities/${getCountrySlug(country)}/${getCitySlug(cityName, country)}`,
-              lastModified: new Date(),
-              changeFrequency: 'weekly',
-              priority: 0.75,
-            });
-          }
-        }
-      }
-
-      // 4. Nonzero Combos
-      if (summary.categoriesByCity) {
-        for (const country of COUNTRIES) {
-          const countryCombos = summary.categoriesByCity[country] || {};
-          for (const [cityName, catMap] of Object.entries(countryCombos)) {
-            for (const [catName, catCount] of Object.entries(catMap || {})) {
-              if (catCount > 0) {
-                landingRoutes.push({
-                  url: `${baseUrl}/categories/${getCategorySlug(catName)}/${getCitySlug(cityName, country)}`,
-                  lastModified: new Date(),
-                  changeFrequency: 'weekly',
-                  priority: 0.75,
-                });
-              }
-            }
-          }
-        }
-      }
-    }
-  } catch (err) {
-    console.error('Error fetching landing routes for sitemap:', err);
-  }
-
   let businessRoutes: MetadataRoute.Sitemap = [];
+  let allBusinesses: BusinessSitemapItem[] = [];
   let failedPagesCount = 0;
 
   try {
@@ -213,7 +154,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       );
     } else if (firstData.data) {
       const totalPages = firstData.data?.pagination?.totalPages || 1;
-      const allBusinesses: BusinessSitemapItem[] = [...(firstData.data?.businesses || [])];
+      allBusinesses = [...(firstData.data?.businesses || [])];
 
       if (totalPages > 1) {
         const pagesToFetch: number[] = [];
@@ -254,6 +195,139 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   } catch (err) {
     console.error('Error fetching businesses for sitemap:', err);
     businessRoutes = [];
+    allBusinesses = [];
+  }
+
+  // Build newest updatedAt maps for landing pages
+  const categoryLastMod = new Map<string, Date>();
+  const cityLastMod = new Map<string, Date>();
+  const comboLastMod = new Map<string, Date>();
+  const countryLastMod = new Map<string, Date>();
+
+  for (const b of allBusinesses) {
+    const rawDate = b.updatedAt || b.createdAt;
+    if (!rawDate) continue;
+    const bDate = new Date(rawDate);
+    if (isNaN(bDate.getTime())) continue;
+
+    // Category
+    const rawCat = (b.category || '').trim();
+    const cat = normalizeCategory(rawCat);
+    if (cat) {
+      const prev = categoryLastMod.get(cat);
+      if (!prev || bDate > prev) {
+        categoryLastMod.set(cat, bDate);
+      }
+    }
+
+    // City & Country
+    const rawCity = (b.address?.city || '').trim();
+    const cityInfo = rawCity ? getCityBySlug(slugify(rawCity)) : undefined;
+    const city = cityInfo?.city || rawCity;
+    const country = (b.address?.country || cityInfo?.country || 'Pakistan').trim();
+
+    if (country) {
+      const countryKey = country.toLowerCase();
+      const prevCountry = countryLastMod.get(countryKey);
+      if (!prevCountry || bDate > prevCountry) {
+        countryLastMod.set(countryKey, bDate);
+      }
+    }
+
+    if (city) {
+      const cityKey = `${country.toLowerCase()}:${city.toLowerCase()}`;
+      const prevCity = cityLastMod.get(cityKey);
+      if (!prevCity || bDate > prevCity) {
+        cityLastMod.set(cityKey, bDate);
+      }
+
+      if (cat) {
+        const comboKey = `${cat.toLowerCase()}:${city.toLowerCase()}`;
+        const prevCombo = comboLastMod.get(comboKey);
+        if (!prevCombo || bDate > prevCombo) {
+          comboLastMod.set(comboKey, bDate);
+        }
+      }
+    }
+  }
+
+  let landingRoutes: MetadataRoute.Sitemap = [];
+  try {
+    const summary = await fetchBusinessSummary();
+    if (summary) {
+      // 1. Categories (count > 0)
+      for (const cat of CATEGORIES) {
+        const count = getCategoryTotalCount(summary, cat.name);
+        if (count > 0) {
+          const lastMod = categoryLastMod.get(cat.name) || new Date();
+          landingRoutes.push({
+            url: `${baseUrl}/categories/${getCategorySlug(cat.name)}`,
+            lastModified: lastMod,
+            changeFrequency: 'weekly',
+            priority: 0.8,
+          });
+        }
+      }
+
+      // 2. Countries (count > 0)
+      for (const country of COUNTRIES) {
+        const count = summary.countries?.[country] || 0;
+        if (count > 0) {
+          const lastMod = countryLastMod.get(country.toLowerCase()) || new Date();
+          landingRoutes.push({
+            url: `${baseUrl}/cities/${getCountrySlug(country)}`,
+            lastModified: lastMod,
+            changeFrequency: 'weekly',
+            priority: 0.8,
+          });
+        }
+      }
+
+      // 3. Cities (count > 0)
+      for (const country of COUNTRIES) {
+        const cityMap = summary.cities?.[country] || {};
+        for (const [cityName, cityCount] of Object.entries(cityMap)) {
+          if (cityCount > 0) {
+            const cityInfo = getCityBySlug(slugify(cityName));
+            const cName = cityInfo?.city || cityName.trim();
+            const cityKey = `${country.toLowerCase()}:${cName.toLowerCase()}`;
+            const lastMod = cityLastMod.get(cityKey) || new Date();
+            landingRoutes.push({
+              url: `${baseUrl}/cities/${getCountrySlug(country)}/${getCitySlug(cityName, country)}`,
+              lastModified: lastMod,
+              changeFrequency: 'weekly',
+              priority: 0.75,
+            });
+          }
+        }
+      }
+
+      // 4. Nonzero Combos
+      if (summary.categoriesByCity) {
+        for (const country of COUNTRIES) {
+          const countryCombos = summary.categoriesByCity[country] || {};
+          for (const [cityName, catMap] of Object.entries(countryCombos)) {
+            for (const [catName, catCount] of Object.entries(catMap || {})) {
+              if (catCount > 0) {
+                const canonicalCat = normalizeCategory(catName);
+                const cityInfo = getCityBySlug(slugify(cityName));
+                const cName = cityInfo?.city || cityName.trim();
+                const comboKey = `${canonicalCat.toLowerCase()}:${cName.toLowerCase()}`;
+                const lastMod = comboLastMod.get(comboKey) || new Date();
+                landingRoutes.push({
+                  url: `${baseUrl}/categories/${getCategorySlug(catName)}/${getCitySlug(cityName, country)}`,
+                  lastModified: lastMod,
+                  changeFrequency: 'weekly',
+                  priority: 0.75,
+                });
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching landing routes for sitemap:', err);
   }
 
   return [...staticRoutes, ...blogRoutes, ...landingRoutes, ...businessRoutes];

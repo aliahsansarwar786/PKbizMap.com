@@ -112,10 +112,51 @@ export async function generateMetadata({ searchParams }: BusinessesPageProps): P
   };
 }
 
+async function fetchDefaultBusinesses(): Promise<{ businesses: any[]; pagination: any }> {
+  const primaryApi = process.env.NEXT_PUBLIC_API_URL || 'https://pkbizmap-backend.vercel.app/api';
+  const fallbackApi = 'https://pkbizmap-backend.vercel.app/api';
+
+  try {
+    const res = await fetch(`${primaryApi}/businesses?sort=-createdAt&page=1&limit=12`, {
+      next: { revalidate: 3600 },
+    });
+    if (res.ok) {
+      const json = await res.json();
+      return {
+        businesses: json.data?.businesses || [],
+        pagination: json.data?.pagination || null,
+      };
+    }
+  } catch (err) {
+    // fallback
+  }
+
+  if (primaryApi !== fallbackApi) {
+    try {
+      const fbRes = await fetch(`${fallbackApi}/businesses?sort=-createdAt&page=1&limit=12`, {
+        next: { revalidate: 3600 },
+      });
+      if (fbRes.ok) {
+        const json = await fbRes.json();
+        return {
+          businesses: json.data?.businesses || [],
+          pagination: json.data?.pagination || null,
+        };
+      }
+    } catch (fbErr) {
+      // ignore
+    }
+  }
+
+  return { businesses: [], pagination: null };
+}
+
 export default async function BusinessesPage({ searchParams }: BusinessesPageProps) {
   const resolvedParams = searchParams ? await searchParams : undefined;
   const rawCategoryParam = typeof resolvedParams?.category === 'string' ? resolvedParams.category : undefined;
   const categoryParam = sanitizeCategory(rawCategoryParam);
+
+  const { businesses: initialBusinesses, pagination: initialPagination } = await fetchDefaultBusinesses();
 
   const breadcrumbJsonLd = categoryParam
     ? {
@@ -168,7 +209,7 @@ export default async function BusinessesPage({ searchParams }: BusinessesPagePro
           </div>
         </div>
         <Suspense fallback={<div className="container-max py-8 text-center text-gray-500">Loading directory...</div>}>
-          <BusinessDirectory />
+          <BusinessDirectory {...{ initialBusinesses, initialPagination }} />
         </Suspense>
       </main>
       <Footer />

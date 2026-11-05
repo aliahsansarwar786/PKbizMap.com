@@ -1,9 +1,18 @@
 import type { Metadata } from 'next';
 import { permanentRedirect } from 'next/navigation';
+import Link from 'next/link';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import { safeJsonLd } from '@/lib/safeJsonLd';
 import BusinessDetail from '@/components/business/BusinessDetail';
+import BusinessCard from '@/components/business/BusinessCard';
+import {
+  getCategorySlug,
+  getCityBySlug,
+  getCountrySlug,
+  slugify,
+} from '@/lib/slugify';
+import { fetchLandingBusinesses } from '@/lib/landingData';
 
 interface BusinessDetailPageProps {
   params: Promise<{ id: string }>;
@@ -178,15 +187,52 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
   let breadcrumbJsonLd = null;
   let introParagraph = '';
   let decodedTitle = '';
+  let categorySlug = '';
+  let cityInfo: ReturnType<typeof getCityBySlug> = undefined;
+  let countrySlug = '';
+  let citySlug = '';
+  let cityName = '';
+  let categoryName = '';
+  let similarBusinesses: any[] = [];
 
   if (business) {
+    categoryName = (business.category || 'Business').trim();
+    categorySlug = getCategorySlug(categoryName);
+    const rawCity = (business.address?.city || '').trim();
+    if (rawCity) {
+      cityInfo = getCityBySlug(slugify(rawCity));
+      if (cityInfo) {
+        countrySlug = getCountrySlug(cityInfo.country);
+        citySlug = cityInfo.slug;
+        cityName = cityInfo.city;
+
+        try {
+          const similarRes = await fetchLandingBusinesses({
+            category: business.category,
+            city: cityName,
+            limit: 9,
+          });
+          if (similarRes?.businesses && Array.isArray(similarRes.businesses)) {
+            similarBusinesses = similarRes.businesses
+              .filter((b: any) => {
+                const isSameId = b._id && business._id && String(b._id) === String(business._id);
+                const isSameSlug = b.slug && business.slug && b.slug === business.slug;
+                return !isSameId && !isSameSlug;
+              })
+              .slice(0, 8);
+          }
+        } catch (e) {
+          similarBusinesses = [];
+        }
+      }
+    }
+
     decodedTitle = decodeHtmlEntities(business.title || '').trim();
     const city = (business.address?.city || '').trim();
     const country = (business.address?.country || 'Pakistan').trim();
-    const category = (business.category || 'Business').trim();
     const street = (business.address?.street || '').trim();
     const location = city ? `${city}, ${country}` : country;
-    introParagraph = `${decodedTitle} is a ${category} business in ${location}.${street ? ` ${street}` : ''}`;
+    introParagraph = `${decodedTitle} is a ${categoryName} business in ${location}.${street ? ` ${street}` : ''}`;
 
     const zip = (business.address?.zipCode || '').trim();
     const rawDesc = (business.description || '').replace(/\s+/g, ' ').trim();
@@ -253,7 +299,6 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
 
     jsonLd = schema;
 
-    const categoryName = (business.category || 'Business').trim();
     breadcrumbJsonLd = {
       '@context': 'https://schema.org',
       '@type': 'BreadcrumbList',
@@ -313,6 +358,60 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
           </div>
         )}
         <BusinessDetail id={business?.slug || id} />
+
+        {business && (
+          <>
+            {/* Part 1.1: Browse more section */}
+            <section className="container-max py-8">
+              <div className="border-t border-slate-200/80 pt-6">
+                <h2 className="text-base font-bold text-slate-800 mb-3">Browse more</h2>
+                <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                  <Link
+                    href={`/categories/${categorySlug}`}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 transition-colors"
+                  >
+                    <span>More {categoryName} businesses</span>
+                    <span aria-hidden="true">&rarr;</span>
+                  </Link>
+                  {cityInfo && (
+                    <>
+                      <Link
+                        href={`/cities/${countrySlug}/${citySlug}`}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 transition-colors"
+                      >
+                        <span>More businesses in {cityName}</span>
+                        <span aria-hidden="true">&rarr;</span>
+                      </Link>
+                      <Link
+                        href={`/categories/${categorySlug}/${citySlug}`}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200/80 transition-colors"
+                      >
+                        <span>More {categoryName} in {cityName}</span>
+                        <span aria-hidden="true">&rarr;</span>
+                      </Link>
+                    </>
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* Part 1.2: Similar businesses card row */}
+            {similarBusinesses.length > 0 && (
+              <section className="container-max pb-14">
+                <div className="border-t border-slate-200/80 pt-8">
+                  <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight mb-5">
+                    More {categoryName} in {cityName}
+                  </h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                    {similarBusinesses.map((b: any) => (
+                      <BusinessCard key={b._id} business={b} />
+                    ))}
+                  </div>
+                </div>
+              </section>
+            )}
+          </>
+        )}
       </main>
       <Footer />
     </>

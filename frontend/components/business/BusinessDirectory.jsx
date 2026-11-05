@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import BusinessCard from './BusinessCard';
 import { businessAPI } from '@/lib/api';
@@ -99,17 +99,13 @@ function CategoryList({
   );
 }
 
-export default function BusinessDirectory() {
+/**
+ * @param {{ initialBusinesses?: any[], initialPagination?: any }} props
+ */
+export default function BusinessDirectory({ initialBusinesses = [], initialPagination = null }) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
-
-  const [businesses, setBusinesses] = useState([]);
-  const [pagination, setPagination] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [summary, setSummary] = useState(null);
-  const [isMobileCategoryOpen, setIsMobileCategoryOpen] = useState(false);
 
   // Filters state initialized from URL query params
   const [keywordInput, setKeywordInput] = useState(searchParams.get('keyword') || '');
@@ -120,6 +116,27 @@ export default function BusinessDirectory() {
   const [rating, setRating] = useState(searchParams.get('rating') || '');
   const [sort, setSort] = useState(searchParams.get('sort') || '-createdAt');
   const [page, setPage] = useState(Number(searchParams.get('page')) || 1);
+
+  const hasActiveFilters = Boolean(
+    keyword ||
+    (country && country !== 'All') ||
+    (city && city !== 'All') ||
+    (category && category !== 'All') ||
+    (rating && rating !== 'All') ||
+    (sort && sort !== '-createdAt') ||
+    (page && page > 1)
+  );
+
+  const hasInitialData = Boolean(initialBusinesses && initialBusinesses.length > 0 && initialPagination);
+
+  const [businesses, setBusinesses] = useState(initialBusinesses ?? []);
+  const [pagination, setPagination] = useState(initialPagination ?? null);
+  const [loading, setLoading] = useState(hasInitialData && !hasActiveFilters ? false : true);
+  const [error, setError] = useState(null);
+  const [summary, setSummary] = useState(null);
+  const [isMobileCategoryOpen, setIsMobileCategoryOpen] = useState(false);
+
+  const isInitialMount = useRef(true);
 
   // Sync state if searchParams change externally (e.g. navigation from Browse cards or browser back/forward)
   useEffect(() => {
@@ -207,8 +224,14 @@ export default function BusinessDirectory() {
   }, [keyword, category, country, city, rating, sort, page]);
 
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      if (hasInitialData && !hasActiveFilters) {
+        return;
+      }
+    }
     fetchBusinesses();
-  }, [fetchBusinesses]);
+  }, [fetchBusinesses, hasInitialData, hasActiveFilters]);
 
   // Fetch summary counts for Country / City / Category (re-fetch whenever country or city changes)
   useEffect(() => {
