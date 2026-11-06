@@ -7,8 +7,16 @@ import Navbar from '@/components/layout/Navbar';
 import { safeJsonLd } from '@/lib/safeJsonLd';
 import Footer from '@/components/layout/Footer';
 import HeroSearch from '@/components/home/HeroSearch';
-import BrowseSection from '@/components/business/BrowseSection';
-import RecentlyListed from '@/components/business/RecentlyListed';
+
+const BrowseSection = dynamic(() => import('@/components/business/BrowseSection'), {
+  ssr: true,
+  loading: () => <div className="py-12 text-center text-slate-400">Loading directory...</div>,
+});
+
+const RecentlyListed = dynamic(() => import('@/components/business/RecentlyListed'), {
+  ssr: true,
+  loading: () => null,
+});
 
 const FaqSection = dynamic(() => import('@/components/home/FaqSection'));
 import {

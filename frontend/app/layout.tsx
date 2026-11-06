@@ -58,12 +58,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         {gaMeasurementId ? (
           <>
             <Script
-              strategy="afterInteractive"
+              strategy="lazyOnload"
               src={`https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`}
             />
             <Script
               id="google-analytics"
-              strategy="afterInteractive"
+              strategy="lazyOnload"
               dangerouslySetInnerHTML={{
                 __html: `
                   window.dataLayer = window.dataLayer || [];
