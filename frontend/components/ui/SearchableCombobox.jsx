@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useId } from 'react';
 import { Search, ChevronDown, X, Check } from 'lucide-react';
 
 export default function SearchableCombobox({
-  id,
+  id: propId,
   name,
   value = '',
   onChange,
@@ -18,6 +18,10 @@ export default function SearchableCombobox({
   ariaLabel = 'Searchable select',
   maxDisplay = 60,
 }) {
+  const reactId = useId();
+  const comboboxId = propId || reactId;
+  const listboxId = `${comboboxId}-listbox`;
+
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState(value || '');
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
@@ -190,8 +194,9 @@ export default function SearchableCombobox({
 
         <input
           ref={inputRef}
-          id={id}
+          id={comboboxId}
           type="text"
+          role="combobox"
           value={disabled ? '' : query}
           onChange={(e) => {
             if (disabled) return;
@@ -208,6 +213,7 @@ export default function SearchableCombobox({
           aria-label={ariaLabel}
           aria-expanded={isOpen}
           aria-autocomplete="list"
+          aria-controls={listboxId}
           autoComplete="off"
           className="w-full h-11 bg-transparent px-2 text-sm text-gray-900 placeholder:text-gray-400 outline-none border-none disabled:cursor-not-allowed"
         />
@@ -255,6 +261,7 @@ export default function SearchableCombobox({
       {isOpen && !disabled && (
         <div
           ref={listRef}
+          id={listboxId}
           role="listbox"
           className="absolute z-50 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white rounded-xl shadow-xl border border-gray-100 py-1 animate-in fade-in zoom-in-95 duration-100"
           style={{

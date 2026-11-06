@@ -135,7 +135,7 @@ export default function HeroSearch({ categories = [] }) {
         </button>
       </form>
 
-      <p style={{ fontSize: '0.8125rem', color: '#9ca3af', marginTop: '1rem', textAlign: 'center' }}>
+      <p style={{ fontSize: '0.8125rem', color: '#4b5563', marginTop: '1rem', textAlign: 'center' }}>
         Popular searches: IT in Karachi · Restaurants in Dubai · Real Estate in New York
       </p>
     </div>
