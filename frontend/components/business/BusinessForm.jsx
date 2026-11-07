@@ -67,6 +67,119 @@ const DEFAULT_OPENING_HOURS = {
 
 const MAX_IMAGES = 5;
 
+/**
+ * Compresses business logos/images in the browser before upload:
+ * - If wider or taller than 800px, scales down proportionally so the longest side is 800px.
+ * - Never upscales smaller images.
+ * - Converts to WebP at quality 80 using canvas.toBlob('image/webp', 0.8).
+ * - Preserves transparency (does not flatten onto a white background).
+ * - Falls back to the original file if the browser cannot process the image.
+ *
+ * @param {File} file
+ * @returns {Promise<File>}
+ */
+async function compressLogoImage(file) {
+  if (!file || typeof window === 'undefined' || !(file instanceof Blob)) {
+    return file;
+  }
+
+  // If already compressed in this session, return as-is
+  if (file._isCompressedLogo) {
+    return file;
+  }
+
+  // Only process images
+  if (!file.type || !file.type.startsWith('image/')) {
+    return file;
+  }
+
+  return new Promise((resolve) => {
+    let objectUrl = null;
+    try {
+      objectUrl = URL.createObjectURL(file);
+      const img = new window.Image();
+
+      img.onload = () => {
+        try {
+          if (objectUrl) URL.revokeObjectURL(objectUrl);
+
+          const width = img.naturalWidth || img.width;
+          const height = img.naturalHeight || img.height;
+
+          if (!width || !height) {
+            return resolve(file);
+          }
+
+          const MAX_SIDE = 800;
+          let targetWidth = width;
+          let targetHeight = height;
+
+          // Scale down proportionally so longest side is 800px (never upscale)
+          if (width > MAX_SIDE || height > MAX_SIDE) {
+            if (width >= height) {
+              targetWidth = MAX_SIDE;
+              targetHeight = Math.round((height * MAX_SIDE) / width);
+            } else {
+              targetHeight = MAX_SIDE;
+              targetWidth = Math.round((width * MAX_SIDE) / height);
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+
+          const ctx = canvas.getContext('2d', { alpha: true });
+          if (!ctx) {
+            return resolve(file);
+          }
+
+          // Clear canvas ensuring transparency is preserved (no white background fill)
+          ctx.clearRect(0, 0, targetWidth, targetHeight);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+          canvas.toBlob(
+            (blob) => {
+              if (!blob) {
+                // If browser canvas cannot produce webp, fall back to original file
+                return resolve(file);
+              }
+
+              const baseName = (file.name || 'logo').replace(/\.[^/.]+$/, '');
+              const webpFile = new File([blob], `${baseName}.webp`, {
+                type: 'image/webp',
+                lastModified: Date.now(),
+              });
+              webpFile._isCompressedLogo = true;
+
+              resolve(webpFile);
+            },
+            'image/webp',
+            0.8
+          );
+        } catch (err) {
+          console.warn('[compressLogoImage] Error processing image, using original:', err);
+          resolve(file);
+        }
+      };
+
+      img.onerror = (err) => {
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        console.warn('[compressLogoImage] Image failed to load, using original:', err);
+        resolve(file);
+      };
+
+      img.src = objectUrl;
+    } catch (err) {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      console.warn('[compressLogoImage] Setup error, using original:', err);
+      resolve(file);
+    }
+  });
+}
+
 // WhatsApp SVG Icon
 function WhatsAppIcon({ size = 16, className = '' }) {
   return (
@@ -386,33 +499,41 @@ export default function BusinessForm({
   };
 
   // Image Upload Handlers
-  const handleImageSelect = (e) => {
-    const files = Array.from(e.target.files || []);
+  const handleImageSelect = async (e) => {
+    const rawFiles = Array.from(e.target.files || []);
+    if (rawFiles.length === 0) return;
+
     const currentTotal = existingImages.length + newImages.length;
     const remaining = MAX_IMAGES - currentTotal;
 
-    if (files.length > remaining) {
+    if (rawFiles.length > remaining) {
       toast.error(`You can only upload ${remaining} more image${remaining !== 1 ? 's' : ''}.`);
       return;
     }
 
-    const oversized = files.filter((f) => f.size > 5 * 1024 * 1024);
+    const oversized = rawFiles.filter((f) => f.size > 5 * 1024 * 1024);
     if (oversized.length > 0) {
       toast.error('Each image must be under 5MB.');
       return;
     }
 
     const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-    const invalid = files.filter((f) => !validTypes.includes(f.type));
+    const invalid = rawFiles.filter((f) => !validTypes.includes(f.type));
     if (invalid.length > 0) {
       toast.error('Only JPG, JPEG, PNG, and WebP files are allowed.');
       return;
     }
 
+    // Compress in browser before upload: max 800px on longest side, WebP at quality 80, keeping transparency
+    const files = await Promise.all(rawFiles.map((file) => compressLogoImage(file)));
+
     setNewImages((prev) => [...prev, ...files]);
     const newPreviews = files.map((f) => URL.createObjectURL(f));
     setPreviews((prev) => [...prev, ...newPreviews]);
     if (errors.images) setErrors((prev) => ({ ...prev, images: '' }));
+
+    // Reset input value so selecting the same file again triggers change
+    e.target.value = '';
   };
 
   const removeNewImage = (index) => {
@@ -651,7 +772,8 @@ export default function BusinessForm({
         if (form.area.trim()) formData.append('address[area]', form.area.trim());
         if (form.zipCode.trim()) formData.append('address[zipCode]', form.zipCode.trim());
 
-        newImages.forEach((img) => formData.append('images', img));
+        const imagesToUpload = await Promise.all(newImages.map((img) => compressLogoImage(img)));
+        imagesToUpload.forEach((img) => formData.append('images', img));
         const currentCountry = form.country || 'Pakistan';
         const currentFee = paymentSettings?.fees?.[currentCountry]?.amount ?? (currentCountry === 'Pakistan' ? (paymentSettings?.feeAmount ?? 0) : 0);
         const isFreeCountry = (Number(currentFee) || 0) === 0;
