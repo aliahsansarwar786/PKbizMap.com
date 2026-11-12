@@ -266,11 +266,11 @@ export default async function HomePage() {
                 id="hero-heading"
                 className="text-4xl sm:text-5xl lg:text-[4rem] font-extrabold text-slate-900 mb-5 leading-[1.1] tracking-tight"
               >
-                Find Trusted Local Businesses in Pakistan, the UAE &amp; the USA
+                BizPrimeHub: Free Business Directory Pakistan, UAE &amp; the USA
               </h1>
 
               <p className="text-lg sm:text-xl text-slate-700 mb-8 leading-relaxed font-medium max-w-xl">
-                The free business listing directory for Pakistan, the UAE and the USA — list your business for free and get found by customers near you.
+                The business listing directory for Pakistan, the UAE and the USA — list your business today and get found by customers near you.
               </p>
             </div>
           </div>
