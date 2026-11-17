@@ -1361,12 +1361,12 @@ export default function BusinessForm({
               <Clock size={20} />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">
                   Section 4
                 </span>
                 <h2 className="text-lg font-bold text-gray-900">Weekly Opening Hours</h2>
-                <span className="text-xs text-gray-400 font-normal">(Optional)</span>
+                <span className="text-xs text-gray-400 font-normal hidden sm:inline">(Optional)</span>
               </div>
               <p className="text-xs text-gray-500 mt-0.5">
                 Set opening and closing times for each day of the week
@@ -1425,30 +1425,30 @@ export default function BusinessForm({
                 </div>
 
                 {/* Time Pickers or Closed indicator */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 w-full sm:w-auto">
                   {isClosed ? (
                     <span className="text-xs font-medium text-gray-400 italic py-1.5">
                       Closed all day
                     </span>
                   ) : (
-                    <div className="flex items-center gap-2 text-xs">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-gray-500 font-medium">From:</span>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 text-xs w-full sm:w-auto">
+                      <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                        <span className="text-gray-500 font-medium w-10 sm:w-auto shrink-0">From:</span>
                         <input
                           type="time"
                           value={dayData.open}
                           onChange={(e) => handleTimeChange(key, 'open', e.target.value)}
-                          className="h-9 px-2.5 rounded-lg border border-gray-200 bg-gray-50/60 text-xs font-semibold text-gray-800 outline-none focus:border-blue-600"
+                          className="h-9 px-2.5 rounded-lg border border-gray-200 bg-gray-50/60 text-xs font-semibold text-gray-800 outline-none focus:border-blue-600 w-full sm:w-auto"
                         />
                       </div>
-                      <span className="text-gray-400 font-bold">—</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-gray-500 font-medium">To:</span>
+                      <span className="text-gray-400 font-bold hidden sm:inline">—</span>
+                      <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                        <span className="text-gray-500 font-medium w-10 sm:w-auto shrink-0">To:</span>
                         <input
                           type="time"
                           value={dayData.close}
                           onChange={(e) => handleTimeChange(key, 'close', e.target.value)}
-                          className="h-9 px-2.5 rounded-lg border border-gray-200 bg-gray-50/60 text-xs font-semibold text-gray-800 outline-none focus:border-blue-600"
+                          className="h-9 px-2.5 rounded-lg border border-gray-200 bg-gray-50/60 text-xs font-semibold text-gray-800 outline-none focus:border-blue-600 w-full sm:w-auto"
                         />
                       </div>
                     </div>
@@ -1472,12 +1472,12 @@ export default function BusinessForm({
             <Globe size={20} />
           </div>
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
                 Section 5
               </span>
               <h2 className="text-lg font-bold text-gray-900">Online Links</h2>
-              <span className="text-xs text-gray-400 font-normal">(All Optional)</span>
+              <span className="text-xs text-gray-400 font-normal hidden sm:inline">(All Optional)</span>
             </div>
             <p className="text-xs text-gray-500 mt-0.5">
               Connect your website, social media pages, and Google Business Profile

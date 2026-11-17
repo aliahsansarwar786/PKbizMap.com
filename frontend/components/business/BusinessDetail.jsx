@@ -422,7 +422,7 @@ export default function BusinessDetail({ id }) {
             {/* Business info */}
             <div className="card p-6">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
-                <div>
+                <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
                     <span className="badge badge-blue"><Tag size={11} /> {business.category}</span>
                     {!isClaimed && (
@@ -443,13 +443,13 @@ export default function BusinessDetail({ id }) {
                     )}
                   </div>
 
-                  <p style={{ fontSize: '1.625rem', fontWeight: 700, color: '#1f2937' }}>
+                  <p className="break-words" style={{ fontSize: '1.625rem', fontWeight: 700, color: '#1f2937' }}>
                     {business.title}
                   </p>
 
                   <div className="flex items-center gap-2 mt-2">
                     <MapPin size={14} style={{ color: '#6b7280', flexShrink: 0 }} />
-                    <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>
+                    <span className="break-words" style={{ fontSize: '0.875rem', color: '#6b7280' }}>
                       {formatAddress(business.address)}
                     </span>
                   </div>
@@ -643,7 +643,7 @@ export default function BusinessDetail({ id }) {
                     <MapPin size={16} className="text-blue-600 mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <p className="text-[11px] text-gray-500 font-medium">Address</p>
-                      <p className="text-xs font-semibold text-gray-900 leading-snug">
+                      <p className="text-xs font-semibold text-gray-900 leading-snug break-words">
                         {formatAddress(business.address)}
                       </p>
                     </div>
@@ -905,13 +905,13 @@ export default function BusinessDetail({ id }) {
           {/* Similar Businesses Section (Third child of grid: row 2 on desktop, after sidebar on mobile) */}
           {similarBusinesses.length > 0 && (
             <div className="lg:col-span-2 card p-6 border border-gray-100">
-              <div className="flex items-center justify-between mb-4">
-                <h2 style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1f2937' }}>
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4 min-w-0">
+                <h2 className="break-words min-w-0" style={{ fontSize: '1.125rem', fontWeight: 700, color: '#1f2937' }}>
                   Similar {business.category} in {business.address?.city || 'Pakistan'}
                 </h2>
                 <Link
                   href={`/businesses?category=${encodeURIComponent(business.category)}&city=${encodeURIComponent(business.address?.city || '')}`}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-700"
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 shrink-0"
                 >
                   View All
                 </Link>

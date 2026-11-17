@@ -13,7 +13,7 @@ export default function VerifyEmailPage() {
   return (
     <>
       <Navbar />
-      <main style={{ background: '#f9fafb', minHeight: '80vh' }} className="flex items-center py-12 px-4">
+      <main style={{ background: '#f9fafb', minHeight: '80vh' }} className="flex items-center py-12">
         <div className="container-max w-full">
           <Suspense fallback={<div className="text-center py-12 text-slate-400">Loading verification...</div>}>
             <VerifyEmailForm />

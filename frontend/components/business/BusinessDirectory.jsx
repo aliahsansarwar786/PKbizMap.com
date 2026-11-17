@@ -503,7 +503,7 @@ export default function BusinessDirectory({ initialBusinesses = [], initialPagin
 
             {/* ── Pagination ───────────────────────────────────────────── */}
             {!loading && pagination && pagination.totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-10">
+              <div className="flex flex-wrap items-center justify-center gap-2 mt-10">
                 <button
                   onClick={() => setPage(page - 1)}
                   disabled={!pagination.hasPrevPage}
@@ -528,6 +528,7 @@ export default function BusinessDirectory({ initialBusinesses = [], initialPagin
                         return (
                           <span
                             key={pageNum}
+                            className="hidden sm:inline"
                             style={{ color: '#9ca3af', padding: '0 4px' }}
                           >
                             ...
@@ -541,7 +542,7 @@ export default function BusinessDirectory({ initialBusinesses = [], initialPagin
                       <button
                         key={pageNum}
                         onClick={() => setPage(pageNum)}
-                        className={isActive ? 'btn-primary' : 'btn-secondary'}
+                        className={isActive ? 'btn-primary' : 'btn-secondary hidden sm:inline-flex'}
                         style={{ padding: '0.5rem 0.875rem', minWidth: 40 }}
                         aria-label={`Page ${pageNum}`}
                         aria-current={isActive ? 'page' : undefined}

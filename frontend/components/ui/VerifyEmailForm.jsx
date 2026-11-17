@@ -282,7 +282,7 @@ export default function VerifyEmailForm() {
   }
 
   return (
-    <div className="card p-6 sm:p-8 max-w-md mx-auto bg-white shadow-xl rounded-3xl border border-slate-200/80">
+    <div className="card p-4 sm:p-8 max-w-md mx-auto bg-white shadow-xl rounded-3xl border border-slate-200/80">
       {/* Header */}
       <div className="text-center mb-6">
         <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-4 border border-blue-100 shadow-xs">
@@ -329,7 +329,7 @@ export default function VerifyEmailForm() {
           <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-3 text-center">
             Enter 6-Digit Code
           </label>
-          <div className="flex justify-between items-center gap-2 sm:gap-2.5" onPaste={handlePaste}>
+          <div className="flex justify-between items-center gap-1.5 sm:gap-2.5" onPaste={handlePaste}>
             {otp.map((digit, idx) => (
               <input
                 key={idx}
@@ -342,7 +342,7 @@ export default function VerifyEmailForm() {
                 disabled={loading || blockedUntilSeconds > 0}
                 onChange={(e) => handleDigitChange(idx, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(idx, e)}
-                className="w-11 h-13 sm:w-12 sm:h-14 text-center text-xl sm:text-2xl font-mono font-bold rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all disabled:opacity-50"
+                className="w-9 h-12 sm:w-11 sm:h-14 text-center text-xl sm:text-2xl font-mono font-bold rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all disabled:opacity-50"
               />
             ))}
           </div>
