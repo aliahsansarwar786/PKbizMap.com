@@ -1,0 +1,15 @@
+export const SEO_KEYWORDS: Record<string, { main: string; supporting?: string[] }> = {
+  "lyallpur-galleria": { main: "lyallpur galleria" },
+  "ittefaq-hospital": { main: "ittefaq hospital trust" },
+  "daewoo-express-gt-road-gujranwala": { main: "daewoo express gujranwala terminal" },
+  "ocean-mall": { main: "ocean mall" },
+  "chase-up": { main: "chase up near me", supporting: ["chase up pakistan"] },
+  "kips-academy": { main: "kips academy lahore" },
+  "burger-o-clock": { main: "burger o clock near me" },
+  "street-1-cafe": { main: "street 1" },
+  "breakout": { main: "breakout near me" },
+  "muhammadi-nihari-house": { main: "muhammadi nehari house" },
+  "nando-s-gulberg-iii-lahore": { main: "nandos gulberg" },
+  "sania-express": { main: "sania express lahore" },
+  "bundu-khan-liberty-market-lahore": { main: "bundu khan restaurant liberty" },
+};

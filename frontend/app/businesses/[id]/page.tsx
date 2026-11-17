@@ -13,6 +13,7 @@ import {
   slugify,
 } from '@/lib/slugify';
 import { fetchLandingBusinesses } from '@/lib/landingData';
+import { SEO_KEYWORDS } from '@/lib/seoKeywords';
 
 interface BusinessDetailPageProps {
   params: Promise<{ id: string }>;
@@ -94,26 +95,42 @@ export async function generateMetadata({ params }: BusinessDetailPageProps): Pro
   const name = decodeHtmlEntities(business.title || '').trim();
   const category = (business.category || 'Business').trim();
   const city = (business.address?.city || '').trim();
+  const slug = business.slug || id;
+
+  const seoEntry = (business.slug && SEO_KEYWORDS[business.slug]) || SEO_KEYWORDS[id];
+  const mainKeyword = seoEntry?.main;
+  const applySeo = Boolean(seoEntry && mainKeyword && !name.toLowerCase().includes(mainKeyword.toLowerCase()));
 
   const nameContainsCity = Boolean(city && name.toLowerCase().includes(city.toLowerCase()));
   const inCity = city && !nameContainsCity ? ` in ${city}` : '';
 
-  const candA = `${name} — ${category}${inCity}`;
-  const candB = `${name}${inCity}`;
-  const candC = `${name} — ${category}`;
-  const candD = cutAtWordBoundary(name, 46);
+  let baseTitle = '';
+  if (applySeo && mainKeyword) {
+    const candSeo = `${mainKeyword} — ${name}`;
+    if (candSeo.length <= 46) {
+      baseTitle = candSeo;
+    } else if (mainKeyword.length <= 46) {
+      baseTitle = mainKeyword;
+    } else {
+      baseTitle = cutAtWordBoundary(mainKeyword, 46);
+    }
+  } else {
+    const candA = `${name} — ${category}${inCity}`;
+    const candB = `${name}${inCity}`;
+    const candC = `${name} — ${category}`;
+    const candD = cutAtWordBoundary(name, 46);
 
-  let baseTitle = candD;
-  if (candA.length <= 46) {
-    baseTitle = candA;
-  } else if (candB.length <= 46) {
-    baseTitle = candB;
-  } else if (candC.length <= 46) {
-    baseTitle = candC;
+    baseTitle = candD;
+    if (candA.length <= 46) {
+      baseTitle = candA;
+    } else if (candB.length <= 46) {
+      baseTitle = candB;
+    } else if (candC.length <= 46) {
+      baseTitle = candC;
+    }
   }
 
   const finalTitle = `${baseTitle} | BizPrimeHub`;
-  const slug = business.slug || id;
   const canonicalUrl = `https://www.bizprimehub.com/businesses/${slug}`;
 
   let firstSentence = '';
@@ -134,11 +151,27 @@ export async function generateMetadata({ params }: BusinessDetailPageProps): Pro
   }
 
   let composedDesc = '';
-  if (middle) {
-    const intro = city ? `${name} is a ${category} business in ${city}.` : `${name} is a ${category} business.`;
-    composedDesc = `${intro} ${middle} Find phone, address and reviews on BizPrimeHub.`;
+  if (applySeo && mainKeyword) {
+    const location = city ? `${city}, Pakistan` : 'Pakistan';
+    const descWithMiddle = middle
+      ? `${mainKeyword} — ${name} is a ${category} business in ${location}. ${middle} Find phone, address and reviews on BizPrimeHub.`
+      : '';
+    const descWithoutMiddle = `${mainKeyword} — ${name} is a ${category} business in ${location}. Find phone, address and reviews on BizPrimeHub.`;
+
+    if (descWithMiddle && descWithMiddle.length <= 156) {
+      composedDesc = descWithMiddle;
+    } else if (descWithoutMiddle.length <= 156) {
+      composedDesc = descWithoutMiddle;
+    } else {
+      composedDesc = cutAtWordBoundary(descWithMiddle || descWithoutMiddle, 156);
+    }
   } else {
-    composedDesc = `${name} is a ${category} business in ${city ? `${city}, Pakistan` : 'Pakistan'}. Find phone, address and reviews on BizPrimeHub.`;
+    if (middle) {
+      const intro = city ? `${name} is a ${category} business in ${city}.` : `${name} is a ${category} business.`;
+      composedDesc = `${intro} ${middle} Find phone, address and reviews on BizPrimeHub.`;
+    } else {
+      composedDesc = `${name} is a ${category} business in ${city ? `${city}, Pakistan` : 'Pakistan'}. Find phone, address and reviews on BizPrimeHub.`;
+    }
   }
 
   const description = cutAtWordBoundary(composedDesc, 156);
@@ -187,6 +220,7 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
   let breadcrumbJsonLd = null;
   let introParagraph = '';
   let decodedTitle = '';
+  let pageH1 = '';
   let categorySlug = '';
   let cityInfo: ReturnType<typeof getCityBySlug> = undefined;
   let countrySlug = '';
@@ -232,7 +266,18 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
     const country = (business.address?.country || 'Pakistan').trim();
     const street = (business.address?.street || '').trim();
     const location = city ? `${city}, ${country}` : country;
-    introParagraph = `${decodedTitle} is a ${categoryName} business in ${location}.${street ? ` ${street}` : ''}`;
+
+    const seoEntry = (business.slug && SEO_KEYWORDS[business.slug]) || SEO_KEYWORDS[id];
+    const mainKeyword = seoEntry?.main;
+    const applySeo = Boolean(seoEntry && mainKeyword && !decodedTitle.toLowerCase().includes(mainKeyword.toLowerCase()));
+
+    pageH1 = applySeo && mainKeyword ? `${mainKeyword} — ${decodedTitle}` : decodedTitle;
+
+    if (applySeo && mainKeyword) {
+      introParagraph = `${mainKeyword} — ${decodedTitle} is a ${categoryName} business in ${location}.${street ? ` ${street}` : ''}`;
+    } else {
+      introParagraph = `${decodedTitle} is a ${categoryName} business in ${location}.${street ? ` ${street}` : ''}`;
+    }
 
     const zip = (business.address?.zipCode || '').trim();
     const rawDesc = (business.description || '').replace(/\s+/g, ' ').trim();
@@ -350,7 +395,7 @@ export default async function BusinessDetailPage({ params }: BusinessDetailPageP
         {business && (
           <div className="container-max pt-6">
             <h1 style={{ fontSize: '1.625rem', fontWeight: 700, color: '#1f2937' }}>
-              {decodedTitle}
+              {pageH1}
             </h1>
             <p style={{ fontSize: '0.875rem', color: '#4b5563', marginTop: '0.5rem' }}>
               {introParagraph}
