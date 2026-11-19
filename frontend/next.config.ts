@@ -11,7 +11,7 @@ const cspHeader = `
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   img-src 'self' data: blob: https://res.cloudinary.com https://ui-avatars.com https://www.google-analytics.com https://www.googletagmanager.com;
   font-src 'self' data: https://fonts.gstatic.com;
-  connect-src 'self' https://pkbizmap-backend.vercel.app${devConnectSources} https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com;
+  connect-src 'self' https://pkbizmap-backend.vercel.app https://pkbizmap-backend-three.vercel.app${devConnectSources} https://www.googletagmanager.com https://www.google-analytics.com https://region1.google-analytics.com;
   frame-src 'self' https://maps.google.com https://www.google.com;
   frame-ancestors 'none';
   form-action 'self';
