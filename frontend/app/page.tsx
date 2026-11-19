@@ -356,7 +356,7 @@ export default async function HomePage() {
             </div>
 
             <Suspense fallback={<div className="py-12 text-center text-slate-400">Loading directory...</div>}>
-              <BrowseSection isHomePage={true} />
+              <BrowseSection isHomePage={true} summary={summary as any} />
             </Suspense>
           </div>
         </section>
