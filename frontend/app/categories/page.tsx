@@ -39,18 +39,18 @@ export default function CategoriesPage() {
       />
       <Navbar />
       <main suppressHydrationWarning>
-        <div className="bg-slate-50 py-16 border-b border-slate-100" suppressHydrationWarning>
-          <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 text-center" suppressHydrationWarning>
+        <div className="bg-slate-50 py-12 sm:py-16 border-b border-slate-100" suppressHydrationWarning>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center" suppressHydrationWarning>
             <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight mb-4">Business Categories</h1>
-            <p className="text-slate-500 max-w-xl mx-auto text-lg">
+            <p className="text-slate-500 max-w-xl mx-auto text-base sm:text-lg">
               Browse all {CATEGORIES.length} categories and find what you&apos;re looking for
             </p>
           </div>
         </div>
 
-        <section className="py-16" suppressHydrationWarning>
-          <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8" suppressHydrationWarning>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" suppressHydrationWarning>
+        <section className="py-12 sm:py-16" suppressHydrationWarning>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" suppressHydrationWarning>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6" suppressHydrationWarning>
               {CATEGORIES.map(({ name, image, description }) => (
                 <Link
                   key={name}
@@ -65,11 +65,11 @@ export default function CategoriesPage() {
                       className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                     />
                   </div>
-                  <div suppressHydrationWarning>
-                    <h2 className="text-lg font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors">
+                  <div className="min-w-0 flex-1" suppressHydrationWarning>
+                    <h2 className="text-base sm:text-lg font-bold text-slate-900 mb-1 group-hover:text-blue-600 transition-colors truncate">
                       {name}
                     </h2>
-                    <p className="text-sm text-slate-500 leading-relaxed line-clamp-2">
+                    <p className="text-xs sm:text-sm text-slate-500 leading-relaxed line-clamp-2">
                       {description}
                     </p>
                   </div>

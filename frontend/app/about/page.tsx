@@ -61,7 +61,7 @@ export default function AboutPage() {
 
         <section className="section" suppressHydrationWarning>
           <div className="container-max max-w-3xl" suppressHydrationWarning>
-            <div className="card p-8 space-y-6" suppressHydrationWarning>
+            <div className="card p-4 sm:p-8 space-y-6" suppressHydrationWarning>
               <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#1f2937' }}>Our Mission</h2>
               <p style={{ color: '#4b5563', lineHeight: 1.7 }}>
                 At BizPrimeHub, our mission is to empower local businesses in Multan and across Pakistan. We believe that small businesses are the backbone of our economy, and we want to provide them with a platform to shine.

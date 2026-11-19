@@ -449,9 +449,9 @@ export default function BusinessDirectory({ initialBusinesses = [], initialPagin
                 {`Found ${pagination?.totalResults ?? businesses.length} listings`}
               </h2>
               {(country || category || city) && (
-                <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-500">
+                <div className="flex items-center flex-wrap gap-1.5 text-xs sm:text-sm font-medium text-gray-500 max-w-full">
                   <span>Filtered by:</span>
-                  <span className="font-semibold text-gray-800">
+                  <span className="font-semibold text-gray-800 break-words">
                     {[country, city, category].filter(Boolean).join(' • ')}
                   </span>
                 </div>

@@ -1577,7 +1577,7 @@ export default function BusinessForm({
           Card Title strictly: "Listing Charges"
       ───────────────────────────────────────────────────────────── */}
       {!isEdit && paymentSettingsError && (
-        <section className="bg-white rounded-2xl p-6 sm:p-8 border border-rose-200 shadow-sm space-y-4">
+        <section className="bg-white rounded-2xl p-4 sm:p-6 md:p-8 border border-rose-200 shadow-sm space-y-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-base">
               6

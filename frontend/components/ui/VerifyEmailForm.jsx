@@ -342,7 +342,7 @@ export default function VerifyEmailForm() {
                 disabled={loading || blockedUntilSeconds > 0}
                 onChange={(e) => handleDigitChange(idx, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(idx, e)}
-                className="w-9 h-12 sm:w-11 sm:h-14 text-center text-xl sm:text-2xl font-mono font-bold rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all disabled:opacity-50"
+                className="w-8 min-[360px]:w-9 sm:w-11 h-11 sm:h-14 text-center text-lg sm:text-2xl font-mono font-bold rounded-xl border border-slate-300 bg-slate-50 focus:bg-white focus:border-blue-600 focus:ring-2 focus:ring-blue-100 outline-none transition-all disabled:opacity-50"
               />
             ))}
           </div>

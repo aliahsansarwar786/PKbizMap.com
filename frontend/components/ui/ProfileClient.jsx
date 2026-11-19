@@ -101,7 +101,7 @@ export default function ProfileClient() {
   return (
     <div className="space-y-6">
       {/* Profile Info */}
-      <div className="card p-6">
+      <div className="card p-4 sm:p-6">
         <h2 style={{ fontSize: '1rem', fontWeight: 600, color: '#1f2937', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: 8 }}>
           <User size={18} style={{ color: '#2563eb' }} /> Profile Information
         </h2>
@@ -176,7 +176,7 @@ export default function ProfileClient() {
       </div>
 
       {/* Change Password */}
-      <div className="card p-6">
+      <div className="card p-4 sm:p-6">
         <h2 style={{ fontSize: '1rem', fontWeight: 600, color: '#1f2937', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: 8 }}>
           <Lock size={18} style={{ color: '#2563eb' }} /> Change Password
         </h2>
@@ -194,7 +194,27 @@ export default function ProfileClient() {
                 autoComplete="current-password"
                 aria-invalid={!!pwErrors.currentPassword}
               />
-              <button type="button" onClick={() => setShowCurrent(!showCurrent)} style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }} aria-label={showCurrent ? 'Hide password' : 'Show password'}>
+              <button
+                type="button"
+                onClick={() => setShowCurrent(!showCurrent)}
+                style={{
+                  position: 'absolute',
+                  right: '0.75rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#9ca3af',
+                  minWidth: '44px',
+                  minHeight: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '14px',
+                }}
+                aria-label={showCurrent ? 'Hide password' : 'Show password'}
+              >
                 {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
@@ -214,7 +234,27 @@ export default function ProfileClient() {
                 autoComplete="new-password"
                 aria-invalid={!!pwErrors.newPassword}
               />
-              <button type="button" onClick={() => setShowNew(!showNew)} style={{ position: 'absolute', right: '0.75rem', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af' }} aria-label={showNew ? 'Hide password' : 'Show password'}>
+              <button
+                type="button"
+                onClick={() => setShowNew(!showNew)}
+                style={{
+                  position: 'absolute',
+                  right: '0.75rem',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: '#9ca3af',
+                  minWidth: '44px',
+                  minHeight: '44px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '14px',
+                }}
+                aria-label={showNew ? 'Hide password' : 'Show password'}
+              >
                 {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>

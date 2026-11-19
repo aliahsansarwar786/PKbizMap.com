@@ -230,7 +230,7 @@ export default function Navbar() {
               <span className="text-[1.15rem] leading-tight text-slate-800 font-bold tracking-tight">
                 BizPrime<span className="text-blue-600">Hub</span>
               </span>
-              <span className="text-[10px] text-slate-500 font-normal leading-tight">
+              <span className="text-[10px] text-slate-500 font-normal leading-tight hidden sm:block">
                 Connecting Businesses, Building Success
               </span>
             </div>

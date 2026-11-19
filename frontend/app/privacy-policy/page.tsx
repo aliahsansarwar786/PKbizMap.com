@@ -59,8 +59,8 @@ export default function PrivacyPolicyPage() {
 
         {/* Content Body */}
         <section className="py-12 sm:py-16">
-          <div className="max-w-4xl mx-auto px-5 sm:px-6 lg:px-8">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-6 sm:p-10 space-y-10 text-slate-700 leading-relaxed text-sm sm:text-base">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-200/80 p-4 sm:p-10 space-y-10 text-slate-700 leading-relaxed text-sm sm:text-base">
               
               {/* Preamble */}
               <div className="space-y-4 text-slate-800">

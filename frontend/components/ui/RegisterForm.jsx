@@ -101,7 +101,7 @@ function RegisterFormContent() {
   };
 
   return (
-    <div className="card p-8 max-w-md mx-auto">
+    <div className="card p-4 sm:p-8 max-w-md mx-auto">
       <div className="text-center mb-8">
         <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-4" style={{ background: '#eff6ff' }}>
           <Building2 size={24} style={{ color: '#2563eb' }} />

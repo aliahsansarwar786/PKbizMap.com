@@ -385,9 +385,9 @@ export default async function HomePage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
               {/* Group 1: Browse by Category */}
-              <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col">
+              <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col">
                 <h3 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center justify-between">
                   <span>Browse by Category</span>
                   <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
@@ -409,7 +409,7 @@ export default async function HomePage() {
               </div>
 
               {/* Group 2: Browse by Country & City */}
-              <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col">
+              <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col">
                 <h3 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">
                   Browse by Country &amp; City
                 </h3>
@@ -429,7 +429,7 @@ export default async function HomePage() {
                 </div>
                 <div>
                   <div className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Popular Cities</div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 sm:gap-2">
                     {top12Cities.map((c) => (
                       <Link
                         key={`${c.countrySlug}-${c.citySlug}`}
@@ -445,7 +445,7 @@ export default async function HomePage() {
               </div>
 
               {/* Group 3: Recently Listed */}
-              <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col">
+              <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-xs flex flex-col">
                 <h3 className="text-lg font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100 flex items-center justify-between">
                   <span>Recently Listed</span>
                   <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">

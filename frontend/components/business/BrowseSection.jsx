@@ -454,7 +454,7 @@ export default function BrowseSection({
 
   return (
     <div
-      className="bg-white rounded-3xl border border-slate-200/90 shadow-xs p-5 sm:p-7 mb-8 transition-all duration-300"
+      className="bg-white rounded-2xl sm:rounded-3xl border border-slate-200/90 shadow-xs p-3.5 sm:p-7 mb-8 transition-all duration-300"
     >
       {/* ───────────────────────────────────────────────────────────────── */}
       {/* LEVEL 1: BROWSE BY COUNTRY (Horizontal Reference Style Cards)     */}
@@ -495,11 +495,11 @@ export default function BrowseSection({
                   key={c}
                   type="button"
                   onClick={() => handleCountrySelect(c)}
-                  className="flex items-center gap-4 bg-white p-4 rounded-xl border border-slate-200/90 shadow-xs hover:shadow-md hover:border-blue-500 hover:-translate-y-0.5 transition-all duration-200 text-left w-full group cursor-pointer"
+                  className="flex items-center gap-3 sm:gap-4 bg-white p-3 sm:p-4 rounded-xl border border-slate-200/90 shadow-xs hover:shadow-md hover:border-blue-500 hover:-translate-y-0.5 transition-all duration-200 text-left w-full group cursor-pointer"
                   aria-label={`Browse businesses in ${c}`}
                 >
-                  {/* Left: 100x100px rounded image */}
-                  <div className="w-[100px] h-[100px] min-w-[100px] min-h-[100px] rounded-[10px] overflow-hidden relative shrink-0 bg-slate-100 border border-slate-100 shadow-xs">
+                  {/* Left: 80x80px mobile / 100x100px sm rounded image */}
+                  <div className="w-20 h-20 min-w-[80px] min-h-[80px] sm:w-[100px] sm:h-[100px] sm:min-w-[100px] sm:min-h-[100px] rounded-[10px] overflow-hidden relative shrink-0 bg-slate-100 border border-slate-100 shadow-xs">
                     <Image
                       src={info.image}
                       alt={info.name}
@@ -646,11 +646,11 @@ export default function BrowseSection({
                     key={cityName}
                     type="button"
                     onClick={() => handleCityClick(cityName)}
-                    className="flex items-center gap-4 p-4 rounded-xl border border-slate-200/90 shadow-xs hover:shadow-md hover:border-blue-500 hover:-translate-y-0.5 transition-all duration-200 text-left w-full group cursor-pointer bg-white"
+                    className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border border-slate-200/90 shadow-xs hover:shadow-md hover:border-blue-500 hover:-translate-y-0.5 transition-all duration-200 text-left w-full group cursor-pointer bg-white"
                     aria-label={`Select city ${cityName} in ${effectiveCountry}`}
                   >
-                    {/* Left: 100x100px rounded image */}
-                    <div className="w-[100px] h-[100px] min-w-[100px] min-h-[100px] rounded-[10px] overflow-hidden relative shrink-0 bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-100 shadow-xs">
+                    {/* Left: 80x80px mobile / 100x100px sm rounded image */}
+                    <div className="w-20 h-20 min-w-[80px] min-h-[80px] sm:w-[100px] sm:h-[100px] sm:min-w-[100px] sm:min-h-[100px] rounded-[10px] overflow-hidden relative shrink-0 bg-gradient-to-br from-blue-50 to-indigo-100 border border-blue-100 shadow-xs">
                       <Image
                         src={cityImg}
                         alt={cityName}
@@ -859,15 +859,15 @@ export default function BrowseSection({
                     key={cat.name}
                     type="button"
                     onClick={() => handleCategoryClick(cat.name)}
-                    className={`flex items-center gap-4 p-4 rounded-xl border transition-all duration-200 text-left w-full group cursor-pointer bg-white ${
+                    className={`flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl border transition-all duration-200 text-left w-full group cursor-pointer bg-white ${
                       isSelected
                         ? 'border-indigo-600 ring-2 ring-indigo-500/30 bg-indigo-50/20 shadow-sm'
                         : 'border-slate-200/90 shadow-xs hover:shadow-md hover:border-indigo-400 hover:-translate-y-0.5'
                     }`}
                     aria-label={`Select category ${cat.name} in ${effectiveCity}`}
                   >
-                    {/* Left: 100x100px rounded image */}
-                    <div className="w-[100px] h-[100px] min-w-[100px] min-h-[100px] rounded-[10px] overflow-hidden relative shrink-0 bg-slate-100 border border-slate-100 shadow-xs">
+                    {/* Left: 80x80px mobile / 100x100px sm rounded image */}
+                    <div className="w-20 h-20 min-w-[80px] min-h-[80px] sm:w-[100px] sm:h-[100px] sm:min-w-[100px] sm:min-h-[100px] rounded-[10px] overflow-hidden relative shrink-0 bg-slate-100 border border-slate-100 shadow-xs">
                       <Image
                         src={cat.image}
                         alt={cat.name}

@@ -130,7 +130,7 @@ export default function BusinessCard({ business }) {
       </Link>
 
       {/* Content Section */}
-      <div className="flex flex-col flex-1 p-5">
+      <div className="flex flex-col flex-1 p-4 sm:p-5">
         
         {/* Title & Badge */}
         <div className="flex items-start justify-between gap-3 mb-1.5">

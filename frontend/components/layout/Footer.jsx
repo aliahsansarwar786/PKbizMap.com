@@ -9,20 +9,20 @@ export default function Footer() {
 
   return (
     <footer className="bg-[#0a0f1c] text-slate-200 font-sans border-t border-slate-800">
-      <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
         {/* Top CTA Section (Sleek & Integrated) */}
         <div className="py-12 border-b border-slate-800/60">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-gradient-to-r from-blue-900/20 to-slate-900/40 rounded-2xl p-8 lg:p-10 border border-blue-900/30 shadow-lg relative overflow-hidden">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 bg-gradient-to-r from-blue-900/20 to-slate-900/40 rounded-2xl p-4 sm:p-8 lg:p-10 border border-blue-900/30 shadow-lg relative overflow-hidden">
             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl"></div>
             
             <div className="text-center md:text-left max-w-xl relative z-10">
               <h3 className="text-2xl font-bold !text-white mb-2 tracking-tight">Ready to grow your business?</h3>
-              <p className="text-slate-300 font-medium">Join Pakistan's local directory. List your business for free and start reaching potential customers today.</p>
+              <p className="text-slate-300 font-medium text-sm sm:text-base">Join Pakistan's local directory. List your business for free and start reaching potential customers today.</p>
             </div>
             
-            <div className="shrink-0 relative z-10">
-              <Link href="/add-business" className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 !text-white font-semibold px-8 py-3.5 rounded-xl shadow-lg shadow-blue-900/40 transition-all group">
+            <div className="shrink-0 relative z-10 w-full sm:w-auto text-center">
+              <Link href="/add-business" className="inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 !text-white font-semibold px-5 sm:px-8 py-3.5 rounded-xl shadow-lg shadow-blue-900/40 transition-all group w-full sm:w-auto">
                 List Your Business
                 <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
               </Link>
@@ -123,17 +123,17 @@ export default function Footer() {
 
       {/* Bottom Bar */}
       <div className="border-t border-slate-800 bg-[#070a14]">
-        <div className="max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-400 font-medium">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-400 font-medium">
           <div className="text-center md:text-left">
             <p>&copy; {currentYear} BizPrimeHub. All rights reserved.</p>
           </div>
           
-          <div className="flex items-center gap-1.5 bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-800 text-slate-300">
+          <div className="flex items-center justify-center text-center flex-wrap gap-1.5 bg-slate-900/50 px-3 py-1.5 rounded-full border border-slate-800 text-slate-300 max-w-full">
             <span>Designed & Developed by <strong className="!text-white font-semibold">Ahsan Ali</strong></span>
             <Heart size={13} className="text-red-500 fill-red-500" />
           </div>
           
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 sm:gap-6 flex-wrap justify-center">
             <Link href="/privacy-policy" className="!text-slate-400 hover:!text-slate-200 transition-colors">Privacy Policy</Link>
             <Link href="/terms" className="!text-slate-400 hover:!text-slate-200 transition-colors">Terms of Service</Link>
           </div>

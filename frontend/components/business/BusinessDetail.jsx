@@ -420,7 +420,7 @@ export default function BusinessDetail({ id }) {
             </div>
 
             {/* Business info */}
-            <div className="card p-6">
+            <div className="card p-4 sm:p-6">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-4">
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -503,7 +503,7 @@ export default function BusinessDetail({ id }) {
             </div>
 
             {/* Customer Reviews */}
-            <div className="card p-6">
+            <div className="card p-4 sm:p-6">
               <h2 style={{ fontSize: '1rem', fontWeight: 600, color: '#1f2937', marginBottom: '1rem' }}>
                 Customer Reviews ({reviews.length})
               </h2>
@@ -521,7 +521,7 @@ export default function BusinessDetail({ id }) {
 
               {/* Logged in user who already reviewed: show edit option */}
               {isAuthenticated && userReview && !editingReview && (
-                <div className="mb-6 p-4 rounded-xl bg-blue-50/70 border border-blue-200 flex items-center justify-between gap-3">
+                <div className="mb-6 p-4 rounded-xl bg-blue-50/70 border border-blue-200 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
                   <p className="text-xs sm:text-sm text-blue-900 font-medium">
                     You have already reviewed this business.
                   </p>
@@ -624,7 +624,7 @@ export default function BusinessDetail({ id }) {
           {/* ── Right: Sidebar ────────────────────────────────── */}
           <div className="space-y-4">
             {/* Professional Details (Contact & Location Card) */}
-            <div className="card p-5 space-y-3 border border-gray-100">
+            <div className="card p-4 sm:p-5 space-y-3 border border-gray-100">
               <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                 <h2 style={{ fontSize: '0.9375rem', fontWeight: 700, color: '#1f2937' }}>
                   Professional Details

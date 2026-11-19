@@ -14,10 +14,10 @@ import {
 
 function StatCard({ label, value, icon: Icon, color = '#2563eb' }) {
   return (
-    <div className="card p-5">
+    <div className="card p-4 sm:p-5">
       <div className="flex items-center justify-between mb-3">
         <p style={{ fontSize: '0.8125rem', fontWeight: 500, color: '#6b7280' }}>{label}</p>
-        <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${color}15` }}>
+        <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: `${color}15` }}>
           <Icon size={18} style={{ color }} />
         </div>
       </div>
@@ -106,18 +106,18 @@ export default function DashboardClient() {
     <div className="section-sm">
       <div className="container-max">
         {/* Header */}
-        <div className="card p-6 mb-6">
+        <div className="card p-4 sm:p-6 mb-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
             <Image
               src={avatarUrl}
               alt={user?.name || 'User'}
               width={56}
               height={56}
-              className="rounded-full object-cover"
+              className="rounded-full object-cover shrink-0"
               style={{ border: '3px solid #e5e7eb' }}
             />
-            <div className="flex-1">
-              <div className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#1f2937' }}>
                   Welcome, {user?.name}!
                 </h1>
@@ -125,13 +125,13 @@ export default function DashboardClient() {
                   <span className="badge badge-blue"><Shield size={11} /> Admin</span>
                 )}
               </div>
-              <p style={{ fontSize: '0.875rem', color: '#6b7280' }}>{user?.email}</p>
+              <p style={{ fontSize: '0.875rem', color: '#6b7280' }} className="truncate">{user?.email}</p>
             </div>
-            <div className="flex gap-2">
-              <Link href="/dashboard/profile" className="btn-secondary" style={{ fontSize: '0.8125rem', padding: '0.5rem 1rem' }}>
+            <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+              <Link href="/dashboard/profile" className="btn-secondary flex-1 sm:flex-none justify-center" style={{ fontSize: '0.8125rem', padding: '0.5rem 1rem' }}>
                 <User size={14} /> Profile
               </Link>
-              <Link href="/add-business" className="btn-primary" style={{ fontSize: '0.8125rem', padding: '0.5rem 1rem' }}>
+              <Link href="/add-business" className="btn-primary flex-1 sm:flex-none justify-center" style={{ fontSize: '0.8125rem', padding: '0.5rem 1rem' }}>
                 <PlusCircle size={14} /> Add Business
               </Link>
             </div>
@@ -139,7 +139,7 @@ export default function DashboardClient() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <StatCard label="My Listed Businesses" value={totalListed} icon={LayoutGrid} color="#2563eb" />
           <StatCard label="Approved" value={approved} icon={CheckCircle2} color="#059669" />
           <StatCard label="Pending Review" value={pending} icon={Clock} color="#d97706" />
@@ -205,7 +205,7 @@ export default function DashboardClient() {
           ) : (
             <div className="divide-y" style={{ '--tw-divide-color': '#f3f4f6' }}>
               {businesses.map((business) => (
-                <div key={business._id} className="flex items-center gap-4 p-4 hover:bg-gray-50 transition-colors">
+                <div key={business._id} className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 p-3.5 sm:p-4 hover:bg-gray-50 transition-colors">
                   {/* Image */}
                   <div className="w-12 h-12 rounded-lg overflow-hidden flex-shrink-0" style={{ background: '#f3f4f6' }}>
                     {business.images?.[0]?.url ? (
@@ -228,7 +228,7 @@ export default function DashboardClient() {
                     <p style={{ fontWeight: 600, fontSize: '0.875rem', color: '#1f2937' }} className="truncate">
                       {business.title}
                     </p>
-                    <div className="flex items-center gap-2 mt-0.5">
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                       <span className="badge badge-gray" style={{ fontSize: '0.7rem', padding: '2px 8px' }}>
                         {business.category}
                       </span>
@@ -245,7 +245,7 @@ export default function DashboardClient() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 flex-shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
                     {business.isApproved && (
                       <Link
                         href={`/businesses/${business.slug || business._id}`}

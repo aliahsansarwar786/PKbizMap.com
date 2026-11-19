@@ -252,7 +252,7 @@ export default async function CategoryLandingPage({ params }: CategoryPageProps)
               ))}
             </div>
           ) : (
-            <div className="bg-white rounded-2xl p-8 text-center border border-slate-200 text-slate-500">
+            <div className="bg-white rounded-2xl p-4 sm:p-8 text-center border border-slate-200 text-slate-500">
               No listings currently available in this category.
             </div>
           )}

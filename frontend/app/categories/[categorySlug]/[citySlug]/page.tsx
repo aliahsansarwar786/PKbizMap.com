@@ -215,7 +215,7 @@ export default async function CategoryCityComboPage({ params }: ComboPageProps) 
               ))}
             </div>
           ) : (
-            <div className="bg-white rounded-2xl p-8 text-center border border-slate-200 text-slate-500">
+            <div className="bg-white rounded-2xl p-4 sm:p-8 text-center border border-slate-200 text-slate-500">
               No listings currently available for {categoryName} in {cityInfo.city}.
             </div>
           )}

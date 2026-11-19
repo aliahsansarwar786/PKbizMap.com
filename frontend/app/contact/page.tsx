@@ -67,43 +67,43 @@ export default function ContactPage() {
               
               {/* Contact Information */}
               <div className="space-y-6" suppressHydrationWarning>
-                <div className="card p-6" suppressHydrationWarning>
+                <div className="card p-4 sm:p-6" suppressHydrationWarning>
                   <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#1f2937', marginBottom: '1.5rem' }}>Get in Touch</h2>
                   
                   <div className="flex items-start gap-4 mb-4">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-50 text-blue-600">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-blue-50 text-blue-600 shrink-0">
                       <Mail size={20} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p style={{ fontWeight: 500, color: '#374151' }}>Email Us</p>
-                      <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>info@bizprimehub.com</p>
+                      <p style={{ color: '#6b7280', fontSize: '0.875rem' }} className="truncate">info@bizprimehub.com</p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-4 mb-4">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-green-50 text-green-600">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-green-50 text-green-600 shrink-0">
                       <Phone size={20} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p style={{ fontWeight: 500, color: '#374151' }}>Call Us</p>
                       <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>+92 310 6131361</p>
                     </div>
                   </div>
 
                   <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-red-50 text-red-600">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-red-50 text-red-600 shrink-0">
                       <MapPin size={20} />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <p style={{ fontWeight: 500, color: '#374151' }}>Office Location</p>
-                      <p style={{ color: '#6b7280', fontSize: '0.875rem' }}>Pracha Street, opposite Kalyar Graphics, near BCG Chowk<br />Multan, 60600, Pakistan</p>
+                      <p style={{ color: '#6b7280', fontSize: '0.875rem' }} className="break-words">Pracha Street, opposite Kalyar Graphics, near BCG Chowk<br />Multan, 60600, Pakistan</p>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Contact Form */}
-              <div className="card p-6" suppressHydrationWarning>
+              <div className="card p-4 sm:p-6" suppressHydrationWarning>
                 <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: '#1f2937', marginBottom: '1.5rem' }}>Send a Message</h2>
                 <ContactForm />
               </div>
