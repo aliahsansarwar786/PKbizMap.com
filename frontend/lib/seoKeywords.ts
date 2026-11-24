@@ -1,7 +1,7 @@
 export const SEO_KEYWORDS: Record<string, { main: string; supporting?: string[] }> = {
   "lyallpur-galleria": { main: "lyallpur galleria" },
   "ittefaq-hospital": { main: "ittefaq hospital lahore contact number" },
-  "daewoo-express-gt-road-gujranwala": { main: "daewoo inter city bus terminal" },
+  "daewoo-express-gt-road-gujranwala": { main: "daewoo inter city bus terminal", supporting: ["daewoo khanewal"] },
   "ocean-mall": { main: "ocean mall" },
   "chase-up": { main: "chase up near me", supporting: ["chase up pakistan", "chaseup pakistan"] },
   "kips-academy": { main: "kips academy lahore" },
@@ -18,7 +18,7 @@ export const SEO_KEYWORDS: Record<string, { main: string; supporting?: string[] 
   "siut-sindh-institute-of-urology-and-transplantation": { main: "siut hospital" },
   "tuscany-courtyard": { main: "tuscany courtyard islamabad" },
   "zahid-nihari": { main: "zahid nihari" },
-  "niazi-express-99": { main: "niazi adda lahore location", supporting: ["niaziazi terminal lahore", "niazi99"] },
+  "niazi-express-99": { main: "niazi adda lahore location", supporting: ["niazi terminal lahore", "niazi99"] },
   "khushhali-microfinance-bank-limited": { main: "khushhali microfinance bank limited" },
   "askari-bank-limited-chaklala-scheme-iii-rawalpindi": { main: "askari bank chaklala scheme 3" },
   "bacha-khan-medical-complex": { main: "bacha khan medical complex swabi" },
