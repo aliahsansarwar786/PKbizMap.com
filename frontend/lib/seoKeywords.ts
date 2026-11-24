@@ -1,7 +1,7 @@
 export const SEO_KEYWORDS: Record<string, { main: string; supporting?: string[] }> = {
   "lyallpur-galleria": { main: "lyallpur galleria" },
-  "ittefaq-hospital": { main: "ittefaq hospital lahore contact number" },
-  "daewoo-express-gt-road-gujranwala": { main: "daewoo inter city bus terminal", supporting: ["daewoo khanewal"] },
+  "ittefaq-hospital": { main: "ittefaq hospital trust", supporting: ["ittefaq hospital lahore contact number"] },
+  "daewoo-express-gt-road-gujranwala": { main: "daewoo express gujranwala terminal", supporting: ["daewoo inter city bus terminal", "daewoo khanewal"] },
   "ocean-mall": { main: "ocean mall" },
   "chase-up": { main: "chase up near me", supporting: ["chase up pakistan", "chaseup pakistan"] },
   "kips-academy": { main: "kips academy lahore" },
@@ -11,7 +11,7 @@ export const SEO_KEYWORDS: Record<string, { main: string; supporting?: string[] 
   "muhammadi-nihari-house": { main: "muhammadi nehari house", supporting: ["muhammadi nihari house"] },
   "nando-s-gulberg-iii-lahore": { main: "nandos gulberg" },
   "sania-express": { main: "sania express lahore" },
-  "bundu-khan-liberty-market-lahore": { main: "bundu khan islamabad" },
+  "bundu-khan-liberty-market-lahore": { main: "bundu khan restaurant liberty", supporting: ["bundu khan islamabad"] },
   "chase-value": { main: "chase value center", supporting: ["chase value gulshan"] },
   "fatima-medical-center-multan": { main: "fatima medical center" },
   "hotel-faran": { main: "hotel faran" },
